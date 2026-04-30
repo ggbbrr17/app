@@ -1,0 +1,31 @@
+name: "Generar IPA para AltStore"
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Compilando en macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Descargar paquetes
+        run: flutter pub get
+
+      - name: Crear App sin firma
+        run: |
+          flutter build ios --release --no-codesign
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r mi_aplicacion.ipa Payload/
+
+      - name: Guardar archivo final
+        uses: actions/upload-artifact@v3
+        with:
+          name: app-bundle
+          path: mi_aplicacion.ipa
