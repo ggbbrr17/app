@@ -74,7 +74,7 @@ EOF
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           
-          # Asegurar que Info.plist esté en formato XML legible (evita errores NSCocoaErrorDomain 3480)
+          # Asegurar que Info.plist esté en formato XML legible (evita errores NSCocoaErrorDomain 3840)
           if grep -q "<html" Payload/Runner.app/Info.plist; then
             echo "Error: Info.plist is HTML"
             exit 1
