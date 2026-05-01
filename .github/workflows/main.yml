@@ -17,12 +17,11 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Descargar paquetes
-        run: flutter pub get
-
-      - name: Limpiar configuración local y preparar dependencias
+      - name: Preparar entorno y dependencias
         run: |
+          rm -f ios/Flutter/Generated.xcconfig
           rm -f ios/Flutter/flutter_export_environment.sh
+          flutter pub get
           cd ios && pod install && cd ..
 
       - name: Crear App sin firma
