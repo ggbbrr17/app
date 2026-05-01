@@ -24,10 +24,12 @@ jobs:
           rm -rf ios/Flutter/flutter_export_environment.sh
           flutter pub get
           # Forzar iOS 12.0 y eliminar requisitos de firma/equipo para evitar errores en CI
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = 9.0;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*//g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;//g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;//g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer"/CODE_SIGN_IDENTITY = ""/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/ENABLE_USER_SCRIPT_SANDBOXING = YES/ENABLE_USER_SCRIPT_SANDBOXING = NO/g' ios/Runner.xcodeproj/project.pbxproj
 
           if [ -f ios/Podfile ]; then
             sed -i '' "s/platform :ios, '.*'/platform :ios, '12.0'/g" ios/Podfile
@@ -47,7 +49,7 @@ jobs:
       - name: Crear App sin firma
         run: |
           export CODE_SIGNING_ALLOWED=NO
-          flutter build ios --release --no-codesign --verbose
+          flutter build ios --release --no-codesign --verbose --extra-front-end-options=--no-implicit-dynamic-calls
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           zip -r mi_aplicacion.ipa Payload/
