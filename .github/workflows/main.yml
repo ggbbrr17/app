@@ -70,24 +70,28 @@ EOF
             --build-name=1.0.0 --build-number=1
           
           # Empaquetado manual en formato IPA
+          rm -rf Payload mi_aplicacion.ipa
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
+          
           # Asegurar que Info.plist esté en formato XML legible (evita errores NSCocoaErrorDomain 3480)
-          if [ -f Payload/Runner.app/Info.plist ]; then
-            plutil -convert xml1 -o Payload/Runner.app/Info.plist Payload/Runner.app/Info.plist || true
+          if grep -q "<html" Payload/Runner.app/Info.plist; then
+            echo "Error: Info.plist is HTML"
+            exit 1
           fi
-          # Use ditto to create the IPA; preserves resource forks correctly for iOS
-          ditto -c -k --sequesterRsrc --keepParent Payload mi_aplicacion.ipa
+          if [ -f Payload/Runner.app/Info.plist ]; then
+            plutil -convert xml1 Payload/Runner.app/Info.plist
+          fi
+          zip -r mi_aplicacion.ipa Payload
 
       - name: Diagnosticar Info.plist
         run: |
           set -e
-          unzip -q mi_aplicacion.ipa -d ipa_unpack || true
-          if [ -f ipa_unpack/Payload/Runner.app/Info.plist ]; then
-            plutil -p ipa_unpack/Payload/Runner.app/Info.plist > info_plist_dump.txt || true
+          if [ -f Payload/Runner.app/Info.plist ]; then
+            plutil -p Payload/Runner.app/Info.plist > info_plist_dump.txt || true
             echo "---- file type ----" > info_plist_file.txt
-            file ipa_unpack/Payload/Runner.app/Info.plist >> info_plist_file.txt || true
-            xxd -l 256 ipa_unpack/Payload/Runner.app/Info.plist > info_plist_hexdump.txt || true
+            file Payload/Runner.app/Info.plist >> info_plist_file.txt || true
+            xxd -l 256 Payload/Runner.app/Info.plist > info_plist_hexdump.txt || true
             tar -czf info_plist_diag.tar.gz info_plist_dump.txt info_plist_file.txt info_plist_hexdump.txt || true
           else
             echo "Info.plist not found" > info_plist_dump.txt
