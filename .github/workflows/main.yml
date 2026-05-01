@@ -31,17 +31,24 @@ jobs:
           # Desactivar el sandboxing de scripts (necesario para Xcode 15+)
           echo "ENABLE_USER_SCRIPT_SANDBOXING = NO" >> ios/Flutter/Generated.xcconfig
           
+          # Forzar la desactivación de firma en la configuración de Xcode
+          echo "CODE_SIGNING_ALLOWED = NO" >> ios/Flutter/Generated.xcconfig
+          echo "CODE_SIGNING_REQUIRED = NO" >> ios/Flutter/Generated.xcconfig
+          echo "CODE_SIGNING_METHOD = manual" >> ios/Flutter/Generated.xcconfig
+          
           dart run flutter_launcher_icons
 
       - name: Crear App sin firma
         run: |
+          # Set environment variables for the build
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_ENTITLEMENTS=""
+          export CODE_SIGNING_METHOD=manual
+          
           # Compilación forzando la omisión de firma de código
           flutter build ios --release --no-codesign \
-            --build-name=1.0.0 --build-number=1 \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_ENTITLEMENTS="" \
-            CODE_SIGNING_METHOD=manual
+            --build-name=1.0.0 --build-number=1
           
           # Empaquetado manual en formato IPA
           mkdir -p Payload
