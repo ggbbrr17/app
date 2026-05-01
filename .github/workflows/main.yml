@@ -72,6 +72,10 @@ EOF
           # Empaquetado manual en formato IPA
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
+          # Asegurar que Info.plist esté en formato XML legible (evita errores NSCocoaErrorDomain 3480)
+          if [ -f Payload/Runner.app/Info.plist ]; then
+            plutil -convert xml1 -o Payload/Runner.app/Info.plist Payload/Runner.app/Info.plist || true
+          fi
           # Use ditto to create the IPA; preserves resource forks correctly for iOS
           ditto -c -k --sequesterRsrc --keepParent Payload mi_aplicacion.ipa
 
