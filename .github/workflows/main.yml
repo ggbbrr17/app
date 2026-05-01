@@ -1,23 +1,81 @@
-name: Build IPA
-on: [workflow_dispatch] # Se activa cuando tú quieras
+name: "CI - Glyph Mobile"
+on:
+  workflow_dispatch:
 
 jobs:
   build:
+    name: Compilando en macOS
     runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - name: Checkout del código
+        uses: actions/checkout@v4 # Actualizado a v4
+
+      - name: Instalar Flutter
+        uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build ios --release --no-codesign
-      - name: Create IPA
+
+      - name: Preparar Dependencias
         run: |
-          mkdir Payload
-          cp -r build/ios/iphoneos/Runner.app Payload
-          zip -r GlyphApp.ipa Payload
-      - name: Upload IPA
+          flutter clean
+          flutter pub get
+
+      - name: Analizar Código
+        run: flutter analyze
+
+      - name: Configurar Xcode (Sin Firma)
+        run: |
+          # Forzar el Bundle ID y actualizar el Target de iOS a 12.0
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = com.xglyphx.app;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
+          
+          # Cambiar estilo de firma a Manual para evitar que Flutter exija un Team ID real
+          sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          
+          # Inyectar overrides en Release.xcconfig para asegurar que Xcode no intente firmar
+          cat > ios/Flutter/Release.xcconfig <<'EOF'
+ENABLE_USER_SCRIPT_SANDBOXING = NO
+CODE_SIGNING_ALLOWED = NO
+CODE_SIGNING_REQUIRED = NO
+CODE_SIGN_IDENTITY =
+PROVISIONING_PROFILE_SPECIFIER =
+DEVELOPMENT_TEAM = ABCDEFGH12
+EOF
+
+      - name: Instalar CocoaPods (si es necesario)
+        run: |
+          if ! command -v pod >/dev/null 2>&1; then
+            sudo gem install cocoapods --no-document || true
+          fi
+          pod repo update || true
+
+      - name: Generar Iconos
+        run: dart run flutter_launcher_icons
+
+      - name: Crear App sin firma
+        run: |
+          # Set environment variables for the build
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=""
+          export DEVELOPMENT_TEAM="ABCDEFGH12" # Dummy team ID
+          export CODE_SIGN_ENTITLEMENTS=""
+          export CODE_SIGNING_METHOD=manual
+          
+          # Compilación forzando la omisión de firma de código
+          flutter build ios --release --no-codesign \
+            --build-name=1.0.0 --build-number=1
+          
+          # Empaquetado manual en formato IPA
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -r mi_aplicacion.ipa Payload/
+
+      - name: Guardar archivo final
         uses: actions/upload-artifact@v4
         with:
-          name: ios-app
-          path: GlyphApp.ipa
+          name: app-bundle
+          path: mi_aplicacion.ipa
