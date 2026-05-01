@@ -37,7 +37,7 @@ dependencies:
   http: ^1.6.0
   flutter_native_splash: ^2.4.7
   flutter_local_notifications: ^17.1.2
-  flutter_tts: ^5.0.0
+  # flutter_tts removed (welcome audio disabled)
 
 dev_dependencies:
   flutter_test:
@@ -72,7 +72,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
-    - assets/audio/welcome.mp3
 
   # To add assets to your application, add an assets section, like this:
   # assets:
