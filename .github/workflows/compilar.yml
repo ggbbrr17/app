@@ -31,7 +31,7 @@ jobs:
           zip -r mi_aplicacion.ipa Payload/
 
       - name: Guardar archivo final
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-bundle
           path: mi_aplicacion.ipa
