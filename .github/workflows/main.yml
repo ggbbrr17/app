@@ -75,6 +75,27 @@ EOF
           # Use ditto to create the IPA; preserves resource forks correctly for iOS
           ditto -c -k --sequesterRsrc --keepParent Payload mi_aplicacion.ipa
 
+      - name: Diagnosticar Info.plist
+        run: |
+          set -e
+          unzip -q mi_aplicacion.ipa -d ipa_unpack || true
+          if [ -f ipa_unpack/Payload/Runner.app/Info.plist ]; then
+            plutil -p ipa_unpack/Payload/Runner.app/Info.plist > info_plist_dump.txt || true
+            echo "---- file type ----" > info_plist_file.txt
+            file ipa_unpack/Payload/Runner.app/Info.plist >> info_plist_file.txt || true
+            xxd -l 256 ipa_unpack/Payload/Runner.app/Info.plist > info_plist_hexdump.txt || true
+            tar -czf info_plist_diag.tar.gz info_plist_dump.txt info_plist_file.txt info_plist_hexdump.txt || true
+          else
+            echo "Info.plist not found" > info_plist_dump.txt
+            tar -czf info_plist_diag.tar.gz info_plist_dump.txt || true
+          fi
+
+      - name: Subir diagnóstico Info.plist
+        uses: actions/upload-artifact@v4
+        with:
+          name: info-plist-diag
+          path: info_plist_diag.tar.gz
+
       - name: Guardar archivo final
         uses: actions/upload-artifact@v4
         with:
