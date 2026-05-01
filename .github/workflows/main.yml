@@ -23,8 +23,14 @@ jobs:
           flutter clean
           flutter pub get
           
-          # Asegurar que el Bundle ID sea el correcto en el proyecto de Xcode
-          sed -i '' 's/com.example.myapp/com.xglyphx.app/g' ios/Runner.xcodeproj/project.pbxproj
+          # Analizar el código para detectar errores de sintaxis antes de compilar
+          flutter analyze
+          
+          # Forzar el Bundle ID y cambiar el estilo de firma a Manual para saltar validaciones de Flutter
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = com.xglyphx.app;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
           
           # Usar Release.xcconfig para que los cambios persistan y no sean sobrescritos
           echo "ENABLE_USER_SCRIPT_SANDBOXING = NO" >> ios/Flutter/Release.xcconfig
