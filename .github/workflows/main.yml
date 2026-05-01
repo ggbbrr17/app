@@ -6,6 +6,8 @@ jobs:
   build:
     name: Compilando en macOS
     runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4 # Actualizado a v4
@@ -18,9 +20,14 @@ jobs:
       - name: Descargar paquetes
         run: flutter pub get
 
+      - name: Limpiar configuración local y preparar dependencias
+        run: |
+          rm -f ios/Flutter/flutter_export_environment.sh
+          cd ios && pod install && cd ..
+
       - name: Crear App sin firma
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign --verbose
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           zip -r mi_aplicacion.ipa Payload/
