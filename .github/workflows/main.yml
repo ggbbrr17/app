@@ -25,11 +25,13 @@ jobs:
           flutter pub get
           # Forzar iOS 12.0 como target mínimo para evitar errores con Xcode 16+ (deployment target 9.0)
           if [ -f ios/Podfile ]; then
-            sed -i '' "s/platform :ios, '9.0'/platform :ios, '12.0'/g" ios/Podfile
-            sed -i '' "s/platform :ios, '11.0'/platform :ios, '12.0'/g" ios/Podfile
+            sed -i '' "s/platform :ios, '.*'/platform :ios, '12.0'/g" ios/Podfile
             # Inyectar el override de target en el bloque post_install para todos los pods
             sed -i '' '/flutter_additional_ios_build_settings(target)/a \
-                target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "12.0" }' ios/Podfile
+                target.build_configurations.each { |config| \
+                  config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "12.0" \
+                  config.build_settings["SDKROOT"] = "iphoneos" \
+                }' ios/Podfile
           fi
           dart run flutter_launcher_icons
           cd ios && pod install && cd ..
