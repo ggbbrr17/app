@@ -17,11 +17,13 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Preparar entorno y dependencias
+      - name: Generar Iconos y Preparar Dependencias
         run: |
-          rm -f ios/Flutter/Generated.xcconfig
-          rm -f ios/Flutter/flutter_export_environment.sh
+          flutter clean
+          rm -rf ios/Flutter/Generated.xcconfig
+          rm -rf ios/Flutter/flutter_export_environment.sh
           flutter pub get
+          dart run flutter_launcher_icons
           cd ios && pod install && cd ..
 
       - name: Crear App sin firma
