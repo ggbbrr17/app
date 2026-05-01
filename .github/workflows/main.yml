@@ -23,8 +23,8 @@ jobs:
           rm -rf ios/Flutter/Generated.xcconfig
           rm -rf ios/Flutter/flutter_export_environment.sh
           flutter pub get
-          # Forzar iOS 12.0 y eliminar requisitos de firma/equipo para evitar errores en CI
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
+          # Forzar iOS 13.0 y eliminar requisitos de firma/equipo para evitar errores en CI
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [0-9.]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;//g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = [^;]*;//g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGN_STYLE = Automatic/CODE_SIGN_STYLE = Manual/g' ios/Runner.xcodeproj/project.pbxproj
@@ -32,11 +32,11 @@ jobs:
           sed -i '' 's/ENABLE_USER_SCRIPT_SANDBOXING = YES/ENABLE_USER_SCRIPT_SANDBOXING = NO/g' ios/Runner.xcodeproj/project.pbxproj
 
           if [ -f ios/Podfile ]; then
-            sed -i '' "s/platform :ios, '.*'/platform :ios, '12.0'/g" ios/Podfile
+            sed -i '' "s/platform :ios, '.*'/platform :ios, '13.0'/g" ios/Podfile
             # Inyectar el override de target en el bloque post_install para todos los pods
             sed -i '' '/flutter_additional_ios_build_settings(target)/a \
                 target.build_configurations.each { |config| \
-                  config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "12.0" \
+                  config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" \
                   config.build_settings["SDKROOT"] = "iphoneos" \
                   config.build_settings["CODE_SIGN_IDENTITY"] = "" \
                   config.build_settings["CODE_SIGNING_REQUIRED"] = "NO" \
