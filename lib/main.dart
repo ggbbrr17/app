@@ -8,6 +8,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 void main() => runApp(const GlyphMobileApp());
 
@@ -318,7 +320,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   Future<void> _startRecording() async {
     try {
       if (await _audioRecorder.hasPermission()) {
-        await _audioRecorder.start(const RecordConfig(), path: 'audio.m4a'); // Or a temporary path
+        final tempDir = await getTemporaryDirectory();
+        final String path = p.join(tempDir.path, 'glyph_audio_${DateTime.now().millisecondsSinceEpoch}.m4a');
+
+        await _audioRecorder.start(const RecordConfig(), path: path);
         setState(() {
           _isRecording = true;
           _recordDuration = Duration.zero;
@@ -597,6 +602,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                   child: AnimatedBuilder(
                     animation: Listenable.merge([_pulseController, _rotationController, _waveController, _entryController, _disintegrateController]),
                     builder: (context, _) {
+                      if (!_bubbleAlive) return const SizedBox.shrink();
+                      
                       final pulse = _pulseController.value;
                       final scale = _isExpanded ? 1.0 : (1.0 + (pulse * 0.08)) * _entryScale.value;
                       final dis = _disintegrateController.value;
