@@ -25,6 +25,9 @@ jobs:
 
       - name: Configurar Xcode (Sin Firma)
         run: |
+          # Corregir el Podfile si tiene rutas de Windows hardcodeadas
+          sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
+
           # Configuración de Identificador y Target
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' ios/Runner.xcodeproj/project.pbxproj
