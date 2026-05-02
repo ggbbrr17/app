@@ -31,9 +31,9 @@ jobs:
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' ios/Runner.xcodeproj/project.pbxproj
           
-          # Forzar IPHONEOS_DEPLOYMENT_TARGET para Pods en el Podfile (Xcode 15+ requiere >= 12.0)
+          # Parche robusto para forzar iOS 13.0 en todos los Pods (evita advertencias de iOS 11/9)
           if [ -f ios/Podfile ]; then
-            perl -i -pe 's/flutter_additional_ios_build_settings\(target\)/flutter_additional_ios_build_settings(target)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" }/g' ios/Podfile
+            perl -i -pe 's/flutter_additional_ios_build_settings\((target|installer)\)/flutter_additional_ios_build_settings($1)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" }/g' ios/Podfile
           fi
 
           # Forzar deshabilitación de firma y asignar un Team ID ficticio para engañar al validador de Flutter
