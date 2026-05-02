@@ -16,21 +16,22 @@ jobs:
 
       - name: Descargar paquetes
         run: |
-          flutter pub get
-          flutter pub upgrade --major-versions
-
-      - name: Generar Iconos
-        run: |
-          flutter pub run flutter_launcher_icons
-
-      - name: Configurar Xcode (Sin Firma)
-        run: |
           # Eliminar configuraciones de Windows que causan errores en macOS
           rm -f ios/Flutter/Generated.xcconfig
           rm -f ios/Flutter/flutter_export_environment.sh
           rm -f ios/.flutter-plugins
           rm -f ios/.flutter-plugins-dependencies
 
+          flutter clean
+          flutter pub get
+          flutter pub upgrade --major-versions
+
+      - name: Generar Iconos
+        run: |
+          dart run flutter_launcher_icons
+
+      - name: Configurar Xcode (Sin Firma)
+        run: |
           # Forzar la ruta correcta de Flutter
           sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
 
@@ -60,8 +61,6 @@ jobs:
           pod install --repo-update
           cd ..
           
-          flutter clean
-
           # Evitar crash de Native Assets en compilaciones sin firma
           mkdir -p build/native_assets
           touch build/native_assets/native_assets.json
