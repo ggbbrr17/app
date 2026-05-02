@@ -25,7 +25,13 @@ jobs:
 
       - name: Configurar Xcode (Sin Firma)
         run: |
-          # Corregir el Podfile si tiene rutas de Windows hardcodeadas
+          # Eliminar configuraciones de Windows que causan errores en macOS
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/flutter_export_environment.sh
+          rm -f ios/.flutter-plugins
+          rm -f ios/.flutter-plugins-dependencies
+
+          # Forzar la ruta correcta de Flutter
           sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
 
           # Configuración de Identificador y Target
