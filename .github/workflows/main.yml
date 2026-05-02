@@ -65,6 +65,7 @@ jobs:
           export DEVELOPMENT_TEAM="ABCDEFGH12" # Dummy team ID
           export CODE_SIGN_ENTITLEMENTS=""
           export CODE_SIGNING_METHOD=manual
+          export NATIVE_ASSETS_DIR="."
           
           # Limpiar caché de compilación para asegurar nuevos assets
           flutter clean
