@@ -16,6 +16,7 @@ jobs:
 
       - name: Descargar paquetes
         run: |
+          rm -f pubspec.lock # Forzar una resolución de dependencias fresca
           # Eliminar configuraciones de Windows que causan errores en macOS
           rm -f ios/Flutter/Generated.xcconfig
           rm -f ios/Flutter/flutter_export_environment.sh
