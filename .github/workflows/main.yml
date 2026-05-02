@@ -28,10 +28,13 @@ jobs:
 
       - name: Configurar Xcode (Sin Firma)
         run: |
-          # Eliminar archivos generados localmente que contienen rutas de Windows
-          rm -f ios/Flutter/Generated.xcconfig ios/Flutter/flutter_export_environment.sh
+          # Eliminar rastro de configuraciones locales de Windows
+          rm -f ios/Flutter/Generated.xcconfig
+          rm -f ios/Flutter/flutter_export_environment.sh
+          rm -f ios/.flutter-plugins
+          rm -f ios/.flutter-plugins-dependencies
 
-          # Corregir el Podfile si tiene rutas hardcodeadas
+          # Forzar al Podfile a usar la ruta de Flutter del servidor
           sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
 
           # Forzar el Bundle ID y actualizar el Target de iOS a 12.0
