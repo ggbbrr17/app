@@ -39,6 +39,8 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   file_picker: ^10.0.0
   record: ^6.1.1
+  path_provider: ^2.1.5
+  path: ^1.9.0
   # flutter_tts removed (welcome audio disabled)
 
 dev_dependencies:
@@ -53,7 +55,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
-  android: true
+  android: false
   ios: true
   image_path: "assets/logo.png"
   remove_alpha_ios: true
