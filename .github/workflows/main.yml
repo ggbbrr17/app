@@ -28,7 +28,7 @@ jobs:
       - name: Configurar Xcode (Sin Firma)
         run: |
           # Forzar el Bundle ID y actualizar el Target de iOS a 12.0
-          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = com.xglyphx.app;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = com.xglyphx.glyph;/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
           
           # Cambiar estilo de firma a Manual para evitar que Flutter exija un Team ID real
@@ -53,7 +53,7 @@ EOF
           pod repo update || true
 
       - name: Generar Iconos
-        run: dart run flutter_launcher_icons
+        run: flutter pub run flutter_launcher_icons:main
 
       - name: Crear App sin firma
         run: |
@@ -64,6 +64,10 @@ EOF
           export DEVELOPMENT_TEAM="ABCDEFGH12" # Dummy team ID
           export CODE_SIGN_ENTITLEMENTS=""
           export CODE_SIGNING_METHOD=manual
+          
+          # Limpiar caché de compilación para asegurar nuevos assets
+          flutter clean
+          flutter pub get
           
           # Compilación forzando la omisión de firma de código
           flutter build ios --release --no-codesign \
