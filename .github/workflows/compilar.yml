@@ -50,6 +50,14 @@ jobs:
           flutter clean
           flutter pub get
 
+          # Set environment variables to avoid 'Null check operator' crash
+          export CODE_SIGNING_ALLOWED=NO
+          export CODE_SIGNING_REQUIRED=NO
+          export CODE_SIGN_IDENTITY=""
+          export DEVELOPMENT_TEAM="ABCDEFGH12"
+          export CODE_SIGNING_METHOD=manual
+          export NATIVE_ASSETS_DIR="."
+
           flutter build ios --release --no-codesign
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
