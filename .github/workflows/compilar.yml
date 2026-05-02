@@ -15,10 +15,15 @@ jobs:
           channel: 'stable'
 
       - name: Descargar paquetes
-        run: flutter pub get
+        run: |
+          flutter pub get
+          flutter pub upgrade --major-versions
 
       - name: Generar Iconos
-        run: flutter pub run flutter_launcher_icons:main
+        run: |
+          rm -rf ios/Runner/Assets.xcassets/AppIcon.appiconset
+          flutter pub get
+          flutter pub run flutter_launcher_icons
 
       - name: Configurar Xcode (Sin Firma)
         run: |
@@ -41,14 +46,14 @@ jobs:
 
       - name: Crear App sin firma
         run: |
-          # Ensure CocoaPods is available
-          if ! command -v pod >/dev/null 2>&1; then
-            sudo gem install cocoapods --no-document || true
-          fi
-          pod repo update || true
+          sudo gem install cocoapods --no-document
+          cd ios
+          rm -rf Pods Podfile.lock
+          pod repo update
+          pod install --repo-update
+          cd ..
           
           flutter clean
-          flutter pub get
 
           # Evitar crash de Native Assets en compilaciones sin firma
           mkdir -p build/native_assets
@@ -62,7 +67,9 @@ jobs:
           export CODE_SIGNING_METHOD=manual
           export NATIVE_ASSETS_DIR="$(pwd)/build/native_assets"
 
-          flutter build ios --release --no-codesign
+          flutter build ios --release --no-codesign \
+            --no-tree-shake-icons
+
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           # Use ditto to create the IPA; preserves resource forks correctly for iOS
