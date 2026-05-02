@@ -58,7 +58,7 @@ jobs:
 
       - name: Generar Iconos
         run: |
-          flutter pub run flutter_launcher_icons
+          dart run flutter_launcher_icons
 
       - name: Crear App sin firma
         run: |
