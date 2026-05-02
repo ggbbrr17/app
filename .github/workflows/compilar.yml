@@ -17,6 +17,15 @@ jobs:
       - name: Descargar paquetes
         run: flutter pub get
 
+      - name: Generar Iconos
+        run: flutter pub run flutter_launcher_icons:main
+
+      - name: Configurar Xcode (Sin Firma)
+        run: |
+          # Forzar el Bundle ID y actualizar el Target de iOS a 12.0
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = com.xglyphx.glyph;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
+
       - name: Crear App sin firma
         run: |
           # Ensure CocoaPods is available
@@ -24,6 +33,9 @@ jobs:
             sudo gem install cocoapods --no-document || true
           fi
           pod repo update || true
+          
+          flutter clean
+          flutter pub get
 
           flutter build ios --release --no-codesign
           mkdir -p Payload
