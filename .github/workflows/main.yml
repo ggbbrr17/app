@@ -58,8 +58,6 @@ jobs:
 
       - name: Generar Iconos
         run: |
-          rm -rf ios/Runner/Assets.xcassets/AppIcon.appiconset
-          flutter pub get
           flutter pub run flutter_launcher_icons
 
       - name: Crear App sin firma
