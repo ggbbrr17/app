@@ -21,6 +21,7 @@ jobs:
         run: |
           flutter clean
           flutter pub get
+          flutter pub upgrade --major-versions
 
       - name: Analizar Código
         run: flutter analyze
@@ -48,13 +49,18 @@ jobs:
 
       - name: Instalar CocoaPods (si es necesario)
         run: |
-          if ! command -v pod >/dev/null 2>&1; then
-            sudo gem install cocoapods --no-document || true
-          fi
-          pod repo update || true
+          sudo gem install cocoapods --no-document
+          cd ios
+          rm -rf Pods Podfile.lock
+          pod repo update
+          pod install --repo-update
+          cd ..
 
       - name: Generar Iconos
-        run: flutter pub run flutter_launcher_icons:main
+        run: |
+          rm -rf ios/Runner/Assets.xcassets/AppIcon.appiconset
+          flutter pub get
+          flutter pub run flutter_launcher_icons
 
       - name: Crear App sin firma
         run: |
@@ -68,7 +74,7 @@ jobs:
           
           # Limpiar caché de compilación para asegurar nuevos assets
           flutter clean
-          flutter pub get
+          rm -rf ios/Pods ios/Podfile.lock
 
           # Crear directorio y manifiesto dummy para evitar el crash de 'Null check operator' en xcode_backend.dart
           mkdir -p build/native_assets
@@ -77,7 +83,8 @@ jobs:
           
           # Compilación forzando la omisión de firma de código
           flutter build ios --release --no-codesign \
-            --build-name=1.0.0 --build-number=1
+            --build-name=1.0.0 --build-number=1 \
+            --no-tree-shake-icons
           
           # Empaquetado usando 'ditto' para preservar recursos de iOS correctamente
           mkdir -p Payload
