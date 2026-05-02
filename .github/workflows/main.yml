@@ -19,7 +19,6 @@ jobs:
 
       - name: Preparar Dependencias
         run: |
-          rm -f pubspec.lock # Forzar una resolución de dependencias fresca
           # Eliminar rastro de configuraciones locales de Windows que puedan estar en el repo
           rm -f ios/Flutter/Generated.xcconfig
           rm -f ios/Flutter/flutter_export_environment.sh
@@ -28,7 +27,6 @@ jobs:
 
           flutter clean
           flutter pub get
-          flutter pub upgrade --major-versions
 
       - name: Analizar Código
         run: flutter analyze
