@@ -33,7 +33,7 @@ jobs:
           
           # Forzar IPHONEOS_DEPLOYMENT_TARGET para Pods en el Podfile (Xcode 15+ requiere >= 12.0)
           if [ -f ios/Podfile ]; then
-            perl -i -pe 's/flutter_additional_ios_build_settings\(installer\)/flutter_additional_ios_build_settings(installer)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" }/g' ios/Podfile
+            perl -i -pe 's/flutter_additional_ios_build_settings\(target\)/flutter_additional_ios_build_settings(target)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" }/g' ios/Podfile
           fi
 
           # Forzar deshabilitación de firma y asignar un Team ID ficticio para engañar al validador de Flutter
