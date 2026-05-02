@@ -28,6 +28,9 @@ jobs:
 
       - name: Configurar Xcode (Sin Firma)
         run: |
+          # Corregir el Podfile si tiene rutas de Windows hardcodeadas (causa del error podhelper)
+          sed -i '' 's|.*flutter_root.*=.*C:.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
+
           # Forzar el Bundle ID y actualizar el Target de iOS a 12.0
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' ios/Runner.xcodeproj/project.pbxproj
