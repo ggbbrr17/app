@@ -55,6 +55,12 @@ jobs:
           # Desactivar motor Impeller para evitar pantalla negra en iOS 16/17+
           /usr/libexec/PlistBuddy -c "Add :FLTEnableImpeller bool NO" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :FLTEnableImpeller NO" ios/Runner/Info.plist
           echo "✅ Impeller desactivado para máxima compatibilidad"
+
+          # Agregar permisos necesarios para iOS (Micrófono, Galería, Archivos)
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Glyph necesita acceso al micrófono para grabar audio.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription 'Glyph necesita acceso al micrófono para grabar audio.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Glyph necesita acceso a la galería para subir archivos.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'Glyph necesita acceso a la galería para subir archivos.'" ios/Runner/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSAppleMusicUsageDescription string 'Glyph necesita acceso a los archivos multimedia.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSAppleMusicUsageDescription 'Glyph necesita acceso a los archivos multimedia.'" ios/Runner/Info.plist
+          echo "✅ Permisos de iOS inyectados en Info.plist"
           
           # Generar Release.xcconfig sin problemas de sangría YAML
           printf "#include \"Generated.xcconfig\"\n#include \"../Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig\"\nENABLE_USER_SCRIPT_SANDBOXING = NO\nCODE_SIGNING_ALLOWED = NO\nCODE_SIGNING_REQUIRED = NO\nCODE_SIGN_IDENTITY =\nPROVISIONING_PROFILE_SPECIFIER =\nDEVELOPMENT_TEAM = ABCDEFGH12\nNATIVE_ASSETS_DIR = \$(PROJECT_DIR)/../build/native_assets\nNATIVE_ASSETS_MANIFEST = \$(NATIVE_ASSETS_DIR)/native_assets.json\n" > ios/Flutter/Release.xcconfig
