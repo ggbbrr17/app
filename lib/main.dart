@@ -18,12 +18,19 @@ void main() async {
   // Capturador de errores global
   runZonedGuarded(() {
     ErrorWidget.builder = (FlutterErrorDetails details) {
-      return Container(
-        color: Colors.white,
-        child: Center(
-          child: Text(
-            "🚨 ERROR: ${details.exception}",
-            style: const TextStyle(color: Colors.black, fontSize: 14, decoration: TextDecoration.none),
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                "🚨 ERROR DE INICIO:\n\n${details.exception}",
+                style: const TextStyle(color: Colors.black, fontSize: 12, fontFamily: 'monospace'),
+                textAlign: TextAlign.center,
+              ),
+            ),
           ),
         ),
       );
@@ -115,7 +122,7 @@ class MeshGradientBackground extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       radius: 0.9,
-                      colors: [const Color(0xFF00FBFF).withValues(alpha: 0.8), const Color(0xFF00FBFF).withValues(alpha: 0)],
+                      colors: [const Color(0xFF00FBFF).withOpacity(0.8), const Color(0xFF00FBFF).withOpacity(0)],
                     ),
                   ),
                 ),
@@ -134,13 +141,13 @@ class MeshGradientBackground extends StatelessWidget {
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       radius: 0.9,
-                      colors: [const Color(0xFFCCFF00).withValues(alpha: 0.7), const Color(0xFFCCFF00).withValues(alpha: 0)],
+                      colors: [const Color(0xFFCCFF00).withOpacity(0.7), const Color(0xFFCCFF00).withOpacity(0)],
                     ),
                   ),
                 ),
               ),
               // Filtro oscuro sin desenfoque para evitar pantalla negra en iOS
-              Container(color: Colors.black.withValues(alpha: 0.2)),
+              Container(color: Colors.black.withOpacity(0.2)),
             ],
           );
         },
@@ -475,7 +482,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.4),
+                  color: Colors.black.withOpacity(0.4),
                   child: Align(
                     alignment: Alignment.topLeft,
                     child: SlideTransition(
@@ -484,8 +491,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                         width: screenWidth * 0.7,
                         height: screenHeight,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF0A0A0C).withValues(alpha: 0.9),
-                          border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
+                          color: const Color(0xFF0A0A0C).withOpacity(0.9),
+                          border: Border(right: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -493,7 +500,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                             const SizedBox(height: 80),
                             Padding(
                               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-                              child: Text("GLYPH MENU", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                              child: Text("GLYPH MENU", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
                             ),
                             ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 25),
@@ -535,18 +542,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                                   padding: const EdgeInsets.all(15),
                                   decoration: BoxDecoration(
                                     color: isUser
-                                        ? Colors.white.withValues(alpha: 0.1)
-                                        : Colors.white.withValues(alpha: 0.04),
+                                        ? Colors.white.withOpacity(0.1)
+                                        : Colors.white.withOpacity(0.04),
                                     borderRadius: BorderRadius.circular(20),
                                     border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.1),
+                                      color: Colors.white.withOpacity(0.1),
                                       width: 0.5,
                                     ),
                                   ),
                                   child: Text(
                                     msg["text"],
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.9),
+                                      color: Colors.white.withOpacity(0.9),
                                       fontSize: 15,
                                       fontWeight: FontWeight.w300
                                     ),
@@ -572,7 +579,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                           animation: _pulseController,
                           builder: (context, child) => Container(
                             width: 8, height: 8,
-                            decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.4 + (0.6 * _pulseController.value)), shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.4 + (0.6 * _pulseController.value)), shape: BoxShape.circle),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -629,15 +636,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                             height: _isExpanded ? 75 : 120,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(_isExpanded ? 24 : 60),
-                              color: _isExpanded ? Colors.black.withValues(alpha: 0.5) : (_isRecording ? Colors.redAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.04)),
+                              color: _isExpanded ? Colors.black.withOpacity(0.5) : (_isRecording ? Colors.redAccent.withOpacity(0.1) : Colors.white.withOpacity(0.04)),
                               boxShadow: [
                                 if (!_isExpanded) BoxShadow(
-                                  color: _isRecording ? Colors.redAccent.withValues(alpha: 0.2) : (_isThinking ? Colors.white.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05)), 
+                                  color: _isRecording ? Colors.redAccent.withOpacity(0.2) : (_isThinking ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.05)), 
                                   blurRadius: _isThinking ? 35 : 20, 
                                   spreadRadius: (pulse * 4) + (_isRecording ? 2 : 0)
                                 ),
                               ],
-                              border: Border.all(color: Colors.white.withValues(alpha: _isRecording ? 0.4 : (_isThinking ? 0.4 : 0.1)), width: 0.7),
+                              border: Border.all(color: Colors.white.withOpacity(_isRecording ? 0.4 : (_isThinking ? 0.4 : 0.1)), width: 0.7),
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(_isExpanded ? 24 : 60),
@@ -656,10 +663,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                                                     painter: MorphingBlobPainter(
                                                         _waveController.value,
                                                         _isRecording
-                                                            ? Colors.redAccent.withValues(alpha: 0.5)
+                                                            ? Colors.redAccent.withOpacity(0.5)
                                                             : (_isThinking
-                                                                ? Colors.white.withValues(alpha: 0.7)
-                                                                : Colors.white.withValues(alpha: 0.18)),
+                                                                ? Colors.white.withOpacity(0.7)
+                                                                : Colors.white.withOpacity(0.18)),
                                                         _isThinking || _isRecording))),
                                           ],
                                         ),
