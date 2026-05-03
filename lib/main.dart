@@ -13,32 +13,25 @@ import 'package:path/path.dart' as p;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  debugPrint("🚀 GLYPH: Motor arrancando...");
-
-  // Capturador de errores global
-  runZonedGuarded(() {
-    ErrorWidget.builder = (FlutterErrorDetails details) {
-      return MaterialApp(
-        debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          backgroundColor: Colors.white,
-          body: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                "🚨 ERROR DE INICIO:\n\n${details.exception}",
-                style: const TextStyle(color: Colors.black, fontSize: 12, fontFamily: 'monospace'),
-                textAlign: TextAlign.center,
-              ),
-            ),
+  
+  // Capturador de errores de bajo nivel (sin dependencia de MaterialApp)
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return Container(
+      color: Colors.white,
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: Center(
+          child: Text(
+            "🚨 FALLO CRÍTICO:\n${details.exception}",
+            style: const TextStyle(color: Colors.black, fontSize: 13, decoration: TextDecoration.none, fontFamily: 'monospace'),
+            textAlign: TextAlign.center,
           ),
         ),
-      );
-    };
-    runApp(const GlyphMobileApp());
-  }, (error, stack) {
-    debugPrint('🚨 ERROR EXTERNO: $error');
-  });
+      ),
+    );
+  };
+
+  runApp(const GlyphMobileApp());
 }
 
 class GlyphMobileApp extends StatelessWidget {
@@ -49,7 +42,7 @@ class GlyphMobileApp extends StatelessWidget {
     return MaterialApp(
       title: 'Glyph',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
+      theme: ThemeData.dark(useMaterial3: false), // Desactivado para maximizar estabilidad
       home: const ChatScreen(),
     );
   }
@@ -98,63 +91,17 @@ class MeshGradientBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: AnimatedBuilder(
-        animation: animation,
-        builder: (context, child) {
-          // movimiento ralentizado y orgánico
-          final a = animation.value;
-          return Stack(
-            children: [
-              // Fondo base para contraste
-              Container(color: const Color(0xFF08080A)),
-
-              // Luz Aurora Boreal (más luminosa e interactiva)
-              Align(
-                alignment: Alignment(
-                  math.sin(a * 2 * math.pi) * 0.9, 
-                  math.cos(a * 2 * math.pi * 0.7),
-                ),
-                child: Container(
-                  width: 700,
-                  height: 700,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      radius: 0.9,
-                      colors: [const Color(0xFF00FBFF).withOpacity(0.8), const Color(0xFF00FBFF).withOpacity(0)],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Luz Plasma Lima (derecha)
-              Align(
-                alignment: Alignment(
-                  math.cos(a * 2 * math.pi * 0.5), 
-                  math.sin(a * 2 * math.pi * 1.2),
-                ),
-                child: Container(
-                  width: 800,
-                  height: 800,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      radius: 0.9,
-                      colors: [const Color(0xFFCCFF00).withOpacity(0.7), const Color(0xFFCCFF00).withOpacity(0)],
-                    ),
-                  ),
-                ),
-              ),
-              // Filtro oscuro sin desenfoque para evitar pantalla negra en iOS
-              Container(color: Colors.black.withOpacity(0.2)),
-            ],
-          );
-        },
+    // Fondo estático ultra-estable para evitar cuelgues de GPU en iPhone 11
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF08080A), Color(0xFF141417)],
+        ),
       ),
     );
   }
-
 }
 
 class ChatScreen extends StatefulWidget {
@@ -199,7 +146,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeNotifications();
+    
+    // Diferimos la inicialización para permitir que el motor gráfico pinte el primer frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeNotifications();
+    });
 
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
     _rotationController = AnimationController(vsync: this, duration: const Duration(seconds: 5))..repeat();
