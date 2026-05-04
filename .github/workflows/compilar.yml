@@ -29,21 +29,18 @@ jobs:
         run: |
           dart run flutter_launcher_icons
 
-      - name: Generate splash screen
-        run: dart run flutter_native_splash:create
-
       - name: Configurar Xcode (Sin Firma)
         run: |
-          # Forzar la ruta correcta de Flutter
+          # Forzar al Podfile a usar la ruta de Flutter del servidor
           sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
 
           # Configuración de Identificador y Target
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 12.0;/g' ios/Runner.xcodeproj/project.pbxproj
           
           # Parche de Podfile
           if [ -f ios/Podfile ]; then
-            perl -i -pe 's/flutter_additional_ios_build_settings\((target|installer)\)/flutter_additional_ios_build_settings($1)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" }/g' ios/Podfile
+            perl -i -pe 's/flutter_additional_ios_build_settings\((target|installer)\)/flutter_additional_ios_build_settings($1)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "12.0" }/g' ios/Podfile
           fi
 
           sed -i '' 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' ios/Runner.xcodeproj/project.pbxproj
@@ -55,6 +52,12 @@ jobs:
           /usr/libexec/PlistBuddy -c "Delete :NSAppTransportSecurity:NSAllowsLocalNetworking" ios/Runner/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" ios/Runner/Info.plist || true
           /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool YES" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsArbitraryLoads YES" ios/Runner/Info.plist
+          
+          # Eliminar archivo SceneDelegate si existe para volver al flujo clásico
+          rm -f ios/Runner/SceneDelegate.swift
+          
+          # Asegurar que el SceneManifest sea eliminado si existe (evita pantalla negra)
+          /usr/libexec/PlistBuddy -c "Delete :UIApplicationSceneManifest" ios/Runner/Info.plist || true
 
           # Desactivar Impeller para evitar pantalla negra
           /usr/libexec/PlistBuddy -c "Add :FLTEnableImpeller bool NO" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :FLTEnableImpeller NO" ios/Runner/Info.plist
@@ -85,6 +88,7 @@ jobs:
           export NATIVE_ASSETS_DIR="$(pwd)/build/native_assets"
 
           flutter build ios --release --no-codesign \
+            --build-name=1.0.0 --build-number=1 \
             --no-tree-shake-icons
 
           mkdir -p Payload
