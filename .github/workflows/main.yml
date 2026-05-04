@@ -60,6 +60,12 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Glyph necesita acceso al micrófono para grabar audio.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription 'Glyph necesita acceso al micrófono para grabar audio.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSPhotoLibraryUsageDescription string 'Glyph necesita acceso a la galería para subir archivos.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSPhotoLibraryUsageDescription 'Glyph necesita acceso a la galería para subir archivos.'" ios/Runner/Info.plist
           /usr/libexec/PlistBuddy -c "Add :NSAppleMusicUsageDescription string 'Glyph necesita acceso a los archivos multimedia.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSAppleMusicUsageDescription 'Glyph necesita acceso a los archivos multimedia.'" ios/Runner/Info.plist
+          
+          # Configurar Permisos de Red (Permitir HTTP para APIs externas)
+          /usr/libexec/PlistBuddy -c "Delete :NSAppTransportSecurity:NSAllowsLocalNetworking" ios/Runner/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity dict" ios/Runner/Info.plist || true
+          /usr/libexec/PlistBuddy -c "Add :NSAppTransportSecurity:NSAllowsArbitraryLoads bool YES" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSAppTransportSecurity:NSAllowsArbitraryLoads YES" ios/Runner/Info.plist
+
           echo "✅ Permisos de iOS inyectados en Info.plist"
           
           # Generar Release.xcconfig sin problemas de sangría YAML
@@ -77,6 +83,9 @@ jobs:
       - name: Generar Iconos
         run: |
           dart run flutter_launcher_icons
+
+      - name: Generate splash screen
+        run: dart run flutter_native_splash:create
 
       - name: Crear App sin firma
         run: |
