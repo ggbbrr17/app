@@ -113,4 +113,3 @@ flutter_native_splash:
   ios: true
   android: true
   fullscreen: true
-  remove_alpha_ios: true
