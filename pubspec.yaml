@@ -35,7 +35,6 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   http: ^1.6.0
-  flutter_native_splash: ^2.4.7
   flutter_local_notifications: ^17.2.4
   file_picker: ^8.1.7
   record: ^6.1.1
@@ -106,10 +105,3 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
-
-flutter_native_splash:
-  color: "#1C1C1E"
-  image: "assets/logo.png"
-  ios: true
-  android: true
-  fullscreen: true
