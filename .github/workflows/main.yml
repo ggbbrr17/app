@@ -84,34 +84,22 @@ jobs:
         run: |
           dart run flutter_launcher_icons
 
-      - name: Generate splash screen
-        run: dart run flutter_native_splash:create
-
       - name: Crear App sin firma
         run: |
-          # Set environment variables for the build
           export CODE_SIGNING_ALLOWED=NO
           export CODE_SIGNING_REQUIRED=NO
           export CODE_SIGN_IDENTITY=""
-          export DEVELOPMENT_TEAM="ABCDEFGH12" # Dummy team ID
-          export CODE_SIGN_ENTITLEMENTS=""
+          export DEVELOPMENT_TEAM="ABCDEFGH12"
           export CODE_SIGNING_METHOD=manual
-          
-          # Limpiar caché de compilación para asegurar nuevos assets
-          flutter clean
-          rm -rf ios/Pods ios/Podfile.lock
 
-          # Crear directorio y manifiesto dummy para evitar el crash de 'Null check operator' en xcode_backend.dart
           mkdir -p build/native_assets
           touch build/native_assets/native_assets.json
           export NATIVE_ASSETS_DIR="$(pwd)/build/native_assets"
-          
-          # Compilación forzando la omisión de firma de código
+
           flutter build ios --release --no-codesign \
             --build-name=1.0.0 --build-number=1 \
             --no-tree-shake-icons
-          
-          # Empaquetado usando 'ditto' para preservar recursos de iOS correctamente
+
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
           ditto -c -k --sequesterRsrc --keepParent Payload mi_aplicacion.ipa
