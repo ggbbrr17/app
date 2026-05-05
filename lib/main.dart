@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'dart:io'; // For File operations
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -69,7 +68,7 @@ class MorphingBlobPainter extends CustomPainter {
     const int points = 8;
     for (int i = 0; i <= points; i++) {
       final angle = (i * 2 * math.pi) / points;
-      final amp = isThinking ? 18.0 : 6.0;
+      final amp = isThinking ? 20.0 : 10.0;
       final speedMultiplier = isThinking ? 2.0 : 1.0;
       final deformation = math.sin(animationValue * 2 * math.pi * speedMultiplier + i) * amp;
       final currentRadius = radius + deformation;
@@ -97,11 +96,11 @@ class MeshGradientBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     // Fondo estático ultra-estable para evitar cuelgues de GPU en iPhone 11
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A1A1C), Color(0xFF0A0A0C)],
+      decoration: BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment.center,
+          radius: 1.5,
+          colors: [const Color(0xFF2C2C2E), const Color(0xFF1C1C1E)], // Aclaramos el fondo significativamente
         ),
       ),
     );
@@ -180,9 +179,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
       const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
       const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
-        requestAlertPermission: true,
-        requestBadgePermission: true,
-        requestSoundPermission: true,
+        requestAlertPermission: false,
+        requestBadgePermission: false,
+        requestSoundPermission: false,
       );
       const InitializationSettings initializationSettings = InitializationSettings(
         android: initializationSettingsAndroid,
@@ -406,7 +405,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF121212),
+      backgroundColor: const Color(0xFF1C1C1E), // Color de respaldo más claro
       body: Stack(
         children: [
           MeshGradientBackground(animation: _waveController),
@@ -435,7 +434,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
             GestureDetector(
               onTap: _toggleMenu,
               child: Container(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 child: Align(
                   alignment: Alignment.topLeft,
                   child: SlideTransition(
@@ -445,7 +444,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                       height: screenHeight,
                       decoration: BoxDecoration(
                         color: const Color(0xFF1A1A1C),
-                        border: Border(right: BorderSide(color: Colors.white.withOpacity(0.1), width: 0.5)),
+                        border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -453,7 +452,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                           const SizedBox(height: 80),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-                            child: Text("GLYPH MENU", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                            child: Text("GLYPH MENU", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
                           ),
                           ListTile(
                             contentPadding: const EdgeInsets.symmetric(horizontal: 25),
@@ -469,16 +468,21 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
               ),
             ),
 
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Column( // Cambiado a MainAxisSize.max implícito por Expanded
+          SafeArea(
+            child: Column(
               children: [
+                const SizedBox(height: 60), // Espacio para el botón de menú
                 Expanded(
                   child: _messages.isEmpty 
-                  ? Center(child: Text("Glyph está listo", style: TextStyle(color: Colors.white.withOpacity(0.2), fontSize: 16, fontWeight: FontWeight.w200)))
+                  ? Center(
+                      child: Text(
+                        "GLYPH CONECTADO", 
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14, letterSpacing: 4, fontWeight: FontWeight.bold)
+                      )
+                    )
                   : ListView.builder(
                     controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(20, 100, 20, 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     itemCount: _messages.length,
                     itemBuilder: (context, index) {
                       final msg = _messages[index];
@@ -492,18 +496,18 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                             padding: const EdgeInsets.all(15),
                             decoration: BoxDecoration(
                               color: isUser
-                                  ? Colors.white.withOpacity(0.15)
-                                  : Colors.white.withOpacity(0.06),
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : Colors.white.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withValues(alpha: 0.1),
                                 width: 0.5,
                               ),
                             ),
                             child: Text(
                               msg["text"],
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 fontSize: 15,
                                 fontWeight: FontWeight.w300
                               ),
@@ -527,7 +531,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                           animation: _pulseController,
                           builder: (context, child) => Container(
                             width: 8, height: 8,
-                            decoration: BoxDecoration(color: Colors.redAccent.withOpacity(0.4 + (0.6 * _pulseController.value)), shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: Colors.redAccent.withValues(alpha: 0.4 + (0.6 * _pulseController.value)), shape: BoxShape.circle),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -584,15 +588,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                             height: _isExpanded ? 75 : 120,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(_isExpanded ? 24 : 60),
-                              color: _isExpanded ? Colors.black.withOpacity(0.5) : (_isRecording ? Colors.redAccent.withOpacity(0.1) : Colors.white.withOpacity(0.04)),
+                              color: _isExpanded ? Colors.black.withValues(alpha: 0.8) : (_isRecording ? Colors.redAccent.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.15)),
                               boxShadow: [
                                 if (!_isExpanded) BoxShadow(
-                                  color: _isRecording ? Colors.redAccent.withOpacity(0.2) : (_isThinking ? Colors.white.withOpacity(0.2) : Colors.white.withOpacity(0.05)), 
+                                  color: _isRecording ? Colors.redAccent.withValues(alpha: 0.4) : (_isThinking ? Colors.white.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.2)), 
                                   blurRadius: _isThinking ? 35 : 20, 
                                   spreadRadius: (pulse * 4) + (_isRecording ? 2 : 0)
                                 ),
                               ],
-                              border: Border.all(color: Colors.white.withOpacity(_isRecording ? 0.4 : (_isThinking ? 0.4 : 0.1)), width: 0.7),
+                              border: Border.all(color: Colors.white.withValues(alpha: _isRecording ? 0.6 : (_isThinking ? 0.6 : 0.3)), width: 1.0),
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(_isExpanded ? 24 : 60),
@@ -611,10 +615,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                                                     painter: MorphingBlobPainter(
                                                         _waveController.value,
                                                         _isRecording
-                                                            ? Colors.redAccent.withOpacity(0.5)
+                                                            ? Colors.redAccent.withValues(alpha: 0.8)
                                                             : (_isThinking
-                                                                ? Colors.white.withOpacity(0.7)
-                                                                : Colors.white.withOpacity(0.18)),
+                                                                ? Colors.white.withValues(alpha: 0.9)
+                                                                : Colors.white.withValues(alpha: 0.4)),
                                                         _isThinking || _isRecording))),
                                           ],
                                         ),
