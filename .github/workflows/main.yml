@@ -53,9 +53,7 @@ jobs:
           # Insertar un DEVELOPMENT_TEAM si no existe para evitar el error de Flutter
           sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = ABCDEFGH12;/g' ios/Runner.xcodeproj/project.pbxproj
           
-          # Desactivar motor Impeller para evitar pantalla negra en iOS 16/17+
-          /usr/libexec/PlistBuddy -c "Add :FLTEnableImpeller bool NO" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :FLTEnableImpeller NO" ios/Runner/Info.plist
-          echo "✅ Impeller desactivado para máxima compatibilidad"
+          # Impeller is enabled by default in modern Flutter and should not be disabled.
 
           # Agregar permisos necesarios para iOS (Micrófono, Galería, Archivos)
           /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'Glyph necesita acceso al micrófono para grabar audio.'" ios/Runner/Info.plist || /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription 'Glyph necesita acceso al micrófono para grabar audio.'" ios/Runner/Info.plist
