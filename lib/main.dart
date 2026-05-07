@@ -72,72 +72,71 @@ class GlassOrbPainter extends CustomPainter {
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
     if (isThinking) {
-      // --- ANIMACIÓN DISRUPTIVA MINIMALISTA ---
+      // --- FIGURA GEOMÉTRICA FUTURISTA (Acoplamiento Elegante) ---
       final paint = Paint()
         ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.square
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.0);
+        ..strokeWidth = 1.0
+        ..color = Colors.cyanAccent.withValues(alpha: 0.7);
 
-      for (int i = 0; i < 5; i++) {
-        final double time = animationValue * 4 * math.pi;
-        final double radius = currentRadius * (0.3 + math.sin(time * (i + 1) * 0.5).abs() * 0.8);
-        final double strokeW = 0.5 + (math.cos(time * 2 + i) + 1.0) * 1.5;
+      for (int i = 0; i < 3; i++) {
+        // Rotación armónica
+        final double rotation = animationValue * 2 * math.pi * (i % 2 == 0 ? 1 : -1) + (i * math.pi / 4);
+        // Movimiento de acople y desacople
+        final double scale = 0.6 + math.sin(animationValue * 4 * math.pi + i).abs() * 0.4;
+        final double radius = currentRadius * scale;
         
-        paint.color = i % 2 == 0 ? Colors.cyanAccent.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8);
-        paint.strokeWidth = strokeW;
-
-        if (math.sin(time * 3 + i) > 0) {
-           // Arcos fracturados y disruptivos
-           canvas.drawArc(
-             Rect.fromCircle(center: center, radius: radius),
-             time * (i % 2 == 0 ? 1 : -1) + i,
-             math.pi / (1.5 + i * 0.5),
-             false,
-             paint
-           );
-        } else {
-           // Líneas de tensión electromagnética (Chispas rectas)
-           final dx = center.dx + math.cos(time + i) * radius;
-           final dy = center.dy + math.sin(time + i) * radius;
-           canvas.drawLine(center, Offset(dx, dy), paint..color = paint.color.withValues(alpha: 0.3)..strokeWidth = 1.0);
-           canvas.drawCircle(Offset(dx, dy), 1.5, paint..style = PaintingStyle.fill..color = Colors.white);
-           paint.style = PaintingStyle.stroke;
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        canvas.rotate(rotation);
+        
+        // Arcos perfectamente delineados
+        canvas.drawArc(
+          Rect.fromCircle(center: Offset.zero, radius: radius),
+          0,
+          math.pi * 1.5,
+          false,
+          paint..strokeWidth = 1.5 - (i * 0.2)..color = Colors.white.withValues(alpha: 0.5 + i * 0.2)
+        );
+        
+        // Hexágono central que gira
+        if (i == 1) {
+           final Path poly = Path();
+           final int sides = 6;
+           for(int j=0; j<=sides; j++) {
+              final double a = j * 2 * math.pi / sides;
+              final Offset p = Offset(math.cos(a) * radius * 0.5, math.sin(a) * radius * 0.5);
+              if (j == 0) poly.moveTo(p.dx, p.dy);
+              else poly.lineTo(p.dx, p.dy);
+           }
+           canvas.drawPath(poly, Paint()..style=PaintingStyle.stroke..color=Colors.cyanAccent.withValues(alpha: 0.8)..strokeWidth=0.8);
         }
+        
+        canvas.restore();
       }
     } else {
-      // Dibujo del Orbe 3D
-      final colors = isRecording ? [Colors.redAccent, Colors.orangeAccent] : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
-      
-      // Capas de profundidad 3D
-      for (int i = 0; i < colors.length; i++) {
-        final double phase = (animationValue * 2 * math.pi * (1.0 + i * 0.1)) + (i * 2.1);
-        final double opacity = (math.sin(phase * 0.7) + 1.0) / 2.0 * 0.2;
-        final blobOffset = Offset(math.sin(phase * 0.6) * (currentRadius * 0.2), math.cos(phase * 0.4) * (currentRadius * 0.2));
-        canvas.drawCircle(center + blobOffset, currentRadius, Paint()..shader = RadialGradient(colors: [colors[i].withValues(alpha: opacity), colors[i].withValues(alpha: 0.0)]).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8))..blendMode = BlendMode.screen);
+      // --- EFECTO REFLEJO DE AGUA ---
+      // Gota base con muy baja opacidad
+      canvas.drawCircle(center, currentRadius, Paint()..color = Colors.white.withValues(alpha: 0.03)..style = PaintingStyle.fill);
+
+      // Distorsión líquida (anillos sutiles)
+      for(int i = 0; i < 3; i++) {
+         final double phase = (animationValue * 3 * math.pi) + (i * 2);
+         final double r = currentRadius * (0.8 + math.sin(phase) * 0.1);
+         canvas.drawCircle(center, r, Paint()..style=PaintingStyle.stroke..color=Colors.cyanAccent.withValues(alpha: 0.05)..strokeWidth=1.5);
       }
 
-      // Brillo de superficie (Efecto 3D Cristal)
+      // Reflejo de luz asimétrico
       final glossPaint = Paint()
         ..shader = RadialGradient(
-          center: const Alignment(-0.3, -0.3),
-          colors: [Colors.white.withValues(alpha: 0.4), Colors.transparent],
-          radius: 0.5,
+          center: Alignment(math.cos(animationValue * 2 * math.pi) * 0.3, math.sin(animationValue * 2 * math.pi) * 0.3),
+          colors: [Colors.white.withValues(alpha: 0.5), Colors.transparent],
+          radius: 0.7,
         ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
       canvas.drawCircle(center, currentRadius, glossPaint);
-
-      // Borde de definición
-      canvas.drawCircle(center, currentRadius, Paint()..style = PaintingStyle.stroke..strokeWidth = 0.5..color = Colors.white.withValues(alpha: 0.4));
+      
+      // Borde cristalino sutil
+      canvas.drawCircle(center, currentRadius, Paint()..style = PaintingStyle.stroke..strokeWidth = 0.5..color = Colors.white.withValues(alpha: 0.2));
     }
-
-    final colors = isRecording ? [Colors.redAccent, Colors.orangeAccent] : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
-    for (int i = 0; i < colors.length; i++) {
-      final double phase = (animationValue * 2 * math.pi * (1.0 + i * 0.1)) + (i * 2.1);
-      final double opacity = (math.sin(phase * 0.7) + 1.0) / 2.0 * 0.25;
-      final blobOffset = Offset(math.sin(phase * 0.6) * (currentRadius * 0.3), math.cos(phase * 0.4) * (currentRadius * 0.3));
-      canvas.drawCircle(center + blobOffset, currentRadius, Paint()..shader = RadialGradient(colors: [colors[i].withValues(alpha: opacity), colors[i].withValues(alpha: 0.0)]).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8))..blendMode = BlendMode.screen);
-    }
-
-    canvas.drawCircle(center, currentRadius, Paint()..style = PaintingStyle.stroke..strokeWidth = 0.8..color = Colors.white.withValues(alpha: 0.25));
   }
 
   @override
