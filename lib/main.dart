@@ -460,12 +460,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                   position: _menuOffsetAnimation,
                   child: Container(
                     width: MediaQuery.of(context).size.width * 0.7,
-                    color: const Color(0xFF0D0D0F),
+                    decoration: BoxDecoration(
+                      color: Colors.transparent,
+                      border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
+                    ),
                     child: Column(
                       children: [
                         const SizedBox(height: 100),
-                        ListTile(leading: const Icon(Icons.add), title: const Text("Nuevo Chat"), onTap: _startNewChat),
-                        ListTile(leading: const Icon(Icons.image), title: const Text("Añadir Imagen"), onTap: _pickImage),
+                        ListTile(leading: const Icon(Icons.add, color: Colors.white70), title: const Text("Nuevo Chat", style: TextStyle(color: Colors.white70)), onTap: _startNewChat),
+                        ListTile(leading: const Icon(Icons.image, color: Colors.white70), title: const Text("Añadir Imagen", style: TextStyle(color: Colors.white70)), onTap: _pickImage),
                       ],
                     ),
                   ),
@@ -475,7 +478,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
           if (_showHistory)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withValues(alpha: 0.9),
+                color: Colors.transparent, // Totalmente transparente
                 child: Column(
                   children: [
                     const SizedBox(height: 80),
