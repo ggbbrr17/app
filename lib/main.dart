@@ -78,48 +78,59 @@ class GlassOrbPainter extends CustomPainter {
     final morph = isThinking ? math.sin(animationValue * 4 * math.pi) * 0.1 : 0.0;
     final currentRadius = baseRadius * (1.0 + pulse + morph + (isPressed ? 0.1 : 0.0));
 
-    // 1. Shadow / Glow
+    // Colores dinámicos y elegantes (Futurista)
+    final Color colorA = Colors.cyanAccent.withValues(alpha: 0.2);
+    final Color colorB = Colors.deepPurpleAccent.withValues(alpha: 0.15);
+    final Color colorC = Colors.tealAccent.withValues(alpha: 0.2);
+
+    // Rotación de colores basada en la animación
+    final double rotation = animationValue * 2 * math.pi;
+
+    // 1. Glow Sutil
     final glowColor = isRecording 
         ? Colors.redAccent 
-        : (isThinking ? Colors.cyanAccent : Colors.white);
+        : (isThinking ? Colors.cyanAccent : Colors.indigoAccent);
         
     final shadowPaint = Paint()
-      ..color = glowColor.withValues(alpha: 0.2)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
-    canvas.drawCircle(center, currentRadius + 10, shadowPaint);
+      ..color = glowColor.withValues(alpha: 0.1)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
+    canvas.drawCircle(center, currentRadius + 15, shadowPaint);
 
-    // 2. Base Sphere (Translucent White)
+    // 2. Base Sphere (Hiper-Transparente con Gradiente Fluido)
     final spherePaint = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          (isRecording ? Colors.redAccent : Colors.white).withValues(alpha: 0.8),
-          (isRecording ? Colors.red.shade900 : Colors.white).withValues(alpha: 0.2),
-          Colors.white.withValues(alpha: 0.05),
-        ],
-        stops: const [0.0, 0.6, 1.0],
+      ..shader = SweepGradient(
+        center: Alignment.center,
+        transform: GradientRotation(rotation),
+        colors: [colorA, colorB, colorC, colorA],
+        stops: const [0.0, 0.33, 0.66, 1.0],
       ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
     
-    canvas.drawCircle(center, currentRadius, spherePaint);
+    canvas.drawCircle(center, currentRadius, spherePaint..blendMode = BlendMode.screen);
 
-    // 3. Specular Highlight (The "Glass" look)
-    final highlightPaint = Paint()
+    // 3. Brillo de Cristal (Specular)
+    final glassPaint = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Colors.white.withValues(alpha: 0.8),
+          Colors.white.withValues(alpha: 0.15),
           Colors.white.withValues(alpha: 0.0),
         ],
-        stops: const [0.1, 0.5],
       ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
-
-    canvas.drawCircle(center, currentRadius * 0.9, highlightPaint);
+    canvas.drawCircle(center, currentRadius * 0.95, glassPaint);
     
-    // 4. Subtle Rim Light
+    // 4. Borde de Plasma (Rim Light)
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..color = Colors.white.withValues(alpha: 0.4);
+      ..strokeWidth = 0.5
+      ..shader = SweepGradient(
+        transform: GradientRotation(-rotation * 2),
+        colors: [
+          Colors.white.withValues(alpha: 0.4),
+          Colors.cyanAccent.withValues(alpha: 0.0),
+          Colors.white.withValues(alpha: 0.4),
+        ],
+      ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
     canvas.drawCircle(center, currentRadius, rimPaint);
   }
 
@@ -503,7 +514,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     if (text.isEmpty) return;
     FocusScope.of(context).unfocus();
     _controller.clear();
-    setState(() => _messages.add({"role": "user", "text": text}));
+    setState(() {
+      _showTextField = false;
+      _messages.add({"role": "user", "text": text});
+    });
     _scrollToBottom();
     await _sendMultimodalData(question: text);
   }
@@ -594,37 +608,39 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                       children: [
                         if (_showTextField)
                           Padding(
-                            padding: const EdgeInsets.only(left: 30, right: 30, bottom: 20),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(30),
-                              child: BackdropFilter(
-                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _controller,
-                                          autofocus: true,
-                                          style: const TextStyle(color: Colors.white),
-                                          decoration: const InputDecoration(hintText: "Pregunta a Glyph...", hintStyle: TextStyle(color: Colors.white54), border: InputBorder.none),
-                                          onSubmitted: (_) => _handleSend(),
-                                        ),
+                            padding: const EdgeInsets.only(left: 30, right: 30, bottom: 40),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _controller,
+                                      autofocus: true,
+                                      style: const TextStyle(color: Colors.white),
+                                      decoration: const InputDecoration(
+                                        hintText: "", 
+                                        border: InputBorder.none
                                       ),
-                                      IconButton(icon: const Icon(Icons.send_rounded, color: Colors.white), onPressed: _handleSend),
-                                    ],
+                                      onSubmitted: (_) => _handleSend(),
+                                    ),
                                   ),
-                                ),
+                                  IconButton(
+                                    icon: const Icon(Icons.send_rounded, color: Colors.white70), 
+                                    onPressed: _handleSend
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-                        GestureDetector(
+                        // Solo mostramos el Orbe si NO estamos escribiendo y NO estamos pensando (o si estamos pensando pero el texto ya se envió)
+                        if (!_showTextField && !_isThinking)
+                          GestureDetector(
                           onPanUpdate: (details) => setState(() => _orbOffset += details.delta),
                           onPanEnd: (details) => setState(() => _orbOffset = Offset.zero),
                           onTapDown: (_) { _playWaterSound(); setState(() => _isOrbPressed = true); },
