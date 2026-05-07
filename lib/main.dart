@@ -527,7 +527,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     _scrollToBottom();
 
     try {
-      final Map<String, dynamic> body = {"question": question};
+      // CONSTRUCCIÓN DEL HISTORIAL: Tomamos los últimos 10 mensajes para dar contexto
+      String history = "";
+      final lastMessages = _messages.length > 10 ? _messages.sublist(_messages.length - 10) : _messages;
+      for (var m in lastMessages) {
+        if (m['isThought'] == true) continue; // Ignoramos pensamientos internos
+        final role = m['role'] == 'user' ? 'USER' : 'GLYPH';
+        history += "$role: ${m['text']}\n";
+      }
+
+      final Map<String, dynamic> body = {
+        "question": question,
+        "history": history,
+      };
       if (base64Image != null) body["base64_image"] = base64Image;
       if (base64Video != null) body["base64_video"] = base64Video;
       if (base64Audio != null) body["base64_audio"] = base64Audio;
