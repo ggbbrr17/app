@@ -232,7 +232,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     
-    // Diferimos la inicialización para permitir que el motor gráfico pinte el primer frame y evitar cuelgues
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(milliseconds: 1500), () {
         _initializeNotifications();
@@ -242,17 +241,15 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
     _waveController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
 
-    // Initialize menu animation controller
     _menuAnimationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
     _menuOffsetAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0), // Start off-screen to the left
-      end: Offset.zero, // End at its natural position
+      begin: const Offset(-1.0, 0.0), 
+      end: Offset.zero,
     ).animate(CurvedAnimation(parent: _menuAnimationController, curve: Curves.easeOut));
 
-    // Start polling for notifications/autonomous thoughts
     _startNotificationPolling();
   }
 
@@ -355,7 +352,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     });
   }
 
-  // New methods for menu
   void _toggleMenu() {
     _playWaterSound();
     setState(() {
@@ -387,11 +383,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     }
   }
 
-  // New methods for file picking
   Future<void> _pickImage() async {
     _playWaterSound();
     FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.image, // Strictly images
+      type: FileType.image, 
       allowMultiple: false,
     );
 
@@ -415,7 +410,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     }
   }
 
-  // New methods for audio recording
   Future<void> _startRecording() async {
     try {
       if (await _audioRecorder.hasPermission()) {
@@ -452,7 +446,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     return null;
   }
 
-  // Modified _handleSend to _sendMultimodalData
   Future<void> _sendMultimodalData({
     String question = "",
     String? base64Image,
@@ -473,16 +466,14 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       if (base64Audio != null) body["base64_audio"] = base64Audio;
 
       final response = await http
-          .post(Uri.parse(apiUrl), headers: {"Content-Type": "application/json", "X-Glyph-Secret": secret}, body: jsonEncode(body)).timeout(const Duration(seconds: 60)); // Increased timeout for large files
+          .post(Uri.parse(apiUrl), headers: {"Content-Type": "application/json", "X-Glyph-Secret": secret}, body: jsonEncode(body)).timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200 && response.body.isNotEmpty) {
-        debugPrint('Conexión exitosa con Glyph');
         final data = jsonDecode(response.body);
         if (data.containsKey('error')) {
           _showError(data['error'] ?? 'Error servidor');
         } else {
           setState(() {
-            // Add thinking/thought if present
             if (data['metacognition'] != null && data['metacognition'].toString().isNotEmpty) {
               _messages.add({
                 "role": "glyph", 
@@ -490,9 +481,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 "isThought": true
               });
             }
-            
             _messages.add({"role": "glyph", "text": data['message'] ?? "Sin respuesta."});
-            
             if (_notificationState != AppLifecycleState.resumed) {
               _showNotification('Glyph', data['message'] ?? "Sin respuesta.");
             }
@@ -509,33 +498,24 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     }
   }
 
-  // Original _handleSend now calls _sendMultimodalData
   Future<void> _handleSend() async {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     FocusScope.of(context).unfocus();
     _controller.clear();
-    
-    setState(() {
-      _messages.add({"role": "user", "text": text});
-    });
-
+    setState(() => _messages.add({"role": "user", "text": text}));
     _scrollToBottom();
     await _sendMultimodalData(question: text);
   }
 
   void _showError(String err) {
-    setState(() {
-      _messages.add({"role": "glyph", "text": '⚠️ $err'});
-    });
+    setState(() => _messages.add({"role": "glyph", "text": '⚠️ $err'}));
     _scrollToBottom();
   }
 
   void _unfocus() {
     FocusScopeNode currentFocus = FocusScope.of(context);
-    if (!currentFocus.hasPrimaryFocus) {
-      currentFocus.unfocus();
-    }
+    if (!currentFocus.hasPrimaryFocus) currentFocus.unfocus();
   }
 
   void _startNewChat() {
@@ -544,6 +524,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
         _chatSessions.add(List.from(_messages));
         _messages.clear();
         _showHistory = false;
+        _isMenuOpen = false;
+        _menuAnimationController.reverse();
       });
     }
   }
@@ -554,21 +536,16 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     final screenHeight = MediaQuery.of(context).size.height;
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
-      extendBodyBehindAppBar: true, // Allow UI to reach the top
+      extendBodyBehindAppBar: true, 
       body: GestureDetector(
-        onTap: _unfocus, // Close keyboard on tap anywhere
+        onTap: _unfocus, 
         child: Stack(
           children: [
             MeshGradientBackground(animation: _waveController),
-            
-            // Main Chat Area
             Positioned.fill(
               child: Column(
                 children: [
-                  // Spacer for the very top content
                   const SizedBox(height: 40),
-                  
-                  // Message List
                   Expanded(
                     child: ListView.builder(
                       controller: _scrollController,
@@ -578,7 +555,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                         final msg = _messages[index];
                         final isUser = msg["role"] == "user";
                         final isThought = msg["isThought"] ?? false;
-                        
                         return Align(
                           alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
                           child: Container(
@@ -601,24 +577,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                                 if (isThought)
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 4),
-                                    child: Text(
-                                      "PENSAMIENTO",
-                                      style: TextStyle(
-                                        color: Colors.cyanAccent.withValues(alpha: 0.5),
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
+                                    child: Text("PENSAMIENTO", style: TextStyle(color: Colors.cyanAccent.withValues(alpha: 0.5), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
                                   ),
-                                Text(
-                                  msg["text"],
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 14,
-                                    fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
-                                  ),
-                                ),
+                                Text(msg["text"], style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, fontStyle: isThought ? FontStyle.italic : FontStyle.normal)),
                               ],
                             ),
                           ),
@@ -626,14 +587,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                       },
                     ),
                   ),
-                  
-                  // Bottom Area: Orb and Optional Text Bar
                   Container(
                     padding: const EdgeInsets.only(bottom: 40),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Dynamic Search Bar (only shows if toggled)
                         if (_showTextField)
                           Padding(
                             padding: const EdgeInsets.only(left: 30, right: 30, bottom: 20),
@@ -655,61 +613,36 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                                           controller: _controller,
                                           autofocus: true,
                                           style: const TextStyle(color: Colors.white),
-                                          decoration: const InputDecoration(
-                                            hintText: "Pregunta a Glyph...",
-                                            hintStyle: TextStyle(color: Colors.white54),
-                                            border: InputBorder.none,
-                                          ),
+                                          decoration: const InputDecoration(hintText: "Pregunta a Glyph...", hintStyle: TextStyle(color: Colors.white54), border: InputBorder.none),
                                           onSubmitted: (_) => _handleSend(),
                                         ),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(Icons.send_rounded, color: Colors.white),
-                                        onPressed: _handleSend,
-                                      ),
+                                      IconButton(icon: const Icon(Icons.send_rounded, color: Colors.white), onPressed: _handleSend),
                                     ],
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        
-                        // The Orb (Burbuja) at the bottom
                         GestureDetector(
-                          onPanUpdate: (details) {
-                            setState(() {
-                              _orbOffset += details.delta;
-                            });
-                          },
-                          onPanEnd: (details) {
-                            setState(() => _orbOffset = Offset.zero);
-                          },
-                          onTapDown: (_) {
-                            _playWaterSound();
-                            setState(() => _isOrbPressed = true);
-                          },
+                          onPanUpdate: (details) => setState(() => _orbOffset += details.delta),
+                          onPanEnd: (details) => setState(() => _orbOffset = Offset.zero),
+                          onTapDown: (_) { _playWaterSound(); setState(() => _isOrbPressed = true); },
                           onTapUp: (_) => setState(() => _isOrbPressed = false),
-                          onTap: () {
-                            setState(() => _showTextField = !_showTextField);
-                          },
+                          onTap: () => setState(() => _showTextField = !_showTextField),
                           onLongPressStart: (_) => _startRecording(),
                           onLongPressEnd: (_) async {
                             final base64Audio = await _stopRecording();
                             if (base64Audio != null) {
-                              setState(() {
-                                _messages.add({"role": "user", "text": "Audio enviado para Gemma 4"});
-                              });
-                              await _sendMultimodalData(
-                                question: "Analiza este audio con Gemma 4.",
-                                base64Audio: base64Audio,
-                              );
+                              setState(() => _messages.add({"role": "user", "text": "Audio enviado para Gemma 4"}));
+                              await _sendMultimodalData(question: "Analiza este audio con Gemma 4.", base64Audio: base64Audio);
                             }
                           },
                           child: AnimatedBuilder(
                             animation: Listenable.merge([_pulseController, _waveController]),
                             builder: (context, _) {
                               return CustomPaint(
-                                size: const Size(180, 180), // Slightly smaller for bottom position
+                                size: const Size(180, 180),
                                 painter: GlassOrbPainter(
                                   animationValue: _pulseController.value,
                                   offset: _orbOffset,
@@ -727,27 +660,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 ],
               ),
             ),
-
-            // Persistent Menu Button (Always top-left)
             Positioned(
               top: MediaQuery.of(context).padding.top + 10,
               left: 20,
               child: IconButton(
-                icon: AnimatedIcon(
-                  icon: AnimatedIcons.menu_close,
-                  progress: _menuAnimationController,
-                  color: Colors.white,
-                ),
+                icon: AnimatedIcon(icon: AnimatedIcons.menu_close, progress: _menuAnimationController, color: Colors.white),
                 onPressed: _toggleMenu,
               ),
             ),
-
-            // Sidebar Menu
             if (_isMenuOpen)
               GestureDetector(
                 onTap: _toggleMenu,
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.4), // Darker overlay
+                  color: Colors.black.withValues(alpha: 0.4),
                   child: Align(
                     alignment: Alignment.topLeft,
                     child: SlideTransition(
@@ -755,18 +680,12 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                       child: Container(
                         width: screenWidth * 0.8,
                         height: screenHeight,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF0D0D0F).withValues(alpha: 0.98),
-                          border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-                        ),
+                        decoration: BoxDecoration(color: const Color(0xFF0D0D0F).withValues(alpha: 0.98), border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1)))),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 100),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 25),
-                              child: Text("GLYPH SOBERANO", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 3)),
-                            ),
+                            Padding(padding: const EdgeInsets.symmetric(horizontal: 25), child: Text("GLYPH SOBERANO", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 3))),
                             const SizedBox(height: 30),
                             _buildMenuItem(Icons.add_rounded, "Nuevo Chat", _startNewChat),
                             _buildMenuItem(Icons.image_outlined, "Añadir Imagen", _pickImage),
@@ -778,8 +697,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                   ),
                 ),
               ),
-
-            // History Panel (Gemini Style)
             if (_showHistory)
               Positioned.fill(
                 child: BackdropFilter(
@@ -809,19 +726,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                               return ListTile(
                                 contentPadding: EdgeInsets.zero,
                                 leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white54, size: 20),
-                                title: Text(
-                                  title, 
-                                  maxLines: 1, 
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white, fontSize: 16)
-                                ),
-                                onTap: () {
-                                  setState(() {
-                                    _messages.clear();
-                                    _messages.addAll(session);
-                                    _showHistory = false;
-                                  });
-                                },
+                                title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                                onTap: () { setState(() { _messages.clear(); _messages.addAll(session); _showHistory = false; }); },
                               );
                             },
                           ),
@@ -845,3 +751,4 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       onTap: onTap,
     );
   }
+}
