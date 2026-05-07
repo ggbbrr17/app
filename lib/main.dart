@@ -72,50 +72,37 @@ class GlassOrbPainter extends CustomPainter {
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
     if (isThinking) {
-      // --- ANIMACIÓN QUANTUM NEURAL FLOW ---
-      final List<Color> neuralColors = [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
-      
-      for (int i = 0; i < 6; i++) {
-        final color = neuralColors[i % neuralColors.length];
-        final double speed = (1.5 + i * 0.4);
-        final double rotation = (animationValue * speed * 2 * math.pi);
-        final double radiusMult = 0.5 + (i * 0.15);
-        final double strokeWidth = 1.0 + (math.sin(animationValue * 5 + i) + 1.0);
-        
-        final paint = Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = strokeWidth
-          ..strokeCap = StrokeCap.round
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0) // Efecto de resplandor
-          ..color = color.withValues(alpha: 0.6);
+      // --- ANIMACIÓN DISRUPTIVA MINIMALISTA ---
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.square
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.0);
 
-        // Dibujo de la estela neural
-        final double sweepAngle = 0.5 + math.sin(animationValue * 4 + i) * 0.3;
-        canvas.drawArc(
-          Rect.fromCircle(center: center, radius: currentRadius * radiusMult),
-          rotation + (i * math.pi / 3),
-          sweepAngle,
-          false,
-          paint
-        );
-
-        // Nodo de datos (Partícula brillante que viaja por la línea)
-        final double particleAngle = rotation + (i * math.pi / 3) + sweepAngle;
-        final particleOffset = Offset(
-          center.dx + math.cos(particleAngle) * currentRadius * radiusMult,
-          center.dy + math.sin(particleAngle) * currentRadius * radiusMult,
-        );
+      for (int i = 0; i < 5; i++) {
+        final double time = animationValue * 4 * math.pi;
+        final double radius = currentRadius * (0.3 + math.sin(time * (i + 1) * 0.5).abs() * 0.8);
+        final double strokeW = 0.5 + (math.cos(time * 2 + i) + 1.0) * 1.5;
         
-        canvas.drawCircle(
-          particleOffset,
-          2.5,
-          Paint()..color = Colors.white..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0)
-        );
-        canvas.drawCircle(
-          particleOffset,
-          1.2,
-          Paint()..color = color
-        );
+        paint.color = i % 2 == 0 ? Colors.cyanAccent.withValues(alpha: 0.8) : Colors.white.withValues(alpha: 0.8);
+        paint.strokeWidth = strokeW;
+
+        if (math.sin(time * 3 + i) > 0) {
+           // Arcos fracturados y disruptivos
+           canvas.drawArc(
+             Rect.fromCircle(center: center, radius: radius),
+             time * (i % 2 == 0 ? 1 : -1) + i,
+             math.pi / (1.5 + i * 0.5),
+             false,
+             paint
+           );
+        } else {
+           // Líneas de tensión electromagnética (Chispas rectas)
+           final dx = center.dx + math.cos(time + i) * radius;
+           final dy = center.dy + math.sin(time + i) * radius;
+           canvas.drawLine(center, Offset(dx, dy), paint..color = paint.color.withValues(alpha: 0.3)..strokeWidth = 1.0);
+           canvas.drawCircle(Offset(dx, dy), 1.5, paint..style = PaintingStyle.fill..color = Colors.white);
+           paint.style = PaintingStyle.stroke;
+        }
       }
     } else {
       // Dibujo del Orbe 3D
@@ -240,6 +227,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
   bool _isThinking = false;
   final ScrollController _scrollController = ScrollController();
@@ -303,6 +291,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
 
   @override
   void dispose() {
+    _focusNode.dispose();
     _notificationPollingTimer?.cancel();
     _pulseController.dispose(); _waveController.dispose(); _menuAnimationController.dispose();
     _audioPlayer.dispose(); _audioRecorder.dispose();
@@ -379,6 +368,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   }
 
   void _unfocus() {
+    _focusNode.unfocus();
     FocusScope.of(context).unfocus();
     setState(() => _showTextField = false);
   }
@@ -451,15 +441,27 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
               child: GestureDetector(
                 onPanUpdate: (d) => setState(() => _orbOffset += d.delta),
                 onPanEnd: (d) => setState(() => _orbOffset = Offset.zero),
-                onTap: () => setState(() => _showTextField = !_showTextField),
+                onTap: () {
+                  setState(() => _showTextField = !_showTextField);
+                  if (_showTextField) _focusNode.requestFocus();
+                  else _focusNode.unfocus();
+                },
                 onLongPressStart: (_) => _startRecording(),
                 onLongPressEnd: (_) async {
                   final audio = await _stopRecording();
                   if (audio != null) _sendMultimodalData(question: "Analiza este audio.", base64Audio: audio);
                 },
-                child: AnimatedBuilder(
-                  animation: _pulseController,
-                  builder: (context, _) => CustomPaint(painter: GlassOrbPainter(animationValue: _pulseController.value, offset: _orbOffset, isThinking: _isThinking, isRecording: _isRecording, isPressed: _isOrbPressed), size: const Size(200, 200)),
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 300),
+                  opacity: _showTextField ? 0.0 : 1.0,
+                  child: AnimatedScale(
+                    duration: const Duration(milliseconds: 300),
+                    scale: _showTextField ? 0.5 : 1.0,
+                    child: AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, _) => CustomPaint(painter: GlassOrbPainter(animationValue: _pulseController.value, offset: _orbOffset, isThinking: _isThinking, isRecording: _isRecording, isPressed: _isOrbPressed), size: const Size(200, 200)),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -488,7 +490,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                       Expanded(
                         child: TextField(
                           controller: _controller,
-                          autofocus: true,
+                          focusNode: _focusNode,
+                          autofocus: false,
                           onSubmitted: (_) => _handleSend(),
                           style: const TextStyle(color: Colors.white, fontSize: 16),
                           decoration: const InputDecoration(
