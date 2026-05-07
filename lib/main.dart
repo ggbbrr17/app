@@ -81,8 +81,6 @@ class GlassOrbPainter extends CustomPainter {
     final smokeCycle = (math.sin(animationValue * math.pi * 0.5) + 1) / 2; 
     final bool isSmoky = smokeCycle < 0.2 && !isThinking && !isRecording;
 
-    final paint = Paint()..style = PaintingStyle.fill;
-
     if (isSmoky) {
       // ESTADO HUMO (Gris y Etéreo)
       for (int i = 0; i < 3; i++) {
@@ -98,7 +96,7 @@ class GlassOrbPainter extends CustomPainter {
         canvas.drawCircle(center, currentRadius, smokePaint);
       }
     } else {
-      // ESTADO DINÁMICO (Colores moviéndose internamente)
+      // ESTADO DINÁMICO (Reflejos que aparecen y desaparecen)
       final colors = isRecording 
           ? [Colors.redAccent, Colors.orangeAccent]
           : (isThinking 
@@ -106,18 +104,25 @@ class GlassOrbPainter extends CustomPainter {
               : [Colors.cyanAccent, Colors.tealAccent, Colors.indigoAccent]);
 
       for (int i = 0; i < colors.length; i++) {
-        final phase = (animationValue * 2 * math.pi) + (i * (2 * math.pi / colors.length));
-        final blobOffset = Offset(math.sin(phase) * 15, math.cos(phase) * 15);
+        // Cada color tiene su propia fase de opacidad y posición
+        final double phase = (animationValue * 2 * math.pi) + (i * 1.5);
+        final double opacity = (math.sin(phase * 1.2) + 1.0) / 2.0 * 0.3; // Opacidad dinámica
+        
+        // Movimiento lineal errático (no circular)
+        final blobOffset = Offset(
+          math.sin(phase * 0.8) * 20, 
+          math.cos(phase * 0.5) * 20
+        );
         
         final blobPaint = Paint()
           ..shader = RadialGradient(
             colors: [
-              colors[i].withValues(alpha: 0.25),
+              colors[i].withValues(alpha: opacity),
               colors[i].withValues(alpha: 0.0),
             ],
-          ).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8));
+          ).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.7));
         
-        canvas.drawCircle(center + blobOffset, currentRadius, blobPaint..blendMode = BlendMode.plus);
+        canvas.drawCircle(center + blobOffset, currentRadius, blobPaint..blendMode = BlendMode.screen);
       }
     }
 
