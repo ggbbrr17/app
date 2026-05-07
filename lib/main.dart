@@ -71,24 +71,49 @@ class GlassOrbPainter extends CustomPainter {
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
     if (isThinking) {
-      // Solo dibujamos las líneas neurales al pensar
-      final linePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..strokeCap = StrokeCap.round;
-
-      for (int i = 0; i < 4; i++) {
-        final double speed = (1.2 + i * 0.6);
-        final double startAngle = (animationValue * speed * 4 * math.pi) + (i * math.pi / 2);
-        final double sweepAngle = 0.5 + math.sin(animationValue * 6 * math.pi + i) * 0.4;
-        final double radiusMult = 0.6 + (i * 0.25);
+      // --- ANIMACIÓN QUANTUM NEURAL FLOW ---
+      final List<Color> neuralColors = [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
+      
+      for (int i = 0; i < 6; i++) {
+        final color = neuralColors[i % neuralColors.length];
+        final double speed = (1.5 + i * 0.4);
+        final double rotation = (animationValue * speed * 2 * math.pi);
+        final double radiusMult = 0.5 + (i * 0.15);
+        final double strokeWidth = 1.0 + (math.sin(animationValue * 5 + i) + 1.0);
         
+        final paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.0) // Efecto de resplandor
+          ..color = color.withValues(alpha: 0.6);
+
+        // Dibujo de la estela neural
+        final double sweepAngle = 0.5 + math.sin(animationValue * 4 + i) * 0.3;
         canvas.drawArc(
           Rect.fromCircle(center: center, radius: currentRadius * radiusMult),
-          startAngle,
+          rotation + (i * math.pi / 3),
           sweepAngle,
           false,
-          linePaint..color = Colors.cyanAccent.withValues(alpha: (0.1 + i * 0.25))
+          paint
+        );
+
+        // Nodo de datos (Partícula brillante que viaja por la línea)
+        final double particleAngle = rotation + (i * math.pi / 3) + sweepAngle;
+        final particleOffset = Offset(
+          center.dx + math.cos(particleAngle) * currentRadius * radiusMult,
+          center.dy + math.sin(particleAngle) * currentRadius * radiusMult,
+        );
+        
+        canvas.drawCircle(
+          particleOffset,
+          2.5,
+          Paint()..color = Colors.white..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3.0)
+        );
+        canvas.drawCircle(
+          particleOffset,
+          1.2,
+          Paint()..color = color
         );
       }
     } else {
