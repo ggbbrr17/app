@@ -1,4 +1,4 @@
-import 'dart:io'; // For File operations
+import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -15,18 +15,14 @@ import 'package:audioplayers/audioplayers.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Capturador de errores de bajo nivel (sin dependencia de MaterialApp)
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return Container(
-      color: Colors.white,
-      child: Directionality(
-        textDirection: TextDirection.ltr,
-        child: Center(
-          child: Text(
-            "🚨 FALLO CRÍTICO:\n${details.exception}",
-            style: const TextStyle(color: Colors.black, fontSize: 13, decoration: TextDecoration.none, fontFamily: 'monospace'),
-            textAlign: TextAlign.center,
-          ),
+      color: Colors.black,
+      child: Center(
+        child: Text(
+          "🚨 ERROR:\n${details.exception}",
+          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+          textAlign: TextAlign.center,
         ),
       ),
     );
@@ -72,74 +68,26 @@ class GlassOrbPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2) + offset;
     final baseRadius = size.width * 0.35;
-    
-    // Animación más lenta (ciclo de 15 segundos en lugar de 1.2)
-    final slowAnim = animationValue; 
-    final pulse = math.sin(slowAnim * 2 * math.pi) * 0.03;
+    final pulse = math.sin(animationValue * 2 * math.pi) * 0.03;
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
     if (isThinking) {
-      // NUEVA ANIMACIÓN PENSANDO: Remolino de luz interna
       for (int i = 0; i < 5; i++) {
-        final double phase = (slowAnim * 4 * math.pi) + (i * 1.2);
-        final double radiusMult = 0.2 + (0.1 * i);
-        final swirlOffset = Offset(
-          math.sin(phase) * (currentRadius * radiusMult),
-          math.cos(phase) * (currentRadius * radiusMult)
-        );
-        
-        canvas.drawCircle(
-          center + swirlOffset,
-          8.0 - i,
-          Paint()
-            ..shader = RadialGradient(
-              colors: [Colors.cyanAccent.withValues(alpha: 0.4), Colors.transparent],
-            ).createShader(Rect.fromCircle(center: center + swirlOffset, radius: 8.0))
-        );
+        final double phase = (animationValue * 4 * math.pi) + (i * 1.2);
+        final swirlOffset = Offset(math.sin(phase) * (currentRadius * 0.3), math.cos(phase) * (currentRadius * 0.3));
+        canvas.drawCircle(center + swirlOffset, 6.0 - i, Paint()..shader = RadialGradient(colors: [Colors.cyanAccent.withValues(alpha: 0.4), Colors.transparent]).createShader(Rect.fromCircle(center: center + swirlOffset, radius: 8.0)));
       }
     }
 
-    // REFLEJOS VARIABLES (No repetitivos)
-    final colors = isRecording 
-        ? [Colors.redAccent, Colors.orangeAccent]
-        : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF7B1FA2)];
-
+    final colors = isRecording ? [Colors.redAccent, Colors.orangeAccent] : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
     for (int i = 0; i < colors.length; i++) {
-      // Uso de frecuencias distintas para evitar repetición obvia
-      final double phase = (slowAnim * 2 * math.pi * (1.0 + i * 0.1)) + (i * 2.1);
+      final double phase = (animationValue * 2 * math.pi * (1.0 + i * 0.1)) + (i * 2.1);
       final double opacity = (math.sin(phase * 0.7) + 1.0) / 2.0 * 0.25;
-      
-      final blobOffset = Offset(
-        math.sin(phase * 0.6) * (currentRadius * 0.3), 
-        math.cos(phase * 0.4) * (currentRadius * 0.3)
-      );
-      
-      final blobPaint = Paint()
-        ..shader = RadialGradient(
-          colors: [
-            colors[i].withValues(alpha: opacity),
-            colors[i].withValues(alpha: 0.0),
-          ],
-        ).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8));
-      
-      canvas.drawCircle(center + blobOffset, currentRadius, blobPaint..blendMode = BlendMode.screen);
+      final blobOffset = Offset(math.sin(phase * 0.6) * (currentRadius * 0.3), math.cos(phase * 0.4) * (currentRadius * 0.3));
+      canvas.drawCircle(center + blobOffset, currentRadius, Paint()..shader = RadialGradient(colors: [colors[i].withValues(alpha: opacity), colors[i].withValues(alpha: 0.0)]).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8))..blendMode = BlendMode.screen);
     }
 
-    // Bordes de cristal y transparencia premium
-    final rimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.8
-      ..color = Colors.white.withValues(alpha: 0.25);
-    canvas.drawCircle(center, currentRadius, rimPaint);
-
-    // Brillo sutil superior
-    final highlightPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [Colors.white.withValues(alpha: 0.08), Colors.transparent],
-      ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
-    canvas.drawCircle(center, currentRadius * 0.9, highlightPaint);
+    canvas.drawCircle(center, currentRadius, Paint()..style = PaintingStyle.stroke..strokeWidth = 0.8..color = Colors.white.withValues(alpha: 0.25));
   }
 
   @override
@@ -149,7 +97,6 @@ class GlassOrbPainter extends CustomPainter {
 class AnimatedHamburger extends StatelessWidget {
   final bool isOpen;
   final VoidCallback onTap;
-
   const AnimatedHamburger({super.key, required this.isOpen, required this.onTap});
 
   @override
@@ -163,34 +110,9 @@ class AnimatedHamburger extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // Línea Superior
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutBack,
-              top: isOpen ? 23 : 16,
-              child: AnimatedRotation(
-                duration: const Duration(milliseconds: 500),
-                turns: isOpen ? 0.125 : 0,
-                child: Container(width: 26, height: 2.5, color: Colors.white),
-              ),
-            ),
-            // Línea Central (Más corta)
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 300),
-              opacity: isOpen ? 0.0 : 1.0,
-              child: Container(width: 16, height: 2.5, color: Colors.white), // Solo 16 de ancho
-            ),
-            // Línea Inferior
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeOutBack,
-              bottom: isOpen ? 23 : 16,
-              child: AnimatedRotation(
-                duration: const Duration(milliseconds: 500),
-                turns: isOpen ? -0.125 : 0,
-                child: Container(width: 26, height: 2.5, color: Colors.white),
-              ),
-            ),
+            AnimatedPositioned(duration: const Duration(milliseconds: 500), curve: Curves.easeOutBack, top: isOpen ? 23 : 16, child: AnimatedRotation(duration: const Duration(milliseconds: 500), turns: isOpen ? 0.125 : 0, child: Container(width: 26, height: 2.5, color: Colors.white))),
+            AnimatedOpacity(duration: const Duration(milliseconds: 300), opacity: isOpen ? 0.0 : 1.0, child: Container(width: 16, height: 2.5, color: Colors.white)),
+            AnimatedPositioned(duration: const Duration(milliseconds: 500), curve: Curves.easeOutBack, bottom: isOpen ? 23 : 16, child: AnimatedRotation(duration: const Duration(milliseconds: 500), turns: isOpen ? -0.125 : 0, child: Container(width: 26, height: 2.5, color: Colors.white))),
           ],
         ),
       ),
@@ -206,24 +128,16 @@ class MeshGradientBackground extends StatelessWidget {
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (context, child) {
+      builder: (context, _) {
         final t = animation.value * 2 * math.pi;
         return Container(
-          decoration: const BoxDecoration(color: Color(0xFF020204)), // Fondo más profundo
+          decoration: const BoxDecoration(color: Color(0xFF020204)),
           child: Stack(
             children: [
-              // Aurora Cian Vívida
               _buildAurora(context, const Color(0xFF00E5FF), 0.1, 0.2, t, 1.4),
-              // Aurora Lima Vívida
               _buildAurora(context, const Color(0xFFD4FF00), 0.9, 0.5, t + 2.0, 1.6),
-              // Aurora Violeta Vívida
               _buildAurora(context, const Color(0xFF9C27B0), 0.4, 0.8, t + 4.0, 1.5),
-              
-              // Capa de difuminación reducida para mayor nitidez/viva
-              BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
-                child: Container(color: Colors.black.withValues(alpha: 0.15)),
-              ),
+              BackdropFilter(filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35), child: Container(color: Colors.black.withValues(alpha: 0.15))),
             ],
           ),
         );
@@ -233,23 +147,15 @@ class MeshGradientBackground extends StatelessWidget {
 
   Widget _buildAurora(BuildContext context, Color color, double x, double y, double t, double sizeMult) {
     final size = MediaQuery.of(context).size;
-    // Frecuencias enteras (1.0, 2.0, etc.) garantizan un bucle perfecto sin saltos
-    final dx = math.sin(t * 1.0) * 150; 
-    final dy = math.cos(t * 1.0) * 150;
-    
+    final dx = math.sin(t) * 150;
+    final dy = math.cos(t) * 150;
     return Positioned(
       left: (x * size.width) + dx - (250 * sizeMult),
       top: (y * size.height) + dy - (250 * sizeMult),
       child: Container(
         width: 500 * sizeMult,
         height: 500 * sizeMult,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color.withValues(alpha: 0.55), Colors.transparent], // Más vívido aún
-            stops: const [0.2, 1.0], // Centro más denso
-          ),
-        ),
+        decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color.withValues(alpha: 0.55), Colors.transparent], stops: const [0.2, 1.0])),
       ),
     );
   }
@@ -257,7 +163,6 @@ class MeshGradientBackground extends StatelessWidget {
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
-
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
@@ -267,625 +172,273 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   final List<Map<String, dynamic>> _messages = [];
   bool _isThinking = false;
   final ScrollController _scrollController = ScrollController();
-  late AnimationController _pulseController;
-  late AnimationController _waveController;
+  late AnimationController _pulseController, _waveController, _menuAnimationController;
+  late Animation<Offset> _menuOffsetAnimation;
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   AppLifecycleState _notificationState = AppLifecycleState.resumed;
-
-  // New state variables for menu
-  bool _isMenuOpen = false;
-  late AnimationController _menuAnimationController;
-  late Animation<Offset> _menuOffsetAnimation;
-
-  // New state variables for audio recording
-  bool _isRecording = false;
-  Duration _recordDuration = Duration.zero;
-  Timer? _timer;
-  final AudioRecorder _audioRecorder = AudioRecorder(); // From 'record' package
-  final AudioPlayer _audioPlayer = AudioPlayer(); // For water click sound
-
-  // Orb interactivity state
+  bool _isMenuOpen = false, _isRecording = false, _isOrbPressed = false, _showTextField = false, _showHistory = false;
   Offset _orbOffset = Offset.zero;
-  bool _isOrbPressed = false;
-  bool _showTextField = false; // New: Toggle text field
-  
-  // History state - Grouped by "Chat Sessions"
-  bool _showHistory = false;
+  Duration _recordDuration = Duration.zero;
+  Timer? _timer, _notificationPollingTimer;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  String? _pendingImageBase64, _pendingImageName;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
-
-  // Pendientes para Multimodal
-  String? _pendingImageBase64;
-  String? _pendingImageName;
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl = "https://service-cv3f.onrender.com/api/v1/notifications";
   final String secret = "glyph123";
-  Timer? _notificationPollingTimer;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        _initializeNotifications();
-      });
-    });
-
     _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true);
     _waveController = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
-
-    _menuAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-    _menuOffsetAnimation = Tween<Offset>(
-      begin: const Offset(-1.0, 0.0), 
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _menuAnimationController, curve: Curves.easeOut));
-
+    _menuAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
+    _menuOffsetAnimation = Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: _menuAnimationController, curve: Curves.easeOut));
+    _initializeNotifications();
     _startNotificationPolling();
   }
 
   void _startNotificationPolling() {
-    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 15), (timer) {
-      _checkForNotifications();
-    });
+    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 15), (timer) => _checkForNotifications());
   }
 
   Future<void> _checkForNotifications() async {
     try {
-      final response = await http.get(
-        Uri.parse(notificationUrl),
-        headers: {"X-Glyph-Secret": secret},
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final List notifications = data['notifications'] ?? [];
-        if (notifications.isNotEmpty) {
-          for (var note in notifications) {
-            setState(() {
-              _messages.add({
-                "role": "glyph", 
-                "text": note['message'] ?? "",
-                "isThought": note['type'] == "autonomous_thought"
-              });
-              if (_notificationState != AppLifecycleState.resumed) {
-                _showNotification('Glyph (Pensamiento)', note['message'] ?? "");
-              }
-            });
-            _scrollToBottom();
-          }
+      final r = await http.get(Uri.parse(notificationUrl), headers: {"X-Glyph-Secret": secret});
+      if (r.statusCode == 200) {
+        final data = jsonDecode(r.body);
+        for (var note in (data['notifications'] ?? [])) {
+          setState(() {
+            _messages.add({"role": "glyph", "text": note['message'] ?? "", "isThought": note['type'] == "autonomous_thought"});
+            if (_notificationState != AppLifecycleState.resumed) _showNotification('Glyph', note['message'] ?? "");
+          });
+          _scrollToBottom();
         }
       }
-    } catch (e) {
-      debugPrint("Error al consultar notificaciones: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> _initializeNotifications() async {
-    try {
-      flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-      const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const DarwinInitializationSettings initializationSettingsDarwin = DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: false,
-        requestSoundPermission: false,
-      );
-      const InitializationSettings initializationSettings = InitializationSettings(
-        android: initializationSettingsAndroid,
-        iOS: initializationSettingsDarwin,
-      );
-      
-      await flutterLocalNotificationsPlugin.initialize(
-        initializationSettings,
-      );
-
-      final iosPlugin = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-      await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true);
-    } catch (e) {
-      debugPrint("⚠️ Notificaciones no iniciadas: $e");
-    }
+    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher'), iOS: DarwinInitializationSettings()));
   }
 
   Future<void> _showNotification(String title, String body) async {
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(presentAlert: true, presentBadge: true, presentSound: true);
-    const NotificationDetails platformDetails = NotificationDetails(iOS: iosDetails);
-    await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails);
+    await flutterLocalNotificationsPlugin.show(0, title, body, const NotificationDetails(iOS: DarwinNotificationDetails()));
   }
 
   @override
   void dispose() {
     _notificationPollingTimer?.cancel();
-    _pulseController.dispose();
-    _waveController.dispose();
-    _menuAnimationController.dispose();
-    _audioPlayer.dispose();
-    _audioRecorder.dispose();
+    _pulseController.dispose(); _waveController.dispose(); _menuAnimationController.dispose();
+    _audioPlayer.dispose(); _audioRecorder.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    _notificationState = state;
-  }
-
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  void _toggleMenu() {
-    _playWaterSound();
-    setState(() {
-      _isMenuOpen = !_isMenuOpen;
-      if (_isMenuOpen) {
-        _menuAnimationController.forward();
-      } else {
-        _menuAnimationController.reverse();
-      }
-    });
-  }
-
-  void _toggleHistory() {
-    _playWaterSound();
-    setState(() {
-      _showHistory = !_showHistory;
-      _isMenuOpen = false;
-      if (!_showHistory) {
-        _menuAnimationController.reverse();
-      }
+      if (_scrollController.hasClients) _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
   Future<void> _playWaterSound() async {
-    try {
-      await _audioPlayer.play(AssetSource('water_click.mp3'));
-    } catch (e) {
-      debugPrint("Error al reproducir sonido: $e");
-    }
+    try { await _audioPlayer.play(AssetSource('water_click.mp3')); } catch (_) {}
   }
 
   Future<void> _pickImage() async {
     _playWaterSound();
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
-      type: FileType.image, 
-      allowMultiple: false,
-    );
-
-    if (result != null && result.files.single.path != null) {
-      final filePath = result.files.single.path!;
-      final fileBytes = await File(filePath).readAsBytes();
-      final base64String = base64Encode(fileBytes);
-      final fileName = result.files.single.name;
-
-      setState(() {
-        _isMenuOpen = false; 
-        _showTextField = true; // Abrimos la barra para que el usuario escriba
-        _pendingImageBase64 = base64String;
-        _pendingImageName = fileName;
-      });
-      _scrollToBottom();
+    FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (res != null) {
+      final bytes = await File(res.files.single.path!).readAsBytes();
+      setState(() { _isMenuOpen = false; _showTextField = true; _pendingImageBase64 = base64Encode(bytes); _pendingImageName = res.files.single.name; });
     }
   }
 
   Future<void> _startRecording() async {
-    try {
-      if (await _audioRecorder.hasPermission()) {
-        final tempDir = await getTemporaryDirectory();
-        final String path = p.join(tempDir.path, 'glyph_audio_${DateTime.now().millisecondsSinceEpoch}.m4a');
-
-        await _audioRecorder.start(const RecordConfig(), path: path);
-        setState(() {
-          _isRecording = true;
-          _recordDuration = Duration.zero;
-        });
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-          setState(() {
-            _recordDuration = _recordDuration + const Duration(seconds: 1);
-          });
-        });
-      }
-    } catch (e) {
-      _showError("Error al iniciar grabación: $e");
+    if (await _audioRecorder.hasPermission()) {
+      final path = p.join((await getTemporaryDirectory()).path, 'audio_${DateTime.now().ms}.m4a');
+      await _audioRecorder.start(const RecordConfig(), path: path);
+      setState(() => _isRecording = true);
     }
   }
 
   Future<String?> _stopRecording() async {
-    _timer?.cancel();
-    setState(() {
-      _isRecording = false;
-      _recordDuration = Duration.zero;
-    });
     final path = await _audioRecorder.stop();
-    if (path != null) {
-      final fileBytes = await File(path).readAsBytes();
-      return base64Encode(fileBytes);
-    }
-    return null;
+    setState(() => _isRecording = false);
+    return path != null ? base64Encode(await File(path).readAsBytes()) : null;
   }
 
-  Future<void> _sendMultimodalData({
-    String question = "",
-    String? base64Image,
-    String? base64Video,
-    String? base64Audio,
-  }) async {
-    if (question.isEmpty && base64Image == null && base64Video == null && base64Audio == null) return;
-
-    setState(() {
-      _isThinking = true;
-    });
-    _scrollToBottom();
-
+  Future<void> _sendMultimodalData({String question = "", String? base64Image, String? base64Audio}) async {
+    setState(() => _isThinking = true);
     try {
-      // CONSTRUCCIÓN DEL HISTORIAL: Tomamos los últimos 10 mensajes para dar contexto
-      String history = "";
-      final lastMessages = _messages.length > 10 ? _messages.sublist(_messages.length - 10) : _messages;
-      for (var m in lastMessages) {
-        if (m['isThought'] == true) continue; // Ignoramos pensamientos internos
-        final role = m['role'] == 'user' ? 'USER' : 'GLYPH';
-        history += "$role: ${m['text']}\n";
+      String history = _messages.take(10).map((m) => "${m['role'].toString().toUpperCase()}: ${m['text']}").join("\n");
+      final body = {"question": question, "history": history, "base64_image": base64Image, "base64_audio": base64Audio};
+      final res = await http.post(Uri.parse(apiUrl), headers: {"Content-Type": "application/json", "X-Glyph-Secret": secret}, body: jsonEncode(body));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          if (data['metacognition']?.toString().isNotEmpty ?? false) _messages.add({"role": "glyph", "text": data['metacognition'], "isThought": true});
+          _messages.add({"role": "glyph", "text": data['message'] ?? "..."});
+        });
+        _scrollToBottom();
       }
-
-      final Map<String, dynamic> body = {
-        "question": question,
-        "history": history,
-      };
-      if (base64Image != null) body["base64_image"] = base64Image;
-      if (base64Video != null) body["base64_video"] = base64Video;
-      if (base64Audio != null) body["base64_audio"] = base64Audio;
-
-      final response = await http
-          .post(Uri.parse(apiUrl), headers: {"Content-Type": "application/json", "X-Glyph-Secret": secret}, body: jsonEncode(body)).timeout(const Duration(seconds: 60));
-
-      if (response.statusCode == 200 && response.body.isNotEmpty) {
-        final data = jsonDecode(response.body);
-        if (data.containsKey('error')) {
-          _showError(data['error'] ?? 'Error servidor');
-        } else {
-          setState(() {
-            if (data['metacognition'] != null && data['metacognition'].toString().isNotEmpty) {
-              _messages.add({
-                "role": "glyph", 
-                "text": data['metacognition'],
-                "isThought": true
-              });
-            }
-            _messages.add({"role": "glyph", "text": data['message'] ?? "Sin respuesta."});
-            if (_notificationState != AppLifecycleState.resumed) {
-              _showNotification('Glyph', data['message'] ?? "Sin respuesta.");
-            }
-          });
-          _scrollToBottom();
-        }
-      } else {
-        _showError('Error: ${response.statusCode}');
-      }
-    } catch (e) {
-      _showError('Enlace fallido: $e');
-    } finally {
-      setState(() => _isThinking = false);
-    }
+    } finally { setState(() => _isThinking = false); }
   }
 
-  Future<void> _handleSend() async {
+  void _handleSend() {
     final text = _controller.text.trim();
     if (text.isEmpty && _pendingImageBase64 == null) return;
-    FocusScope.of(context).unfocus();
-    _controller.clear();
-    
-    final String? imgBase64 = _pendingImageBase64;
-    final String? imgName = _pendingImageName;
-
+    final img = _pendingImageBase64;
     setState(() {
       _showTextField = false;
-      String userText = text;
-      if (imgName != null) userText = "📸 $imgName\n$text";
-      _messages.add({"role": "user", "text": userText});
-      _pendingImageBase64 = null; // Limpiamos pendientes
-      _pendingImageName = null;
+      _messages.add({"role": "user", "text": text, "image": img});
+      _pendingImageBase64 = null; _pendingImageName = null;
     });
+    _controller.clear();
     _scrollToBottom();
-    await _sendMultimodalData(question: text, base64Image: imgBase64);
-  }
-
-  void _showError(String err) {
-    setState(() => _messages.add({"role": "glyph", "text": '⚠️ $err'}));
-    _scrollToBottom();
-  }
-
-  void _unfocus() {
-    FocusScopeNode currentFocus = FocusScope.of(context);
-    if (!currentFocus.hasPrimaryFocus) currentFocus.unfocus();
+    _sendMultimodalData(question: text, base64Image: img);
   }
 
   void _startNewChat() {
-    if (_messages.isNotEmpty) {
-      setState(() {
-        _chatSessions.add(List.from(_messages));
-        _messages.clear();
-        _showHistory = false;
-        _isMenuOpen = false;
-        _menuAnimationController.reverse();
-      });
-    }
+    if (_messages.isNotEmpty) setState(() { _chatSessions.add(List.from(_messages)); _messages.clear(); _isMenuOpen = false; _menuAnimationController.reverse(); });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
-      extendBodyBehindAppBar: true, 
-      body: GestureDetector(
-        onTap: _unfocus, 
-        child: Stack(
+  Widget _buildChatBubble(Map<String, dynamic> msg) {
+    final isUser = msg["role"] == "user";
+    final isThought = msg["isThought"] ?? false;
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
+        padding: const EdgeInsets.all(12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: isThought ? Colors.cyanAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: isUser ? 0.15 : 0.05),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: isThought ? Colors.cyanAccent.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Background Aurora Boreal
-            MeshGradientBackground(animation: _waveController, intensity: 1.2, blur: 10),
-            
-            // Capa de Mensajes (Pasa por detrás del Orbe)
-            Positioned.fill(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.only(top: 100, bottom: 250),
-                itemCount: _showHistory 
-                  ? (_chatSessions.isEmpty ? 1 : _chatSessions.length)
-                  : _messages.length,
-                itemBuilder: (context, index) {
-                  if (_showHistory) {
-                    if (_chatSessions.isEmpty) {
-                      return const Center(child: Text("No hay historial aún.", style: TextStyle(color: Colors.white54)));
-                    }
-                    return _buildSessionItem(index);
-                  }
-                  return _buildChatBubble(_messages[index]);
-                },
-              ),
-            ),
-            
-            // Header (Sobre los mensajes)
-            Positioned(
-              top: 50,
-              left: 20,
-              right: 20,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AnimatedHamburger(
-                    isOpen: _isMenuOpen,
-                    onTap: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                        if (_isMenuOpen) {
-                          _menuAnimationController.forward();
-                        } else {
-                          _menuAnimationController.reverse();
-                        }
-                      });
-                    },
-                  ),
-                  if (!_isMenuOpen)
-                    IconButton(
-                      icon: Icon(
-                        _showHistory ? Icons.chat_bubble_outline : Icons.history,
-                        color: Colors.white,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _showHistory = !_showHistory;
-                        });
-                      },
-                    ),
-                ],
-              ),
-            ),
-                            margin: const EdgeInsets.symmetric(vertical: 5),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: isThought 
-                                ? Colors.cyanAccent.withValues(alpha: 0.1)
-                                : Colors.white.withValues(alpha: isUser ? 0.15 : 0.05),
-                              borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: isThought 
-                                  ? Colors.cyanAccent.withValues(alpha: 0.3) 
-                                  : Colors.white.withValues(alpha: 0.1)
-                              ),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (isThought)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 4),
-                                    child: Text("PENSAMIENTO", style: TextStyle(color: Colors.cyanAccent.withValues(alpha: 0.5), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                                  ),
-                                Text(msg["text"], style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, fontStyle: isThought ? FontStyle.italic : FontStyle.normal)),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-        onTap: _unfocus, 
-        child: Stack(
-          children: [
-            // 1. Fondo Aurora Boreal (Capa Base)
-            MeshGradientBackground(animation: _waveController),
-            
-            // 2. Capa de Mensajes (ListView que ocupa todo el espacio)
-            Positioned.fill(
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.only(top: 100, bottom: 300), // Espacio para el orbe abajo
-                itemCount: _messages.length,
-                itemBuilder: (context, index) {
-                  return _buildChatBubble(_messages[index]);
-                },
-              ),
-            ),
-
-            // 3. Header (Hamburgesa y Otros)
-            Positioned(
-              top: 50,
-              left: 20,
-              right: 20,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  AnimatedHamburger(
-                    isOpen: _isMenuOpen,
-                    onTap: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                        if (_isMenuOpen) {
-                          _menuAnimationController.forward();
-                        } else {
-                          _menuAnimationController.reverse();
-                        }
-                      });
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _showHistory ? Icons.chat_bubble_outline : Icons.history,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showHistory = !_showHistory;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            
-            // 4. Orbe Flotante (Sobre los mensajes)
-            Center(
-              child: IgnorePointer(
-                ignoring: _showTextField, // No bloquear toques si el teclado está abierto
-                child: GestureDetector(
-                  onPanUpdate: (details) => setState(() => _orbOffset += details.delta),
-                  onPanEnd: (details) => setState(() => _orbOffset = Offset.zero),
-                  onTapDown: (_) { _playWaterSound(); setState(() => _isOrbPressed = true); },
-                  onTapUp: (_) => setState(() => _isOrbPressed = false),
-                  onTap: () => setState(() => _showTextField = !_showTextField),
-                  onLongPressStart: (_) => _startRecording(),
-                  onLongPressEnd: (_) async {
-                    final base64Audio = await _stopRecording();
-                    if (base64Audio != null) {
-                      await _sendMultimodalData(question: "Analiza este audio.", base64Audio: base64Audio);
-                    }
-                  },
-                  child: AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return CustomPaint(
-                        painter: GlassOrbPainter(
-                          animationValue: _pulseController.value,
-                          offset: _orbOffset,
-                          isThinking: _isThinking,
-                          isPressed: _isOrbPressed,
-                          isRecording: _isRecording,
-                        ),
-                        size: const Size(220, 220),
-                      );
-                    },
-                  ),
+            if (msg["image"] != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.memory(base64Decode(msg["image"]), width: 180, fit: BoxFit.cover),
                 ),
               ),
-            ),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.4),
-                  child: Align(
-                    alignment: Alignment.topLeft,
-                    child: SlideTransition(
-                      position: _menuOffsetAnimation,
-                      child: Container(
-                        width: screenWidth * 0.8,
-                        height: screenHeight,
-                        decoration: BoxDecoration(color: const Color(0xFF0D0D0F).withValues(alpha: 0.98), border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1)))),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 100),
-                            _buildMenuItem(Icons.add_rounded, "Nuevo Chat", _startNewChat),
-                            _buildMenuItem(Icons.image_outlined, "Añadir Imagen", _pickImage),
-                            _buildMenuItem(Icons.history_rounded, "Historial", _toggleHistory),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            if (_showHistory)
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.85),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 80),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 30),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text("RECIENTES", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                              IconButton(onPressed: _toggleHistory, icon: const Icon(Icons.close_rounded, color: Colors.white)),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: ListView.builder(
-                            padding: const EdgeInsets.all(30),
-                            itemCount: _chatSessions.length,
-                            itemBuilder: (context, index) {
-                              final session = _chatSessions[index];
-                              final title = session.isNotEmpty ? session.first["text"] : "Chat vacío";
-                              return ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white54, size: 20),
-                                title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 16)),
-                                onTap: () { setState(() { _messages.clear(); _messages.addAll(session); _showHistory = false; }); },
-                              );
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            if (msg["text"].toString().isNotEmpty)
+              Text(msg["text"], style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, fontStyle: isThought ? FontStyle.italic : FontStyle.normal)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
-      leading: Icon(icon, color: Colors.white, size: 24),
-      title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)),
-      onTap: onTap,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0F),
+      body: Stack(
+        children: [
+          MeshGradientBackground(animation: _waveController),
+          Positioned.fill(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.only(top: 100, bottom: 250),
+              itemCount: _messages.length,
+              itemBuilder: (context, index) => _buildChatBubble(_messages[index]),
+            ),
+          ),
+          Positioned(
+            top: 50, left: 20, right: 20,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                AnimatedHamburger(isOpen: _isMenuOpen, onTap: _toggleMenu),
+                IconButton(icon: Icon(_showHistory ? Icons.chat_bubble : Icons.history, color: Colors.white), onPressed: () => setState(() => _showHistory = !_showHistory)),
+              ],
+            ),
+          ),
+          Center(
+            child: IgnorePointer(
+              ignoring: _showTextField,
+              child: GestureDetector(
+                onPanUpdate: (d) => setState(() => _orbOffset += d.delta),
+                onPanEnd: (d) => setState(() => _orbOffset = Offset.zero),
+                onTap: () => setState(() => _showTextField = !_showTextField),
+                onLongPressStart: (_) => _startRecording(),
+                onLongPressEnd: (_) async {
+                  final audio = await _stopRecording();
+                  if (audio != null) _sendMultimodalData(question: "Analiza este audio.", base64Audio: audio);
+                },
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, _) => CustomPaint(painter: GlassOrbPainter(animationValue: _pulseController.value, offset: _orbOffset, isThinking: _isThinking, isRecording: _isRecording, isPressed: _isOrbPressed), size: const Size(200, 200)),
+                ),
+              ),
+            ),
+          ),
+          if (_showTextField)
+            Positioned(
+              bottom: 40, left: 30, right: 30,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white10)),
+                child: Row(
+                  children: [
+                    Expanded(child: TextField(controller: _controller, autofocus: true, onSubmitted: (_) => _handleSend(), decoration: const InputDecoration(hintText: "Mensaje...", border: InputBorder.none))),
+                    IconButton(icon: const Icon(Icons.send), onPressed: _handleSend),
+                  ],
+                ),
+              ),
+            ),
+          if (_isMenuOpen)
+            GestureDetector(
+              onTap: _toggleMenu,
+              child: Container(
+                color: Colors.black54,
+                child: SlideTransition(
+                  position: _menuOffsetAnimation,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.7,
+                    color: const Color(0xFF0D0D0F),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 100),
+                        ListTile(leading: const Icon(Icons.add), title: const Text("Nuevo Chat"), onTap: _startNewChat),
+                        ListTile(leading: const Icon(Icons.image), title: const Text("Añadir Imagen"), onTap: _pickImage),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (_showHistory)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black90,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 80),
+                    const Text("HISTORIAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Expanded(child: ListView.builder(itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(title: Text(_chatSessions[i].first["text"]), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
+                    TextButton(onPressed: () => setState(() => _showHistory = false), child: const Text("Cerrar")),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
+
+  void _toggleMenu() { setState(() { _isMenuOpen = !_isMenuOpen; if (_isMenuOpen) _menuAnimationController.forward(); else _menuAnimationController.reverse(); }); }
 }
+
+extension DateExt on DateTime { int get ms => millisecondsSinceEpoch; }
