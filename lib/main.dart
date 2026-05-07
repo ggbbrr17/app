@@ -321,6 +321,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     if (_messages.isNotEmpty) setState(() { _chatSessions.add(List.from(_messages)); _messages.clear(); _isMenuOpen = false; _menuAnimationController.reverse(); });
   }
 
+  void _unfocus() {
+    FocusScope.of(context).unfocus();
+    setState(() => _showTextField = false);
+  }
+
   Widget _buildChatBubble(Map<String, dynamic> msg) {
     final isUser = msg["role"] == "user";
     final isThought = msg["isThought"] ?? false;
@@ -358,8 +363,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0F),
-      body: Stack(
-        children: [
+      body: GestureDetector(
+        onTap: _unfocus,
+        behavior: HitTestBehavior.opaque,
+        child: Stack(
+          children: [
           MeshGradientBackground(animation: _waveController),
           Positioned.fill(
             child: ListView.builder(
@@ -471,9 +479,29 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 child: Column(
                   children: [
                     const SizedBox(height: 80),
-                    const Text("HISTORIAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    Expanded(child: ListView.builder(itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(title: Text(_chatSessions[i].first["text"]), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
-                    TextButton(onPressed: () => setState(() => _showHistory = false), child: const Text("Cerrar")),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 30),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text("HISTORIAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                          GestureDetector(
+                            onTap: () => setState(() => _showHistory = false),
+                            child: SizedBox(
+                              width: 48, height: 48,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  Transform.rotate(angle: 0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
+                                  Transform.rotate(angle: -0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 30), itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(contentPadding: EdgeInsets.zero, title: Text(_chatSessions[i].first["text"], style: const TextStyle(color: Colors.white70)), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
                   ],
                 ),
               ),
