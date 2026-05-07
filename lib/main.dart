@@ -58,12 +58,14 @@ class GlassOrbPainter extends CustomPainter {
   final Offset offset;
   final bool isThinking;
   final bool isPressed;
+  final bool isRecording;
 
   GlassOrbPainter({
     required this.animationValue,
     required this.offset,
     this.isThinking = false,
     this.isPressed = false,
+    this.isRecording = false,
   });
 
   @override
@@ -77,8 +79,12 @@ class GlassOrbPainter extends CustomPainter {
     final currentRadius = baseRadius * (1.0 + pulse + morph + (isPressed ? 0.1 : 0.0));
 
     // 1. Shadow / Glow
+    final glowColor = isRecording 
+        ? Colors.redAccent 
+        : (isThinking ? Colors.cyanAccent : Colors.white);
+        
     final shadowPaint = Paint()
-      ..color = (isThinking ? Colors.cyanAccent : Colors.white).withValues(alpha: 0.2)
+      ..color = glowColor.withValues(alpha: 0.2)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 30);
     canvas.drawCircle(center, currentRadius + 10, shadowPaint);
 
@@ -86,8 +92,8 @@ class GlassOrbPainter extends CustomPainter {
     final spherePaint = Paint()
       ..shader = RadialGradient(
         colors: [
-          Colors.white.withValues(alpha: 0.8),
-          Colors.white.withValues(alpha: 0.2),
+          (isRecording ? Colors.redAccent : Colors.white).withValues(alpha: 0.8),
+          (isRecording ? Colors.red.shade900 : Colors.white).withValues(alpha: 0.2),
           Colors.white.withValues(alpha: 0.05),
         ],
         stops: const [0.0, 0.6, 1.0],
@@ -619,6 +625,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                               _orbOffset = Offset.zero; 
                             });
                           },
+                          onLongPressStart: (_) => _startRecording(),
+                          onLongPressEnd: (_) async {
+                            final base64Audio = await _stopRecording();
+                            if (base64Audio != null) {
+                              setState(() {
+                                _messages.add({"role": "user", "text": "Nota de voz enviada"});
+                              });
+                              await _sendMultimodalData(
+                                question: "Interpreta el audio adjunto.",
+                                base64Audio: base64Audio,
+                              );
+                            }
+                          },
                           onTapDown: (_) {
                             _playWaterSound();
                             setState(() => _isOrbPressed = true);
@@ -634,6 +653,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                                   offset: _orbOffset,
                                   isThinking: _isThinking,
                                   isPressed: _isOrbPressed,
+                                  isRecording: _isRecording,
                                 ),
                               );
                             },
