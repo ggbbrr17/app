@@ -67,135 +67,75 @@ class GlassOrbPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2) + offset;
-    final baseRadius = size.width * 0.22; // Orbe más pequeño
-    final pulse = math.sin(animationValue * 2 * math.pi) * 0.03;
-    final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
+    final baseRadius = size.width * 0.12; // Orbe MUCHO más pequeño (minimalista)
+    final pulse = math.sin(animationValue * 2 * math.pi) * 0.02;
+    final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.05 : 0.0));
 
     if (isThinking) {
-      // --- FIGURA GEOMÉTRICA FUTURISTA MINIMALISTA ---
+      // --- ANIMACIÓN PENSANDO: 3 Puntos en Ola (Minimalista) ---
       final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = Colors.cyanAccent.withValues(alpha: 0.8);
+        ..style = PaintingStyle.fill
+        ..color = Colors.white.withValues(alpha: 0.9);
 
-      final double rotation = animationValue * 2 * math.pi;
-      
-      // Expansión y contracción elástica (Acople y Desacople)
-      final double cycle = (math.sin(animationValue * 2 * math.pi) + 1.0) / 2.0;
-      
-      canvas.save();
-      canvas.translate(center.dx, center.dy);
-      canvas.rotate(rotation);
-
-      // Hexágono central que late suavemente
-      final Path hex = Path();
-      final double hexRadius = currentRadius * (0.3 + cycle * 0.1);
-      for(int j=0; j<=6; j++) {
-         final double a = j * 2 * math.pi / 6;
-         final Offset p = Offset(math.cos(a) * hexRadius, math.sin(a) * hexRadius);
-         if (j == 0) hex.moveTo(p.dx, p.dy);
-         else hex.lineTo(p.dx, p.dy);
-      }
-      canvas.drawPath(hex, paint..strokeWidth = 1.5);
-
-      // Líneas minimalistas que se desacoplan y acoplan
-      final double outerRadiusOffset = cycle * currentRadius * 0.4;
+      final double dotSpacing = currentRadius * 0.5;
+      final double startX = center.dx - dotSpacing;
       
       for (int i = 0; i < 3; i++) {
-        final double angleOffset = i * 2 * math.pi / 3;
-        canvas.drawArc(
-          Rect.fromCircle(center: Offset.zero, radius: currentRadius * 0.5 + outerRadiusOffset),
-          angleOffset,
-          math.pi / 2.5, // Arcos limpios
-          false,
-          paint..strokeWidth = 1.0..color = Colors.white.withValues(alpha: 0.5)
-        );
+        // Ola: cada punto tiene un desfase (phase) en el tiempo
+        final double phase = (animationValue * 4 * math.pi) - (i * math.pi / 2.5);
+        final double yOffset = math.sin(phase) * (currentRadius * 0.3);
+        
+        canvas.drawCircle(Offset(startX + (i * dotSpacing), center.dy + yOffset), 3.5, paint);
       }
-      
-      canvas.restore();
     } else {
-      // --- CONTENEDOR DE CRISTAL 3D ---
+      // --- CONTENEDOR DE CRISTAL MINIMALISTA ---
       
-      // 1. Tinte azulado tenue en los bordes para el grosor del vidrio
+      // Borde sutil del cristal
       final Paint glassEdgePaint = Paint()
-        ..shader = RadialGradient(
-          colors: [Colors.transparent, Colors.cyanAccent.withValues(alpha: 0.05), Colors.cyanAccent.withValues(alpha: 0.3)],
-          stops: const [0.6, 0.9, 1.0],
-        ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0
+        ..color = Colors.white.withValues(alpha: 0.2);
       canvas.drawCircle(center, currentRadius, glassEdgePaint);
 
-      // --- SISTEMA DE FLUIDOS INTERNO (AGUA) ---
+      // --- SISTEMA DE FLUIDOS INTERNO (AGUA TRANSPARENTE) ---
       canvas.save();
-      canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: currentRadius - 1.5)));
+      canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: currentRadius - 0.5)));
 
-      final double waterLevel = center.dy + currentRadius * 0.25; // Tercio inferior aprox
+      final double waterLevel = center.dy + currentRadius * 0.15; // Agua en la parte inferior
       final Path waterPath = Path();
       
       waterPath.moveTo(center.dx - currentRadius, center.dy + currentRadius);
       waterPath.lineTo(center.dx - currentRadius, waterLevel);
       
-      // Onda orgánica y caótica
-      final double t = animationValue * 4 * math.pi;
+      // Onda suave (sin caos, sin salpicaduras)
+      final double t = animationValue * 3 * math.pi;
       for (double x = -currentRadius; x <= currentRadius; x += 2) {
-        final double wave1 = math.sin(t + x * 0.05) * 6;
-        final double wave2 = math.cos(t * 1.3 + x * 0.08) * 3;
-        final double wave3 = math.sin(t * 0.7 + x * 0.02) * 4;
-        final double y = waterLevel + wave1 + wave2 + wave3;
-        waterPath.lineTo(center.dx + x, y);
+        final double wave = math.sin(t + x * 0.08) * 3 + math.cos(t * 0.8 + x * 0.04) * 2;
+        waterPath.lineTo(center.dx + x, waterLevel + wave);
       }
       waterPath.lineTo(center.dx + currentRadius, center.dy + currentRadius);
       waterPath.close();
 
+      // Agua transparente: solo un ligero blanqueamiento
       canvas.drawPath(waterPath, Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          colors: [Color(0x9900E5FF), Color(0xDD0088FF)]
-        ).createShader(Rect.fromCircle(center: center, radius: currentRadius))
+        ..color = Colors.white.withValues(alpha: 0.08)
+        ..style = PaintingStyle.fill
+      );
+      
+      // Línea de la superficie del agua (borde superior)
+      final Path surfacePath = Path();
+      for (double x = -currentRadius; x <= currentRadius; x += 2) {
+        final double wave = math.sin(t + x * 0.08) * 3 + math.cos(t * 0.8 + x * 0.04) * 2;
+        if (x == -currentRadius) surfacePath.moveTo(center.dx + x, waterLevel + wave);
+        else surfacePath.lineTo(center.dx + x, waterLevel + wave);
+      }
+      canvas.drawPath(surfacePath, Paint()
+        ..color = Colors.white.withValues(alpha: 0.25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8
       );
 
-      // Salpicaduras y Gotas (Física determinista)
-      final Paint dropPaint = Paint()..color = const Color(0xCC00E5FF);
-      for (int i = 0; i < 15; i++) {
-        final double seedX = (i * 13.7) % 1.0;
-        final double seedCycle = (i * 29.3) % 1.0;
-        final double seedHeight = (i * 17.5) % 1.0;
-        
-        double cycle = (animationValue * 1.5 + seedCycle) % 1.0;
-        final double startX = center.dx - currentRadius * 0.7 + (currentRadius * 1.4 * seedX);
-        
-        // Gravedad simulada (parábola)
-        final double maxHeight = currentRadius * (0.3 + seedHeight * 0.5);
-        final double heightOffset = 4 * maxHeight * cycle * (1 - cycle);
-        
-        final double waveY = waterLevel + math.sin(t + (startX - center.dx) * 0.05) * 6;
-        final double dropY = waveY - heightOffset;
-        
-        if (cycle > 0.05 && cycle < 0.95) {
-           final double dropRadius = 0.8 + seedHeight * 2.0;
-           canvas.drawCircle(Offset(startX, dropY), dropRadius, dropPaint);
-           canvas.drawCircle(Offset(startX - dropRadius * 0.3, dropY - dropRadius * 0.3), dropRadius * 0.3, Paint()..color = Colors.white.withValues(alpha: 0.8));
-        }
-      }
-      
       canvas.restore(); // Fin máscara de agua
-
-      // --- DETALLES DE CRISTAL EXTERIORES ---
-      
-      // Brillo especular intenso (Luz de estudio superior derecha)
-      final Paint specularPaint = Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0.4, -0.4),
-          radius: 0.4,
-          colors: [Colors.white.withValues(alpha: 0.8), Colors.transparent],
-          stops: const [0.0, 0.8],
-        ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
-      canvas.drawCircle(center, currentRadius, specularPaint);
-
-      // Borde de refracción brillante (Rim Light)
-      canvas.drawCircle(center, currentRadius, Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = Colors.white.withValues(alpha: 0.5));
     }
   }
 
