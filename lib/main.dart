@@ -399,20 +399,50 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
               ),
             ),
           ),
-          if (_showTextField)
-            Positioned(
-              bottom: 40, left: 30, right: 30,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white10)),
-                child: Row(
-                  children: [
-                    Expanded(child: TextField(controller: _controller, autofocus: true, onSubmitted: (_) => _handleSend(), decoration: const InputDecoration(hintText: "Mensaje...", border: InputBorder.none))),
-                    IconButton(icon: const Icon(Icons.send), onPressed: _handleSend),
-                  ],
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeOutBack,
+            bottom: _showTextField ? 100 : 80,
+            left: 30, right: 30,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 400),
+              opacity: _showTextField ? 1.0 : 0.0,
+              child: AnimatedScale(
+                duration: const Duration(milliseconds: 500),
+                scale: _showTextField ? 1.0 : 0.8,
+                curve: Curves.easeOutBack,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.transparent, // Totalmente transparente
+                    borderRadius: BorderRadius.circular(40),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _controller,
+                          autofocus: true,
+                          onSubmitted: (_) => _handleSend(),
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          decoration: const InputDecoration(
+                            hintText: "Escribe tu comando...",
+                            hintStyle: TextStyle(color: Colors.white38, fontSize: 15),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.send_rounded, color: Colors.cyanAccent, size: 22),
+                        onPressed: _handleSend,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
+          ),
           if (_isMenuOpen)
             GestureDetector(
               onTap: _toggleMenu,
