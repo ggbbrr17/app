@@ -73,65 +73,69 @@ class GlassOrbPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2) + offset;
     final baseRadius = size.width * 0.35;
     
-    // Pulsing and morphing logic
     final pulse = math.sin(animationValue * 2 * math.pi) * 0.05;
-    final morph = isThinking ? math.sin(animationValue * 4 * math.pi) * 0.1 : 0.0;
-    final currentRadius = baseRadius * (1.0 + pulse + morph + (isPressed ? 0.1 : 0.0));
+    final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
-    // Colores dinámicos y elegantes (Futurista)
-    final Color colorA = Colors.cyanAccent.withValues(alpha: 0.2);
-    final Color colorB = Colors.deepPurpleAccent.withValues(alpha: 0.15);
-    final Color colorC = Colors.tealAccent.withValues(alpha: 0.2);
+    // Ciclo de Humo (Gris) vs Colores Vivos
+    // Usamos el animationValue para crear un ciclo donde a veces es gris
+    final smokeCycle = (math.sin(animationValue * math.pi * 0.5) + 1) / 2; 
+    final bool isSmoky = smokeCycle < 0.2 && !isThinking && !isRecording;
 
-    // Rotación de colores basada en la animación
-    final double rotation = animationValue * 2 * math.pi;
+    final paint = Paint()..style = PaintingStyle.fill;
 
-    // 1. Glow Sutil
-    final glowColor = isRecording 
-        ? Colors.redAccent 
-        : (isThinking ? Colors.cyanAccent : Colors.indigoAccent);
+    if (isSmoky) {
+      // ESTADO HUMO (Gris y Etéreo)
+      for (int i = 0; i < 3; i++) {
+        final t = (animationValue + (i * 0.33)) % 1.0;
+        final smokePaint = Paint()
+          ..shader = RadialGradient(
+            colors: [
+              Colors.grey.withValues(alpha: 0.3),
+              Colors.grey.withValues(alpha: 0.0),
+            ],
+            center: Alignment(math.sin(t * 2 * math.pi) * 0.5, math.cos(t * 2 * math.pi) * 0.5),
+          ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
+        canvas.drawCircle(center, currentRadius, smokePaint);
+      }
+    } else {
+      // ESTADO DINÁMICO (Colores moviéndose internamente)
+      final colors = isRecording 
+          ? [Colors.redAccent, Colors.orangeAccent]
+          : (isThinking 
+              ? [Colors.cyanAccent, Colors.blueAccent, Colors.purpleAccent]
+              : [Colors.cyanAccent, Colors.tealAccent, Colors.indigoAccent]);
+
+      for (int i = 0; i < colors.length; i++) {
+        final phase = (animationValue * 2 * math.pi) + (i * (2 * math.pi / colors.length));
+        final blobOffset = Offset(math.sin(phase) * 15, math.cos(phase) * 15);
         
-    final shadowPaint = Paint()
-      ..color = glowColor.withValues(alpha: 0.1)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 40);
-    canvas.drawCircle(center, currentRadius + 15, shadowPaint);
+        final blobPaint = Paint()
+          ..shader = RadialGradient(
+            colors: [
+              colors[i].withValues(alpha: 0.25),
+              colors[i].withValues(alpha: 0.0),
+            ],
+          ).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8));
+        
+        canvas.drawCircle(center + blobOffset, currentRadius, blobPaint..blendMode = BlendMode.plus);
+      }
+    }
 
-    // 2. Base Sphere (Hiper-Transparente con Gradiente Fluido)
-    final spherePaint = Paint()
-      ..shader = SweepGradient(
-        center: Alignment.center,
-        transform: GradientRotation(rotation),
-        colors: [colorA, colorB, colorC, colorA],
-        stops: const [0.0, 0.33, 0.66, 1.0],
-      ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
-    
-    canvas.drawCircle(center, currentRadius, spherePaint..blendMode = BlendMode.screen);
-
-    // 3. Brillo de Cristal (Specular)
-    final glassPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.white.withValues(alpha: 0.15),
-          Colors.white.withValues(alpha: 0.0),
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
-    canvas.drawCircle(center, currentRadius * 0.95, glassPaint);
-    
-    // 4. Borde de Plasma (Rim Light)
+    // Bordes de cristal y transparencia
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.5
-      ..shader = SweepGradient(
-        transform: GradientRotation(-rotation * 2),
-        colors: [
-          Colors.white.withValues(alpha: 0.4),
-          Colors.cyanAccent.withValues(alpha: 0.0),
-          Colors.white.withValues(alpha: 0.4),
-        ],
-      ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
+      ..color = isSmoky ? Colors.white24 : Colors.white.withValues(alpha: 0.3);
     canvas.drawCircle(center, currentRadius, rimPaint);
+
+    // Brillo sutil superior
+    final highlightPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [Colors.white.withValues(alpha: 0.1), Colors.transparent],
+      ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
+    canvas.drawCircle(center, currentRadius * 0.9, highlightPaint);
   }
 
   @override
@@ -152,17 +156,14 @@ class MeshGradientBackground extends StatelessWidget {
             // Base Gradient
             Container(color: const Color(0xFF0A0A0F)),
             
-            // Animated Blobs
-            _buildBlob(context, const Color(0xFF1A237E), 0.2, 0.3, 1.5), // Deep Blue
-            _buildBlob(context, const Color(0xFFC6FF00), 0.7, 0.6, 1.2), // Lime Green
-            _buildBlob(context, const Color(0xFF7B1FA2), 0.4, 0.8, 1.8), // Violet
+            // Animated Blobs (Vívidos)
+            _buildBlob(context, const Color(0xFF1A237E), 0.2, 0.3, 2.0), 
+            _buildBlob(context, const Color(0xFFC6FF00), 0.7, 0.6, 1.5), 
+            _buildBlob(context, const Color(0xFF7B1FA2), 0.4, 0.8, 2.2), 
             
-            // Frosted Glass Layer
+            // Sin difuminación, solo una capa de tinte sutil
             Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-                child: Container(color: Colors.transparent),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.2)),
             ),
           ],
         );
@@ -714,9 +715,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
             Positioned(
               top: MediaQuery.of(context).padding.top + 10,
               left: 20,
-              child: IconButton(
-                icon: AnimatedIcon(icon: AnimatedIcons.menu_close, progress: _menuAnimationController, color: Colors.white),
-                onPressed: _toggleMenu,
+              child: GestureDetector(
+                onTap: _toggleMenu,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  color: Colors.transparent,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(width: 20, height: 2, color: Colors.white),
+                      const SizedBox(height: 5),
+                      Container(width: 12, height: 2, color: Colors.white), // Línea corta
+                      const SizedBox(height: 5),
+                      Container(width: 20, height: 2, color: Colors.white),
+                    ],
+                  ),
+                ),
               ),
             ),
             if (_isMenuOpen)
@@ -736,8 +751,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 100),
-                            Padding(padding: const EdgeInsets.symmetric(horizontal: 25), child: Text("GLYPH SOBERANO", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 3))),
-                            const SizedBox(height: 30),
                             _buildMenuItem(Icons.add_rounded, "Nuevo Chat", _startNewChat),
                             _buildMenuItem(Icons.image_outlined, "Añadir Imagen", _pickImage),
                             _buildMenuItem(Icons.history_rounded, "Historial", _toggleHistory),
