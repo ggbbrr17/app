@@ -32,18 +32,10 @@ jobs:
 
       - name: Configurar Xcode (Sin Firma)
         run: |
-          # Forzar al Podfile a usar la ruta de Flutter del servidor
-          sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
-
-          # Configuración de Identificador y Target
+          # Configuración de Identificador de Bundle
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
-          sed -i '' 's/IPHONEOS_DEPLOYMENT_TARGET = [^;]*;/IPHONEOS_DEPLOYMENT_TARGET = 13.0;/g' ios/Runner.xcodeproj/project.pbxproj
           
-          # Parche de Podfile
-          if [ -f ios/Podfile ]; then
-            perl -i -pe 's/flutter_additional_ios_build_settings\((target|installer)\)/flutter_additional_ios_build_settings($1)\n      target.build_configurations.each { |config| config.build_settings["IPHONEOS_DEPLOYMENT_TARGET"] = "13.0" }/g' ios/Podfile
-          fi
-
+          # Desactivar Firma de Código para IPA AltStore
           sed -i '' 's/CODE_SIGNING_REQUIRED = YES;/CODE_SIGNING_REQUIRED = NO;/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGNING_ALLOWED = YES;/CODE_SIGNING_ALLOWED = NO;/g' ios/Runner.xcodeproj/project.pbxproj
           sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' ios/Runner.xcodeproj/project.pbxproj
