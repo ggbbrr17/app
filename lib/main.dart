@@ -81,7 +81,33 @@ class GlassOrbPainter extends CustomPainter {
     final smokeCycle = (math.sin(animationValue * math.pi * 0.5) + 1) / 2; 
     final bool isSmoky = smokeCycle < 0.2 && !isThinking && !isRecording;
 
-    if (isSmoky) {
+    if (isThinking) {
+      // ESTADO PENSANDO: 3 Puntos en forma de Ola
+      final dotPaint = Paint()
+        ..color = Colors.cyanAccent.withValues(alpha: 0.4)
+        ..style = PaintingStyle.fill;
+
+      for (int i = 0; i < 3; i++) {
+        final double dotOffset = (i - 1) * 30.0; // Espaciado entre puntos
+        final double waveY = math.sin((animationValue * 2 * math.pi) + (i * 1.5)) * 10.0;
+        
+        canvas.drawCircle(
+          center + Offset(dotOffset, waveY),
+          6.0,
+          dotPaint,
+        );
+        
+        // Añadimos un pequeño resplandor a cada punto
+        canvas.drawCircle(
+          center + Offset(dotOffset, waveY),
+          12.0,
+          Paint()
+            ..shader = RadialGradient(
+              colors: [Colors.cyanAccent.withValues(alpha: 0.15), Colors.transparent],
+            ).createShader(Rect.fromCircle(center: center + Offset(dotOffset, waveY), radius: 12.0)),
+        );
+      }
+    } else if (isSmoky) {
       // ESTADO HUMO (Gris y Etéreo)
       for (int i = 0; i < 3; i++) {
         final t = (animationValue + (i * 0.33)) % 1.0;
