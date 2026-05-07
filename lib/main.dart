@@ -254,7 +254,7 @@ class MeshGradientBackground extends StatelessWidget {
                   child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.cyanAccent.withValues(alpha: 0.1)])))),
                 ),
               ),
-              BackdropFilter(filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35), child: Container(color: Colors.black.withValues(alpha: 0.15))),
+              BackdropFilter(filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35), child: Container(color: Colors.black.withValues(alpha: 0.45))),
             ],
           ),
         );
@@ -272,7 +272,7 @@ class MeshGradientBackground extends StatelessWidget {
       child: Container(
         width: 500 * sizeMult,
         height: 500 * sizeMult,
-        decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color.withValues(alpha: 0.55), Colors.transparent], stops: const [0.2, 1.0])),
+        decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color.withValues(alpha: 0.25), Colors.transparent], stops: const [0.2, 1.0])),
       ),
     );
   }
