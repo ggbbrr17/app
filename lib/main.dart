@@ -66,31 +66,54 @@ class GlassOrbPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2) + offset;
-    final baseRadius = size.width * 0.35;
+    final baseRadius = size.width * 0.22; // Orbe más pequeño
     final pulse = math.sin(animationValue * 2 * math.pi) * 0.03;
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
     if (isThinking) {
+      // Solo dibujamos las líneas neurales al pensar
       final linePaint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.2
         ..strokeCap = StrokeCap.round;
 
       for (int i = 0; i < 4; i++) {
-        final double speed = (1.0 + i * 0.5);
+        final double speed = (1.2 + i * 0.6);
         final double startAngle = (animationValue * speed * 4 * math.pi) + (i * math.pi / 2);
-        final double sweepAngle = 0.4 + math.sin(animationValue * 6 * math.pi + i) * 0.3;
-        final double radiusMult = 0.4 + (i * 0.12);
+        final double sweepAngle = 0.5 + math.sin(animationValue * 6 * math.pi + i) * 0.4;
+        final double radiusMult = 0.6 + (i * 0.25);
         
         canvas.drawArc(
           Rect.fromCircle(center: center, radius: currentRadius * radiusMult),
           startAngle,
           sweepAngle,
           false,
-          linePaint..color = Colors.cyanAccent.withValues(alpha: (0.1 + i * 0.2))
+          linePaint..color = Colors.cyanAccent.withValues(alpha: (0.1 + i * 0.25))
         );
       }
+    } else {
+      // Dibujo del Orbe 3D
+      final colors = isRecording ? [Colors.redAccent, Colors.orangeAccent] : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
+      
+      // Capas de profundidad 3D
+      for (int i = 0; i < colors.length; i++) {
+        final double phase = (animationValue * 2 * math.pi * (1.0 + i * 0.1)) + (i * 2.1);
+        final double opacity = (math.sin(phase * 0.7) + 1.0) / 2.0 * 0.2;
+        final blobOffset = Offset(math.sin(phase * 0.6) * (currentRadius * 0.2), math.cos(phase * 0.4) * (currentRadius * 0.2));
+        canvas.drawCircle(center + blobOffset, currentRadius, Paint()..shader = RadialGradient(colors: [colors[i].withValues(alpha: opacity), colors[i].withValues(alpha: 0.0)]).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8))..blendMode = BlendMode.screen);
+      }
+
+      // Brillo de superficie (Efecto 3D Cristal)
+      final glossPaint = Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.3, -0.3),
+          colors: [Colors.white.withValues(alpha: 0.4), Colors.transparent],
+          radius: 0.5,
+        ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
+      canvas.drawCircle(center, currentRadius, glossPaint);
+
+      // Borde de definición
+      canvas.drawCircle(center, currentRadius, Paint()..style = PaintingStyle.stroke..strokeWidth = 0.5..color = Colors.white.withValues(alpha: 0.4));
     }
 
     final colors = isRecording ? [Colors.redAccent, Colors.orangeAccent] : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF9C27B0)];
@@ -151,6 +174,14 @@ class MeshGradientBackground extends StatelessWidget {
               _buildAurora(context, const Color(0xFF00E5FF), 0.1, 0.2, t, 1.4),
               _buildAurora(context, const Color(0xFFD4FF00), 0.9, 0.5, t + 2.0, 1.6),
               _buildAurora(context, const Color(0xFF9C27B0), 0.4, 0.8, t + 4.0, 1.5),
+              // Reflejo Acuático
+              Positioned(
+                bottom: 0, left: 0, right: 0, height: MediaQuery.of(context).size.height * 0.3,
+                child: Opacity(
+                  opacity: 0.3,
+                  child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.cyanAccent.withValues(alpha: 0.1)])))),
+                ),
+              ),
               BackdropFilter(filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35), child: Container(color: Colors.black.withValues(alpha: 0.15))),
             ],
           ),
@@ -307,8 +338,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     final text = _controller.text.trim();
     if (text.isEmpty && _pendingImageBase64 == null) return;
     final img = _pendingImageBase64;
+    _unfocus(); // Cierre automático del teclado
     setState(() {
-      _showTextField = false;
       _messages.add({"role": "user", "text": text, "image": img});
       _pendingImageBase64 = null; _pendingImageName = null;
     });
@@ -435,8 +466,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                           onSubmitted: (_) => _handleSend(),
                           style: const TextStyle(color: Colors.white, fontSize: 16),
                           decoration: const InputDecoration(
-                            hintText: "Escribe tu comando...",
-                            hintStyle: TextStyle(color: Colors.white38, fontSize: 15),
+                            hintText: "", // Limpio
                             border: InputBorder.none,
                           ),
                         ),
