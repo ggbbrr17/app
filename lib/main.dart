@@ -233,6 +233,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   bool _showHistory = false;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
 
+  // Pendientes para Multimodal
+  String? _pendingImageBase64;
+  String? _pendingImageName;
+
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl = "https://service-cv3f.onrender.com/api/v1/notifications";
   final String secret = "glyph123";
@@ -409,15 +413,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
 
       setState(() {
         _isMenuOpen = false; 
-        _messages.add({"role": "user", "text": "Imagen adjunta: $fileName"});
-        _isThinking = true;
+        _showTextField = true; // Abrimos la barra para que el usuario escriba
+        _pendingImageBase64 = base64String;
+        _pendingImageName = fileName;
       });
       _scrollToBottom();
-
-      await _sendMultimodalData(
-        question: "Interpreta la imagen adjunta: $fileName",
-        base64Image: base64String,
-      );
     }
   }
 
@@ -511,15 +511,23 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
 
   Future<void> _handleSend() async {
     final text = _controller.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && _pendingImageBase64 == null) return;
     FocusScope.of(context).unfocus();
     _controller.clear();
+    
+    final String? imgBase64 = _pendingImageBase64;
+    final String? imgName = _pendingImageName;
+
     setState(() {
       _showTextField = false;
-      _messages.add({"role": "user", "text": text});
+      String userText = text;
+      if (imgName != null) userText = "📸 $imgName\n$text";
+      _messages.add({"role": "user", "text": userText});
+      _pendingImageBase64 = null; // Limpiamos pendientes
+      _pendingImageName = null;
     });
     _scrollToBottom();
-    await _sendMultimodalData(question: text);
+    await _sendMultimodalData(question: text, base64Image: imgBase64);
   }
 
   void _showError(String err) {
@@ -609,33 +617,60 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                         if (_showTextField)
                           Padding(
                             padding: const EdgeInsets.only(left: 30, right: 30, bottom: 40),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(30),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: TextField(
-                                      controller: _controller,
-                                      autofocus: true,
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: const InputDecoration(
-                                        hintText: "", 
-                                        border: InputBorder.none
-                                      ),
-                                      onSubmitted: (_) => _handleSend(),
+                            child: Column(
+                              children: [
+                                if (_pendingImageName != null)
+                                  Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.cyanAccent.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.image, color: Colors.cyanAccent, size: 16),
+                                        const SizedBox(width: 8),
+                                        Text(_pendingImageName!, style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                        const SizedBox(width: 8),
+                                        GestureDetector(
+                                          onTap: () => setState(() { _pendingImageName = null; _pendingImageBase64 = null; }),
+                                          child: const Icon(Icons.close, color: Colors.white54, size: 14),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(Icons.send_rounded, color: Colors.white70), 
-                                    onPressed: _handleSend
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                                   ),
-                                ],
-                              ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _controller,
+                                          autofocus: true,
+                                          style: const TextStyle(color: Colors.white),
+                                          decoration: const InputDecoration(
+                                            hintText: "", 
+                                            border: InputBorder.none
+                                          ),
+                                          onSubmitted: (_) => _handleSend(),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.send_rounded, color: Colors.white70), 
+                                        onPressed: _handleSend
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         // Solo mostramos el Orbe si NO estamos escribiendo y NO estamos pensando (o si estamos pensando pero el texto ya se envió)
