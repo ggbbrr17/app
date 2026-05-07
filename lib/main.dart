@@ -165,30 +165,30 @@ class AnimatedHamburger extends StatelessWidget {
           children: [
             // Línea Superior
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.elasticOut,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
               top: isOpen ? 23 : 16,
               child: AnimatedRotation(
-                duration: const Duration(milliseconds: 400),
+                duration: const Duration(milliseconds: 500),
                 turns: isOpen ? 0.125 : 0,
-                child: Container(width: 26, height: 2, color: Colors.white),
+                child: Container(width: 26, height: 2.5, color: Colors.white),
               ),
             ),
-            // Línea Central (Desaparece)
+            // Línea Central (Más corta)
             AnimatedOpacity(
-              duration: const Duration(milliseconds: 200),
+              duration: const Duration(milliseconds: 300),
               opacity: isOpen ? 0.0 : 1.0,
-              child: Container(width: 14, height: 2, color: Colors.white),
+              child: Container(width: 16, height: 2.5, color: Colors.white), // Solo 16 de ancho
             ),
             // Línea Inferior
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.elasticOut,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
               bottom: isOpen ? 23 : 16,
               child: AnimatedRotation(
-                duration: const Duration(milliseconds: 400),
+                duration: const Duration(milliseconds: 500),
                 turns: isOpen ? -0.125 : 0,
-                child: Container(width: 26, height: 2, color: Colors.white),
+                child: Container(width: 26, height: 2.5, color: Colors.white),
               ),
             ),
           ],
@@ -209,20 +209,20 @@ class MeshGradientBackground extends StatelessWidget {
       builder: (context, child) {
         final t = animation.value * 2 * math.pi;
         return Container(
-          decoration: const BoxDecoration(color: Color(0xFF050508)),
+          decoration: const BoxDecoration(color: Color(0xFF020204)), // Fondo más profundo
           child: Stack(
             children: [
-              // Aurora Cian
-              _buildAurora(context, const Color(0xFF00E5FF), 0.2, 0.3, t, 1.2),
-              // Aurora Lima
-              _buildAurora(context, const Color(0xFFC6FF00), 0.8, 0.4, t + 2.0, 1.5),
-              // Aurora Violeta Etea
-              _buildAurora(context, const Color(0xFF7B1FA2), 0.5, 0.7, t + 4.0, 1.8),
+              // Aurora Cian Vívida
+              _buildAurora(context, const Color(0xFF00E5FF), 0.1, 0.2, t, 1.4),
+              // Aurora Lima Vívida
+              _buildAurora(context, const Color(0xFFD4FF00), 0.9, 0.5, t + 2.0, 1.6),
+              // Aurora Violeta Vívida
+              _buildAurora(context, const Color(0xFF9C27B0), 0.4, 0.8, t + 4.0, 1.5),
               
-              // Capa de profundidad final
+              // Capa de difuminación reducida para mayor nitidez/viva
               BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-                child: Container(color: Colors.black.withValues(alpha: 0.1)),
+                filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
+                child: Container(color: Colors.black.withValues(alpha: 0.15)),
               ),
             ],
           ),
@@ -233,19 +233,21 @@ class MeshGradientBackground extends StatelessWidget {
 
   Widget _buildAurora(BuildContext context, Color color, double x, double y, double t, double sizeMult) {
     final size = MediaQuery.of(context).size;
-    final dx = math.sin(t * 0.5) * 100;
-    final dy = math.cos(t * 0.3) * 100;
+    // Frecuencias enteras (1.0, 2.0, etc.) garantizan un bucle perfecto sin saltos
+    final dx = math.sin(t * 1.0) * 150; 
+    final dy = math.cos(t * 1.0) * 150;
     
     return Positioned(
-      left: (x * size.width) + dx - (200 * sizeMult),
-      top: (y * size.height) + dy - (200 * sizeMult),
+      left: (x * size.width) + dx - (250 * sizeMult),
+      top: (y * size.height) + dy - (250 * sizeMult),
       child: Container(
-        width: 400 * sizeMult,
-        height: 400 * sizeMult,
+        width: 500 * sizeMult,
+        height: 500 * sizeMult,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withValues(alpha: 0.3), Colors.transparent],
+            colors: [color.withValues(alpha: 0.55), Colors.transparent], // Más vívido aún
+            stops: const [0.2, 1.0], // Centro más denso
           ),
         ),
       ),
@@ -632,9 +634,29 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
         child: Stack(
           children: [
             // Background Aurora Boreal
-            MeshGradientBackground(animation: _waveController),
+            MeshGradientBackground(animation: _waveController, intensity: 1.2, blur: 10),
             
-            // Header
+            // Capa de Mensajes (Pasa por detrás del Orbe)
+            Positioned.fill(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 100, bottom: 250),
+                itemCount: _showHistory 
+                  ? (_chatSessions.isEmpty ? 1 : _chatSessions.length)
+                  : _messages.length,
+                itemBuilder: (context, index) {
+                  if (_showHistory) {
+                    if (_chatSessions.isEmpty) {
+                      return const Center(child: Text("No hay historial aún.", style: TextStyle(color: Colors.white54)));
+                    }
+                    return _buildSessionItem(index);
+                  }
+                  return _buildChatBubble(_messages[index]);
+                },
+              ),
+            ),
+            
+            // Header (Sobre los mensajes)
             Positioned(
               top: 50,
               left: 20,
@@ -670,21 +692,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 ],
               ),
             ),
-            Positioned.fill(
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                      itemCount: _messages.length,
-                      itemBuilder: (context, index) {
-                        final msg = _messages[index];
-                        final isUser = msg["role"] == "user";
-                        final isThought = msg["isThought"] ?? false;
-                        return Align(
-                          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                          child: Container(
                             margin: const EdgeInsets.symmetric(vertical: 5),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -714,133 +721,95 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                       },
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.only(bottom: 40),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_showTextField)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 30, right: 30, bottom: 40),
-                            child: Column(
-                              children: [
-                                if (_pendingImageName != null)
-                                  Container(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.cyanAccent.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.3)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.image, color: Colors.cyanAccent, size: 16),
-                                        const SizedBox(width: 8),
-                                        Text(_pendingImageName!, style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                        const SizedBox(width: 8),
-                                        GestureDetector(
-                                          onTap: () => setState(() { _pendingImageName = null; _pendingImageBase64 = null; }),
-                                          child: const Icon(Icons.close, color: Colors.white54, size: 14),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.05),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextField(
-                                          controller: _controller,
-                                          autofocus: true,
-                                          style: const TextStyle(color: Colors.white),
-                                          decoration: const InputDecoration(
-                                            hintText: "", 
-                                            border: InputBorder.none
-                                          ),
-                                          onSubmitted: (_) => _handleSend(),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        icon: const Icon(Icons.send_rounded, color: Colors.white70), 
-                                        onPressed: _handleSend
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        // Solo mostramos el Orbe si NO estamos escribiendo y NO estamos pensando (o si estamos pensando pero el texto ya se envió)
-                        if (!_showTextField && !_isThinking)
-                          GestureDetector(
-                          onPanUpdate: (details) => setState(() => _orbOffset += details.delta),
-                          onPanEnd: (details) => setState(() => _orbOffset = Offset.zero),
-                          onTapDown: (_) { _playWaterSound(); setState(() => _isOrbPressed = true); },
-                          onTapUp: (_) => setState(() => _isOrbPressed = false),
-                          onTap: () => setState(() => _showTextField = !_showTextField),
-                          onLongPressStart: (_) => _startRecording(),
-                          onLongPressEnd: (_) async {
-                            final base64Audio = await _stopRecording();
-                            if (base64Audio != null) {
-                              setState(() => _messages.add({"role": "user", "text": "Audio enviado para Gemma 4"}));
-                              await _sendMultimodalData(question: "Analiza este audio con Gemma 4.", base64Audio: base64Audio);
-                            }
-                          },
-                          child: AnimatedBuilder(
-                            animation: Listenable.merge([_pulseController, _waveController]),
-                            builder: (context, _) {
-                              return CustomPaint(
-                                size: const Size(180, 180),
-                                painter: GlassOrbPainter(
-                                  animationValue: _pulseController.value,
-                                  offset: _orbOffset,
-                                  isThinking: _isThinking,
-                                  isPressed: _isOrbPressed,
-                                  isRecording: _isRecording,
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+        onTap: _unfocus, 
+        child: Stack(
+          children: [
+            // 1. Fondo Aurora Boreal (Capa Base)
+            MeshGradientBackground(animation: _waveController),
+            
+            // 2. Capa de Mensajes (ListView que ocupa todo el espacio)
+            Positioned.fill(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 100, bottom: 300), // Espacio para el orbe abajo
+                itemCount: _messages.length,
+                itemBuilder: (context, index) {
+                  return _buildChatBubble(_messages[index]);
+                },
+              ),
+            ),
+
+            // 3. Header (Hamburgesa y Otros)
+            Positioned(
+              top: 50,
+              left: 20,
+              right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  AnimatedHamburger(
+                    isOpen: _isMenuOpen,
+                    onTap: () {
+                      setState(() {
+                        _isMenuOpen = !_isMenuOpen;
+                        if (_isMenuOpen) {
+                          _menuAnimationController.forward();
+                        } else {
+                          _menuAnimationController.reverse();
+                        }
+                      });
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      _showHistory ? Icons.chat_bubble_outline : Icons.history,
+                      color: Colors.white,
                     ),
+                    onPressed: () {
+                      setState(() {
+                        _showHistory = !_showHistory;
+                      });
+                    },
                   ),
                 ],
               ),
             ),
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              left: 20,
-              child: GestureDetector(
-                onTap: _toggleMenu,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  color: Colors.transparent,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(width: 20, height: 2, color: Colors.white),
-                      const SizedBox(height: 5),
-                      Container(width: 12, height: 2, color: Colors.white), // Línea corta
-                      const SizedBox(height: 5),
-                      Container(width: 20, height: 2, color: Colors.white),
-                    ],
+            
+            // 4. Orbe Flotante (Sobre los mensajes)
+            Center(
+              child: IgnorePointer(
+                ignoring: _showTextField, // No bloquear toques si el teclado está abierto
+                child: GestureDetector(
+                  onPanUpdate: (details) => setState(() => _orbOffset += details.delta),
+                  onPanEnd: (details) => setState(() => _orbOffset = Offset.zero),
+                  onTapDown: (_) { _playWaterSound(); setState(() => _isOrbPressed = true); },
+                  onTapUp: (_) => setState(() => _isOrbPressed = false),
+                  onTap: () => setState(() => _showTextField = !_showTextField),
+                  onLongPressStart: (_) => _startRecording(),
+                  onLongPressEnd: (_) async {
+                    final base64Audio = await _stopRecording();
+                    if (base64Audio != null) {
+                      await _sendMultimodalData(question: "Analiza este audio.", base64Audio: base64Audio);
+                    }
+                  },
+                  child: AnimatedBuilder(
+                    animation: _pulseController,
+                    builder: (context, child) {
+                      return CustomPaint(
+                        painter: GlassOrbPainter(
+                          animationValue: _pulseController.value,
+                          offset: _orbOffset,
+                          isThinking: _isThinking,
+                          isPressed: _isOrbPressed,
+                          isRecording: _isRecording,
+                        ),
+                        size: const Size(220, 220),
+                      );
+                    },
                   ),
                 ),
               ),
             ),
-            if (_isMenuOpen)
-              GestureDetector(
-                onTap: _toggleMenu,
                 child: Container(
                   color: Colors.black.withValues(alpha: 0.4),
                   child: Align(
