@@ -72,10 +72,24 @@ class GlassOrbPainter extends CustomPainter {
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
     if (isThinking) {
-      for (int i = 0; i < 5; i++) {
-        final double phase = (animationValue * 4 * math.pi) + (i * 1.2);
-        final swirlOffset = Offset(math.sin(phase) * (currentRadius * 0.3), math.cos(phase) * (currentRadius * 0.3));
-        canvas.drawCircle(center + swirlOffset, 6.0 - i, Paint()..shader = RadialGradient(colors: [Colors.cyanAccent.withValues(alpha: 0.4), Colors.transparent]).createShader(Rect.fromCircle(center: center + swirlOffset, radius: 8.0)));
+      final linePaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2
+        ..strokeCap = StrokeCap.round;
+
+      for (int i = 0; i < 4; i++) {
+        final double speed = (1.0 + i * 0.5);
+        final double startAngle = (animationValue * speed * 4 * math.pi) + (i * math.pi / 2);
+        final double sweepAngle = 0.4 + math.sin(animationValue * 6 * math.pi + i) * 0.3;
+        final double radiusMult = 0.4 + (i * 0.12);
+        
+        canvas.drawArc(
+          Rect.fromCircle(center: center, radius: currentRadius * radiusMult),
+          startAngle,
+          sweepAngle,
+          false,
+          linePaint..color = Colors.cyanAccent.withValues(alpha: (0.1 + i * 0.2))
+        );
       }
     }
 
@@ -365,7 +379,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
               ],
             ),
           ),
-          Center(
+          Positioned(
+            bottom: 30, left: 0, right: 0,
             child: IgnorePointer(
               ignoring: _showTextField,
               child: GestureDetector(
