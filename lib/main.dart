@@ -511,8 +511,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _toggleMenu() { setState(() { _isMenuOpen = !_isMenuOpen; if (_isMenuOpen) _menuAnimationController.forward(); else _menuAnimationController.reverse(); }); }
 }
