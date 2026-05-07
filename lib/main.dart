@@ -173,56 +173,153 @@ class GlassOrbPainter extends CustomPainter {
   bool shouldRepaint(covariant GlassOrbPainter oldDelegate) => true;
 }
 
-class MeshGradientBackground extends StatelessWidget {
+class ParticlePainter extends CustomPainter {
+  final double animationValue;
+  final bool isSmokeState;
+  final List<Particle> particles;
+
+  ParticlePainter({
+    required this.animationValue,
+    required this.isSmokeState,
+    required this.particles,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (var particle in particles) {
+      particle.update(animationValue, size);
+      
+      final color = isSmokeState 
+          ? Colors.white.withValues(alpha: 0.15) 
+          : particle.color.withValues(alpha: 0.4);
+      
+      final paint = Paint()
+        ..shader = RadialGradient(
+          colors: [color, Colors.transparent],
+          stops: const [0.7, 1.0], // Nitidez: Núcleo más sólido
+        ).createShader(Rect.fromCircle(center: particle.position, radius: particle.radius));
+
+      if (isSmokeState) {
+        // Estilo Humo: Formas alargadas y etéreas
+        final path = Path();
+        path.addOval(Rect.fromCenter(
+          center: particle.position, 
+          width: particle.radius * 2.5, 
+          height: particle.radius * 0.8
+        ));
+        canvas.drawPath(path, paint);
+      } else {
+        // Estilo Partícula: Círculos nítidos
+        canvas.drawCircle(particle.position, particle.radius, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(ParticlePainter oldDelegate) => true;
+}
+
+class Particle {
+  Offset position;
+  double radius;
+  Color color;
+  double speed;
+  double theta;
+
+  Particle({required this.position, required this.radius, required this.color, required this.speed, required this.theta});
+
+  void update(double t, Size size) {
+    position += Offset(math.cos(theta), math.sin(theta)) * speed;
+    if (position.dx < 0 || position.dx > size.width) theta = math.pi - theta;
+    if (position.dy < 0 || position.dy > size.height) theta = -theta;
+  }
+}
+
+class AnimatedHamburger extends StatelessWidget {
+  final bool isOpen;
+  final VoidCallback onTap;
+
+  const AnimatedHamburger({super.key, required this.isOpen, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 40,
+        height: 40,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              top: isOpen ? 20 : 14,
+              child: AnimatedRotation(
+                duration: const Duration(milliseconds: 300),
+                turns: isOpen ? 0.125 : 0,
+                child: Container(width: 24, height: 1.5, color: Colors.white),
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: isOpen ? 0 : 12, // Línea central más corta
+              height: 1.5,
+              color: Colors.white,
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              bottom: isOpen ? 18.5 : 14,
+              child: AnimatedRotation(
+                duration: const Duration(milliseconds: 300),
+                turns: isOpen ? -0.125 : 0,
+                child: Container(width: 24, height: 1.5, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class MeshGradientBackground extends StatefulWidget {
   final Animation<double> animation;
-  const MeshGradientBackground({super.key, required this.animation});
+  final bool isSmokeState;
+  const MeshGradientBackground({super.key, required this.animation, required this.isSmokeState});
+
+  @override
+  State<MeshGradientBackground> createState() => _MeshGradientBackgroundState();
+}
+
+class _MeshGradientBackgroundState extends State<MeshGradientBackground> {
+  final List<Particle> _particles = List.generate(8, (index) {
+    final random = math.Random();
+    return Particle(
+      position: Offset(random.nextDouble() * 400, random.nextDouble() * 800),
+      radius: 40 + random.nextDouble() * 60,
+      color: [const Color(0xFF1A237E), const Color(0xFFC6FF00), const Color(0xFF7B1FA2)][random.nextInt(3)],
+      speed: 0.2 + random.nextDouble() * 0.5,
+      theta: random.nextDouble() * 2 * math.pi,
+    );
+  });
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: animation,
+      animation: widget.animation,
       builder: (context, child) {
-        return Stack(
-          children: [
-            // Base Gradient
-            Container(color: const Color(0xFF0A0A0F)),
-            
-            // Animated Blobs (Vívidos)
-            _buildBlob(context, const Color(0xFF1A237E), 0.2, 0.3, 2.0), 
-            _buildBlob(context, const Color(0xFFC6FF00), 0.7, 0.6, 1.5), 
-            _buildBlob(context, const Color(0xFF7B1FA2), 0.4, 0.8, 2.2), 
-            
-            // Sin difuminación, solo una capa de tinte sutil
-            Positioned.fill(
-              child: Container(color: Colors.black.withValues(alpha: 0.2)),
+        return Container(
+          color: widget.isSmokeState ? const Color(0xFF1A1A1C) : const Color(0xFF0A0A0F),
+          child: CustomPaint(
+            painter: ParticlePainter(
+              animationValue: widget.animation.value,
+              isSmokeState: widget.isSmokeState,
+              particles: _particles,
             ),
-          ],
+            size: Size.infinite,
+          ),
         );
       },
-    );
-  }
-
-  Widget _buildBlob(BuildContext context, Color color, double x, double y, double sizeMult) {
-    final size = MediaQuery.of(context).size;
-    final t = animation.value * 2 * math.pi;
-    
-    // Movement logic
-    final dx = math.sin(t + x * 10) * 50;
-    final dy = math.cos(t + y * 10) * 50;
-    
-    return Positioned(
-      left: (x * size.width) + dx - (150 * sizeMult),
-      top: (y * size.height) + dy - (150 * sizeMult),
-      child: Container(
-        width: 300 * sizeMult,
-        height: 300 * sizeMult,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [color.withValues(alpha: 0.4), color.withValues(alpha: 0.0)],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -261,6 +358,10 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   bool _isOrbPressed = false;
   bool _showTextField = false; // New: Toggle text field
   
+  // Ciclo Atmosférico (Humo)
+  bool _isSmokeState = false;
+  Timer? _smokeTimer;
+
   // History state - Grouped by "Chat Sessions"
   bool _showHistory = false;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
@@ -297,6 +398,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _menuAnimationController, curve: Curves.easeOut));
 
+    _startSmokeCycle();
     _startNotificationPolling();
   }
 
@@ -368,17 +470,34 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails);
   }
 
+  void _startSmokeCycle() {
+    _smokeTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) {
+        setState(() {
+          _isSmokeState = true;
+        });
+        // El estado humo dura 8 segundos
+        Future.delayed(const Duration(seconds: 8), () {
+          if (mounted) {
+            setState(() {
+              _isSmokeState = false;
+            });
+          }
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    _smokeTimer?.cancel();
+    _notificationPollingTimer?.cancel();
     _pulseController.dispose();
     _waveController.dispose();
     _menuAnimationController.dispose();
-    _notificationPollingTimer?.cancel();
-    _timer?.cancel();
-    _audioRecorder.dispose();
     _audioPlayer.dispose();
-    _controller.dispose();
+    _audioRecorder.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -595,11 +714,49 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
         onTap: _unfocus, 
         child: Stack(
           children: [
-            MeshGradientBackground(animation: _waveController),
+            // Background con Ciclo Atmosférico
+            MeshGradientBackground(animation: _waveController, isSmokeState: _isSmokeState),
+            
+            // Header
+            Positioned(
+              top: 50,
+              left: 20,
+              right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  AnimatedHamburger(
+                    isOpen: _isMenuOpen,
+                    onTap: () {
+                      setState(() {
+                        _isMenuOpen = !_isMenuOpen;
+                        if (_isMenuOpen) {
+                          _menuAnimationController.forward();
+                        } else {
+                          _menuAnimationController.reverse();
+                        }
+                      });
+                    },
+                  ),
+                  if (!_isMenuOpen)
+                    IconButton(
+                      icon: Icon(
+                        _showHistory ? Icons.chat_bubble_outline : Icons.history,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _showHistory = !_showHistory;
+                        });
+                      },
+                    ),
+                ],
+              ),
+            ),
             Positioned.fill(
               child: Column(
                 children: [
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 100),
                   Expanded(
                     child: ListView.builder(
                       controller: _scrollController,
