@@ -535,35 +535,39 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
             ),
           if (_showHistory)
             Positioned.fill(
-              child: Container(
-                color: Colors.transparent, // Totalmente transparente
-                child: Column(
-                  children: [
-                    const SizedBox(height: 80),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 30),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text("HISTORIAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                          GestureDetector(
-                            onTap: () => setState(() => _showHistory = false),
-                            child: SizedBox(
-                              width: 48, height: 48,
-                              child: Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  Transform.rotate(angle: 0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
-                                  Transform.rotate(angle: -0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
-                                ],
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.5), // Más opaco para mejor lectura
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 80),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 30),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text("HISTORIAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque, // Hace que toda el área sea "clickeable"
+                              onTap: () => setState(() => _showHistory = false),
+                              child: SizedBox(
+                                width: 48, height: 48,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Transform.rotate(angle: 0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
+                                    Transform.rotate(angle: -0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 30), itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(contentPadding: EdgeInsets.zero, title: Text(_chatSessions[i].first["text"], style: const TextStyle(color: Colors.white70)), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
-                  ],
+                      Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 30), itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(contentPadding: EdgeInsets.zero, title: Text(_chatSessions[i].first["text"], style: const TextStyle(color: Colors.white70)), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
+                    ],
+                  ),
                 ),
               ),
             ),
