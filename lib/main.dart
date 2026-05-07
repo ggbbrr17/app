@@ -661,7 +661,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
             Positioned.fill(
               child: Column(
                 children: [
-                  const SizedBox(height: 100),
                   Expanded(
                     child: ListView.builder(
                       controller: _scrollController,
