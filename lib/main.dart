@@ -73,90 +73,63 @@ class GlassOrbPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2) + offset;
     final baseRadius = size.width * 0.35;
     
-    final pulse = math.sin(animationValue * 2 * math.pi) * 0.05;
+    // Animación más lenta (ciclo de 15 segundos en lugar de 1.2)
+    final slowAnim = animationValue; 
+    final pulse = math.sin(slowAnim * 2 * math.pi) * 0.03;
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
 
-    // Ciclo de Humo (Gris) vs Colores Vivos
-    // Usamos el animationValue para crear un ciclo donde a veces es gris
-    final smokeCycle = (math.sin(animationValue * math.pi * 0.5) + 1) / 2; 
-    final bool isSmoky = smokeCycle < 0.2 && !isThinking && !isRecording;
-
     if (isThinking) {
-      // ESTADO PENSANDO: 3 Puntos en forma de Ola
-      final dotPaint = Paint()
-        ..color = Colors.cyanAccent.withValues(alpha: 0.4)
-        ..style = PaintingStyle.fill;
-
-      for (int i = 0; i < 3; i++) {
-        final double dotOffset = (i - 1) * 30.0; // Espaciado entre puntos
-        final double waveY = math.sin((animationValue * 2 * math.pi) + (i * 1.5)) * 10.0;
-        
-        canvas.drawCircle(
-          center + Offset(dotOffset, waveY),
-          6.0,
-          dotPaint,
+      // NUEVA ANIMACIÓN PENSANDO: Remolino de luz interna
+      for (int i = 0; i < 5; i++) {
+        final double phase = (slowAnim * 4 * math.pi) + (i * 1.2);
+        final double radiusMult = 0.2 + (0.1 * i);
+        final swirlOffset = Offset(
+          math.sin(phase) * (currentRadius * radiusMult),
+          math.cos(phase) * (currentRadius * radiusMult)
         );
         
-        // Añadimos un pequeño resplandor a cada punto
         canvas.drawCircle(
-          center + Offset(dotOffset, waveY),
-          12.0,
+          center + swirlOffset,
+          8.0 - i,
           Paint()
             ..shader = RadialGradient(
-              colors: [Colors.cyanAccent.withValues(alpha: 0.15), Colors.transparent],
-            ).createShader(Rect.fromCircle(center: center + Offset(dotOffset, waveY), radius: 12.0)),
+              colors: [Colors.cyanAccent.withValues(alpha: 0.4), Colors.transparent],
+            ).createShader(Rect.fromCircle(center: center + swirlOffset, radius: 8.0))
         );
-      }
-    } else if (isSmoky) {
-      // ESTADO HUMO (Gris y Etéreo)
-      for (int i = 0; i < 3; i++) {
-        final t = (animationValue + (i * 0.33)) % 1.0;
-        final smokePaint = Paint()
-          ..shader = RadialGradient(
-            colors: [
-              Colors.grey.withValues(alpha: 0.3),
-              Colors.grey.withValues(alpha: 0.0),
-            ],
-            center: Alignment(math.sin(t * 2 * math.pi) * 0.5, math.cos(t * 2 * math.pi) * 0.5),
-          ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
-        canvas.drawCircle(center, currentRadius, smokePaint);
-      }
-    } else {
-      // ESTADO DINÁMICO (Reflejos que aparecen y desaparecen)
-      final colors = isRecording 
-          ? [Colors.redAccent, Colors.orangeAccent]
-          : (isThinking 
-              ? [Colors.cyanAccent, Colors.blueAccent, Colors.purpleAccent]
-              : [Colors.cyanAccent, Colors.tealAccent, Colors.indigoAccent]);
-
-      for (int i = 0; i < colors.length; i++) {
-        // Cada color tiene su propia fase de opacidad y posición
-        final double phase = (animationValue * 2 * math.pi) + (i * 1.5);
-        final double opacity = (math.sin(phase * 1.2) + 1.0) / 2.0 * 0.3; // Opacidad dinámica
-        
-        // Movimiento lineal errático (no circular)
-        final blobOffset = Offset(
-          math.sin(phase * 0.8) * 20, 
-          math.cos(phase * 0.5) * 20
-        );
-        
-        final blobPaint = Paint()
-          ..shader = RadialGradient(
-            colors: [
-              colors[i].withValues(alpha: opacity),
-              colors[i].withValues(alpha: 0.0),
-            ],
-          ).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.7));
-        
-        canvas.drawCircle(center + blobOffset, currentRadius, blobPaint..blendMode = BlendMode.screen);
       }
     }
 
-    // Bordes de cristal y transparencia
+    // REFLEJOS VARIABLES (No repetitivos)
+    final colors = isRecording 
+        ? [Colors.redAccent, Colors.orangeAccent]
+        : [Colors.cyanAccent, const Color(0xFFC6FF00), const Color(0xFF7B1FA2)];
+
+    for (int i = 0; i < colors.length; i++) {
+      // Uso de frecuencias distintas para evitar repetición obvia
+      final double phase = (slowAnim * 2 * math.pi * (1.0 + i * 0.1)) + (i * 2.1);
+      final double opacity = (math.sin(phase * 0.7) + 1.0) / 2.0 * 0.25;
+      
+      final blobOffset = Offset(
+        math.sin(phase * 0.6) * (currentRadius * 0.3), 
+        math.cos(phase * 0.4) * (currentRadius * 0.3)
+      );
+      
+      final blobPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [
+            colors[i].withValues(alpha: opacity),
+            colors[i].withValues(alpha: 0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center + blobOffset, radius: currentRadius * 0.8));
+      
+      canvas.drawCircle(center + blobOffset, currentRadius, blobPaint..blendMode = BlendMode.screen);
+    }
+
+    // Bordes de cristal y transparencia premium
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.5
-      ..color = isSmoky ? Colors.white24 : Colors.white.withValues(alpha: 0.3);
+      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.25);
     canvas.drawCircle(center, currentRadius, rimPaint);
 
     // Brillo sutil superior
@@ -164,75 +137,13 @@ class GlassOrbPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [Colors.white.withValues(alpha: 0.1), Colors.transparent],
+        colors: [Colors.white.withValues(alpha: 0.08), Colors.transparent],
       ).createShader(Rect.fromCircle(center: center, radius: currentRadius));
     canvas.drawCircle(center, currentRadius * 0.9, highlightPaint);
   }
 
   @override
   bool shouldRepaint(covariant GlassOrbPainter oldDelegate) => true;
-}
-
-class ParticlePainter extends CustomPainter {
-  final double animationValue;
-  final bool isSmokeState;
-  final List<Particle> particles;
-
-  ParticlePainter({
-    required this.animationValue,
-    required this.isSmokeState,
-    required this.particles,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (var particle in particles) {
-      particle.update(animationValue, size);
-      
-      final color = isSmokeState 
-          ? Colors.white.withValues(alpha: 0.15) 
-          : particle.color.withValues(alpha: 0.4);
-      
-      final paint = Paint()
-        ..shader = RadialGradient(
-          colors: [color, Colors.transparent],
-          stops: const [0.7, 1.0], // Nitidez: Núcleo más sólido
-        ).createShader(Rect.fromCircle(center: particle.position, radius: particle.radius));
-
-      if (isSmokeState) {
-        // Estilo Humo: Formas alargadas y etéreas
-        final path = Path();
-        path.addOval(Rect.fromCenter(
-          center: particle.position, 
-          width: particle.radius * 2.5, 
-          height: particle.radius * 0.8
-        ));
-        canvas.drawPath(path, paint);
-      } else {
-        // Estilo Partícula: Círculos nítidos
-        canvas.drawCircle(particle.position, particle.radius, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(ParticlePainter oldDelegate) => true;
-}
-
-class Particle {
-  Offset position;
-  double radius;
-  Color color;
-  double speed;
-  double theta;
-
-  Particle({required this.position, required this.radius, required this.color, required this.speed, required this.theta});
-
-  void update(double t, Size size) {
-    position += Offset(math.cos(theta), math.sin(theta)) * speed;
-    if (position.dx < 0 || position.dx > size.width) theta = math.pi - theta;
-    if (position.dy < 0 || position.dy > size.height) theta = -theta;
-  }
 }
 
 class AnimatedHamburger extends StatelessWidget {
@@ -245,34 +156,39 @@ class AnimatedHamburger extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
         child: Stack(
           alignment: Alignment.center,
           children: [
+            // Línea Superior
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              top: isOpen ? 20 : 14,
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.elasticOut,
+              top: isOpen ? 23 : 16,
               child: AnimatedRotation(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 400),
                 turns: isOpen ? 0.125 : 0,
-                child: Container(width: 24, height: 1.5, color: Colors.white),
+                child: Container(width: 26, height: 2, color: Colors.white),
               ),
             ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: isOpen ? 0 : 12, // Línea central más corta
-              height: 1.5,
-              color: Colors.white,
+            // Línea Central (Desaparece)
+            AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: isOpen ? 0.0 : 1.0,
+              child: Container(width: 14, height: 2, color: Colors.white),
             ),
+            // Línea Inferior
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 300),
-              bottom: isOpen ? 18.5 : 14,
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.elasticOut,
+              bottom: isOpen ? 23 : 16,
               child: AnimatedRotation(
-                duration: const Duration(milliseconds: 300),
+                duration: const Duration(milliseconds: 400),
                 turns: isOpen ? -0.125 : 0,
-                child: Container(width: 24, height: 1.5, color: Colors.white),
+                child: Container(width: 26, height: 2, color: Colors.white),
               ),
             ),
           ],
@@ -282,44 +198,57 @@ class AnimatedHamburger extends StatelessWidget {
   }
 }
 
-class MeshGradientBackground extends StatefulWidget {
+class MeshGradientBackground extends StatelessWidget {
   final Animation<double> animation;
-  final bool isSmokeState;
-  const MeshGradientBackground({super.key, required this.animation, required this.isSmokeState});
-
-  @override
-  State<MeshGradientBackground> createState() => _MeshGradientBackgroundState();
-}
-
-class _MeshGradientBackgroundState extends State<MeshGradientBackground> {
-  final List<Particle> _particles = List.generate(8, (index) {
-    final random = math.Random();
-    return Particle(
-      position: Offset(random.nextDouble() * 400, random.nextDouble() * 800),
-      radius: 40 + random.nextDouble() * 60,
-      color: [const Color(0xFF1A237E), const Color(0xFFC6FF00), const Color(0xFF7B1FA2)][random.nextInt(3)],
-      speed: 0.2 + random.nextDouble() * 0.5,
-      theta: random.nextDouble() * 2 * math.pi,
-    );
-  });
+  const MeshGradientBackground({super.key, required this.animation});
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: widget.animation,
+      animation: animation,
       builder: (context, child) {
+        final t = animation.value * 2 * math.pi;
         return Container(
-          color: widget.isSmokeState ? const Color(0xFF1A1A1C) : const Color(0xFF0A0A0F),
-          child: CustomPaint(
-            painter: ParticlePainter(
-              animationValue: widget.animation.value,
-              isSmokeState: widget.isSmokeState,
-              particles: _particles,
-            ),
-            size: Size.infinite,
+          decoration: const BoxDecoration(color: Color(0xFF050508)),
+          child: Stack(
+            children: [
+              // Aurora Cian
+              _buildAurora(context, const Color(0xFF00E5FF), 0.2, 0.3, t, 1.2),
+              // Aurora Lima
+              _buildAurora(context, const Color(0xFFC6FF00), 0.8, 0.4, t + 2.0, 1.5),
+              // Aurora Violeta Etea
+              _buildAurora(context, const Color(0xFF7B1FA2), 0.5, 0.7, t + 4.0, 1.8),
+              
+              // Capa de profundidad final
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+                child: Container(color: Colors.black.withValues(alpha: 0.1)),
+              ),
+            ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAurora(BuildContext context, Color color, double x, double y, double t, double sizeMult) {
+    final size = MediaQuery.of(context).size;
+    final dx = math.sin(t * 0.5) * 100;
+    final dy = math.cos(t * 0.3) * 100;
+    
+    return Positioned(
+      left: (x * size.width) + dx - (200 * sizeMult),
+      top: (y * size.height) + dy - (200 * sizeMult),
+      child: Container(
+        width: 400 * sizeMult,
+        height: 400 * sizeMult,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [color.withValues(alpha: 0.3), Colors.transparent],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -358,10 +287,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   bool _isOrbPressed = false;
   bool _showTextField = false; // New: Toggle text field
   
-  // Ciclo Atmosférico (Humo)
-  bool _isSmokeState = false;
-  Timer? _smokeTimer;
-
   // History state - Grouped by "Chat Sessions"
   bool _showHistory = false;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
@@ -386,8 +311,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       });
     });
 
-    _pulseController = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))..repeat(reverse: true);
-    _waveController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat();
+    _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true);
+    _waveController = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
 
     _menuAnimationController = AnimationController(
       vsync: this,
@@ -398,7 +323,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _menuAnimationController, curve: Curves.easeOut));
 
-    _startSmokeCycle();
     _startNotificationPolling();
   }
 
@@ -470,27 +394,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     await flutterLocalNotificationsPlugin.show(0, title, body, platformDetails);
   }
 
-  void _startSmokeCycle() {
-    _smokeTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted) {
-        setState(() {
-          _isSmokeState = true;
-        });
-        // El estado humo dura 8 segundos
-        Future.delayed(const Duration(seconds: 8), () {
-          if (mounted) {
-            setState(() {
-              _isSmokeState = false;
-            });
-          }
-        });
-      }
-    });
-  }
-
   @override
   void dispose() {
-    _smokeTimer?.cancel();
     _notificationPollingTimer?.cancel();
     _pulseController.dispose();
     _waveController.dispose();
@@ -714,8 +619,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
         onTap: _unfocus, 
         child: Stack(
           children: [
-            // Background con Ciclo Atmosférico
-            MeshGradientBackground(animation: _waveController, isSmokeState: _isSmokeState),
+            // Background Aurora Boreal
+            MeshGradientBackground(animation: _waveController),
             
             // Header
             Positioned(
