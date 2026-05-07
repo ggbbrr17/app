@@ -216,9 +216,11 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   // Orb interactivity state
   Offset _orbOffset = Offset.zero;
   bool _isOrbPressed = false;
+  bool _showTextField = false; // New: Toggle text field
   
-  // History state
+  // History state - Grouped by "Chat Sessions"
   bool _showHistory = false;
+  final List<List<Map<String, dynamic>>> _chatSessions = [];
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl = "https://service-cv3f.onrender.com/api/v1/notifications";
@@ -529,125 +531,185 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     _scrollToBottom();
   }
 
+  void _unfocus() {
+    FocusScopeNode currentFocus = FocusScope.of(context);
+    if (!currentFocus.hasPrimaryFocus) {
+      currentFocus.unfocus();
+    }
+  }
+
+  void _startNewChat() {
+    if (_messages.isNotEmpty) {
+      setState(() {
+        _chatSessions.add(List.from(_messages));
+        _messages.clear();
+        _showHistory = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
-      backgroundColor: const Color(0xFF1C1C1E), // Color de respaldo más claro
-      body: Stack(
-        children: [
-          MeshGradientBackground(animation: _waveController),
-          
-          // Menú Hamburguesa Profesional (Esquina superior izquierda)
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 20,
-            child: IconButton(
-              icon: Column(
-                mainAxisSize: MainAxisSize.min,
+      backgroundColor: const Color(0xFF0A0A0F),
+      extendBodyBehindAppBar: true, // Allow UI to reach the top
+      body: GestureDetector(
+        onTap: _unfocus, // Close keyboard on tap anywhere
+        child: Stack(
+          children: [
+            MeshGradientBackground(animation: _waveController),
+            
+            // Main Chat Area
+            Positioned.fill(
+              child: Column(
                 children: [
-                  Container(width: 22, height: 2, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(height: 5),
-                  Container(width: 18, height: 2, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2))),
-                  const SizedBox(height: 5),
-                  Container(width: 22, height: 2, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(2))),
-                ],
-              ),
-              onPressed: _toggleMenu,
-            ),
-          ),
-
-          // Menú Lateral Dinámico con Glassmorphism
-          if (_isMenuOpen)
-            GestureDetector(
-              onTap: _toggleMenu,
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.7),
-                child: Align(
-                  alignment: Alignment.topLeft,
-                  child: SlideTransition(
-                    position: _menuOffsetAnimation,
-                    child: Container(
-                      width: screenWidth * 0.7,
-                      height: screenHeight,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF0D0D0F).withValues(alpha: 0.95),
-                        border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 80),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 20),
-                            child: Text("GLYPH SOBERANO", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, letterSpacing: 2, fontWeight: FontWeight.bold)),
+                  // Spacer for the very top content
+                  const SizedBox(height: 40),
+                  
+                  // Message List
+                  Expanded(
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = _messages[index];
+                        final isUser = msg["role"] == "user";
+                        final isThought = msg["isThought"] ?? false;
+                        
+                        return Align(
+                          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(vertical: 5),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isThought 
+                                ? Colors.cyanAccent.withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: isUser ? 0.15 : 0.05),
+                              borderRadius: BorderRadius.circular(15),
+                              border: Border.all(
+                                color: isThought 
+                                  ? Colors.cyanAccent.withValues(alpha: 0.3) 
+                                  : Colors.white.withValues(alpha: 0.1)
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (isThought)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 4),
+                                    child: Text(
+                                      "PENSAMIENTO",
+                                      style: TextStyle(
+                                        color: Colors.cyanAccent.withValues(alpha: 0.5),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ),
+                                Text(
+                                  msg["text"],
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 14,
+                                    fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 25),
-                            leading: const Icon(Icons.image_outlined, color: Colors.white),
-                            title: const Text("Añadir Imagen", style: TextStyle(color: Colors.white)),
-                            onTap: _pickImage,
-                          ),
-                          ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 25),
-                            leading: const Icon(Icons.history_rounded, color: Colors.white),
-                            title: const Text("Historial de Chat", style: TextStyle(color: Colors.white)),
-                            onTap: _toggleHistory,
-                          ),
-                        ],
-                      ),
+                        );
+                      },
                     ),
                   ),
-                ),
-              ),
-            ),
-
-          SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 60), // Espacio para el botón de menú
-                // Chat Messages (Subtle Overlay)
-                Expanded(
-                  child: Stack(
-                    children: [
-                      // The Orb is now the background of the chat or centered
-                      Center(
-                        child: GestureDetector(
+                  
+                  // Bottom Area: Orb and Optional Text Bar
+                  Container(
+                    padding: const EdgeInsets.only(bottom: 40),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Dynamic Search Bar (only shows if toggled)
+                        if (_showTextField)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 30, right: 30, bottom: 20),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(30),
+                              child: BackdropFilter(
+                                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _controller,
+                                          autofocus: true,
+                                          style: const TextStyle(color: Colors.white),
+                                          decoration: const InputDecoration(
+                                            hintText: "Pregunta a Glyph...",
+                                            hintStyle: TextStyle(color: Colors.white54),
+                                            border: InputBorder.none,
+                                          ),
+                                          onSubmitted: (_) => _handleSend(),
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.send_rounded, color: Colors.white),
+                                        onPressed: _handleSend,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        
+                        // The Orb (Burbuja) at the bottom
+                        GestureDetector(
                           onPanUpdate: (details) {
                             setState(() {
                               _orbOffset += details.delta;
                             });
                           },
                           onPanEnd: (details) {
-                            setState(() {
-                              _orbOffset = Offset.zero; 
-                            });
-                          },
-                          onLongPressStart: (_) => _startRecording(),
-                          onLongPressEnd: (_) async {
-                            final base64Audio = await _stopRecording();
-                            if (base64Audio != null) {
-                              setState(() {
-                                _messages.add({"role": "user", "text": "Nota de voz enviada"});
-                              });
-                              await _sendMultimodalData(
-                                question: "Interpreta el audio adjunto.",
-                                base64Audio: base64Audio,
-                              );
-                            }
+                            setState(() => _orbOffset = Offset.zero);
                           },
                           onTapDown: (_) {
                             _playWaterSound();
                             setState(() => _isOrbPressed = true);
                           },
                           onTapUp: (_) => setState(() => _isOrbPressed = false),
+                          onTap: () {
+                            setState(() => _showTextField = !_showTextField);
+                          },
+                          onLongPressStart: (_) => _startRecording(),
+                          onLongPressEnd: (_) async {
+                            final base64Audio = await _stopRecording();
+                            if (base64Audio != null) {
+                              setState(() {
+                                _messages.add({"role": "user", "text": "Audio enviado para Gemma 4"});
+                              });
+                              await _sendMultimodalData(
+                                question: "Analiza este audio con Gemma 4.",
+                                base64Audio: base64Audio,
+                              );
+                            }
+                          },
                           child: AnimatedBuilder(
                             animation: Listenable.merge([_pulseController, _waveController]),
                             builder: (context, _) {
                               return CustomPaint(
-                                size: const Size(300, 300),
+                                size: const Size(180, 180), // Slightly smaller for bottom position
                                 painter: GlassOrbPainter(
                                   animationValue: _pulseController.value,
                                   offset: _orbOffset,
@@ -659,150 +721,127 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                             },
                           ),
                         ),
-                      ),
-                      
-                      // Message List
-                      ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = _messages[index];
-                          final isUser = msg["role"] == "user";
-                          final isThought = msg["isThought"] ?? false;
-                          
-                          return Align(
-                            alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(vertical: 5),
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isThought 
-                                  ? Colors.cyanAccent.withValues(alpha: 0.1)
-                                  : Colors.white.withValues(alpha: isUser ? 0.15 : 0.05),
-                                borderRadius: BorderRadius.circular(15),
-                                border: Border.all(
-                                  color: isThought 
-                                    ? Colors.cyanAccent.withValues(alpha: 0.3) 
-                                    : Colors.white.withValues(alpha: 0.1)
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (isThought)
-                                    Padding(
-                                      padding: const EdgeInsets.only(bottom: 4),
-                                      child: Text(
-                                        "PENSAMIENTO",
-                                        style: TextStyle(
-                                          color: Colors.cyanAccent.withValues(alpha: 0.5),
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 1,
-                                        ),
-                                      ),
-                                    ),
-                                  Text(
-                                    msg["text"],
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.9),
-                                      fontSize: 14,
-                                      fontStyle: isThought ? FontStyle.italic : FontStyle.normal,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                ],
+              ),
+            ),
 
-                // Bottom Glass Search Bar
-                Padding(
-                  padding: const EdgeInsets.only(left: 20, right: 20, bottom: 40),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            // Persistent Menu Button (Always top-left)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 10,
+              left: 20,
+              child: IconButton(
+                icon: AnimatedIcon(
+                  icon: AnimatedIcons.menu_close,
+                  progress: _menuAnimationController,
+                  color: Colors.white,
+                ),
+                onPressed: _toggleMenu,
+              ),
+            ),
+
+            // Sidebar Menu
+            if (_isMenuOpen)
+              GestureDetector(
+                onTap: _toggleMenu,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.4), // Darker overlay
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: SlideTransition(
+                      position: _menuOffsetAnimation,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        width: screenWidth * 0.8,
+                        height: screenHeight,
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                          color: const Color(0xFF0D0D0F).withValues(alpha: 0.98),
+                          border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
                         ),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _controller,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  hintText: "Escribe algo...",
-                                  hintStyle: TextStyle(color: Colors.white54),
-                                  border: InputBorder.none,
-                                ),
-                                onSubmitted: (_) => _handleSend(),
-                              ),
+                            const SizedBox(height: 100),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 25),
+                              child: Text("GLYPH SOBERANO", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 11, letterSpacing: 3)),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.send_rounded, color: Colors.white),
-                              onPressed: _handleSend,
-                            ),
+                            const SizedBox(height: 30),
+                            _buildMenuItem(Icons.add_rounded, "Nuevo Chat", _startNewChat),
+                            _buildMenuItem(Icons.image_outlined, "Añadir Imagen", _pickImage),
+                            _buildMenuItem(Icons.history_rounded, "Historial", _toggleHistory),
                           ],
                         ),
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ),
-          
-          // History Panel Overlay
-          if (_showHistory)
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                child: Container(
-                  color: Colors.black.withValues(alpha: 0.8),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 60),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("HISTORIAL", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                            IconButton(onPressed: _toggleHistory, icon: const Icon(Icons.close_rounded, color: Colors.white)),
-                          ],
+              ),
+
+            // History Panel (Gemini Style)
+            if (_showHistory)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.85),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 80),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("RECIENTES", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                              IconButton(onPressed: _toggleHistory, icon: const Icon(Icons.close_rounded, color: Colors.white)),
+                            ],
+                          ),
                         ),
-                      ),
-                      Expanded(
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(20),
-                          itemCount: _messages.length,
-                          itemBuilder: (context, index) {
-                            final msg = _messages[index];
-                            return ListTile(
-                              title: Text(msg["role"].toUpperCase(), style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10)),
-                              subtitle: Text(msg["text"], style: const TextStyle(color: Colors.white)),
-                            );
-                          },
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(30),
+                            itemCount: _chatSessions.length,
+                            itemBuilder: (context, index) {
+                              final session = _chatSessions[index];
+                              final title = session.isNotEmpty ? session.first["text"] : "Chat vacío";
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white54, size: 20),
+                                title: Text(
+                                  title, 
+                                  maxLines: 1, 
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white, fontSize: 16)
+                                ),
+                                onTap: () {
+                                  setState(() {
+                                    _messages.clear();
+                                    _messages.addAll(session);
+                                    _showHistory = false;
+                                  });
+                                },
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
+
+  Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
+      leading: Icon(icon, color: Colors.white, size: 24),
+      title: Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)),
+      onTap: onTap,
+    );
+  }
