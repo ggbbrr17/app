@@ -422,7 +422,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
           if (_showHistory)
             Positioned.fill(
               child: Container(
-                color: Colors.black90,
+                color: Colors.black.withValues(alpha: 0.9),
                 child: Column(
                   children: [
                     const SizedBox(height: 80),
