@@ -66,6 +66,7 @@ class GlassOrbPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2) + offset;
     final baseRadius = size.width * 0.22; // Orbe más pequeño
     final pulse = math.sin(animationValue * 2 * math.pi) * 0.03;
     final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.1 : 0.0));
