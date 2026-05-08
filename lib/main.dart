@@ -43,104 +43,115 @@ class GlyphMobileApp extends StatelessWidget {
     return MaterialApp(
       title: 'Glyph',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
-      home: const ChatScreen(),
+      theme: ThemeData.dark(useMaterial3: true).copyWith(
+        textTheme: ThemeData.dark(useMaterial3: true).textTheme.apply(
+          fontFamily: 'serif',
+        ),
+      ),
+      home: const SplashScreen(),
     );
   }
 }
 
-class GlassOrbPainter extends CustomPainter {
-  final double animationValue;
-  final Offset offset;
-  final bool isThinking;
-  final bool isPressed;
-  final bool isRecording;
+// ─── SPLASH SCREEN ────────────────────────────────────────────────────────────
+class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
 
-  GlassOrbPainter({
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _fade = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    Future.delayed(const Duration(milliseconds: 1800), () async {
+      await _ctrl.forward();
+      if (mounted) Navigator.of(context).pushReplacement(PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatScreen(), transitionDuration: Duration.zero));
+    });
+  }
+
+  @override
+  void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF080808),
+      body: FadeTransition(
+        opacity: _fade,
+        child: Center(
+          child: CustomPaint(
+            painter: FragmentedTrianglePainter(animationValue: 0.0, isThinking: false, opacity: 0.18),
+            size: const Size(180, 180),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── TRIÁNGULO FRAGMENTADO ─────────────────────────────────────────────────────
+class FragmentedTrianglePainter extends CustomPainter {
+  final double animationValue;
+  final bool isThinking;
+  final double opacity;
+
+  FragmentedTrianglePainter({
     required this.animationValue,
-    required this.offset,
     this.isThinking = false,
-    this.isPressed = false,
-    this.isRecording = false,
+    this.opacity = 1.0,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2) + offset;
-    final baseRadius = size.width * 0.12; // Orbe MUCHO más pequeño (minimalista)
-    final pulse = math.sin(animationValue * 2 * math.pi) * 0.02;
-    final currentRadius = baseRadius * (1.0 + pulse + (isPressed ? 0.05 : 0.0));
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final r = size.width * 0.38; // radio circunscrito del triángulo
+    const gap = 10.0; // espacio vacío en cada vértice
+    const strokeW = 1.8;
 
+    // Cuando piensa: rotar el triángulo completo con animación
+    double rotation = 0.0;
     if (isThinking) {
-      // --- ANIMACIÓN PENSANDO: 3 Puntos en Ola (Minimalista) ---
-      final paint = Paint()
-        ..style = PaintingStyle.fill
-        ..color = Colors.white.withValues(alpha: 0.9);
+      rotation = animationValue * 2 * math.pi;
+    }
 
-      final double dotSpacing = currentRadius * 0.5;
-      final double startX = center.dx - dotSpacing;
-      
-      for (int i = 0; i < 3; i++) {
-        // Ola: cada punto tiene un desfase (phase) en el tiempo
-        final double phase = (animationValue * 4 * math.pi) - (i * math.pi / 2.5);
-        final double yOffset = math.sin(phase) * (currentRadius * 0.3);
-        
-        canvas.drawCircle(Offset(startX + (i * dotSpacing), center.dy + yOffset), 3.5, paint);
-      }
-    } else {
-      // --- CONTENEDOR DE CRISTAL MINIMALISTA ---
-      
-      // Borde sutil del cristal
-      final Paint glassEdgePaint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0
-        ..color = Colors.white.withValues(alpha: 0.2);
-      canvas.drawCircle(center, currentRadius, glassEdgePaint);
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: opacity)
+      ..strokeWidth = strokeW
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
 
-      // --- SISTEMA DE FLUIDOS INTERNO (AGUA TRANSPARENTE) ---
-      canvas.save();
-      canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: currentRadius - 0.5)));
+    // Los 3 vértices del triángulo equilátero
+    // Top, bottom-left, bottom-right (rotado -90° para que el vértice quede arriba)
+    List<Offset> verts = List.generate(3, (i) {
+      final angle = rotation + (i * 2 * math.pi / 3) - math.pi / 2;
+      return Offset(cx + r * math.cos(angle), cy + r * math.sin(angle));
+    });
 
-      final double waterLevel = center.dy + currentRadius * 0.15; // Agua en la parte inferior
-      final Path waterPath = Path();
-      
-      waterPath.moveTo(center.dx - currentRadius, center.dy + currentRadius);
-      waterPath.lineTo(center.dx - currentRadius, waterLevel);
-      
-      // Onda suave (sin caos, sin salpicaduras)
-      final double t = animationValue * 3 * math.pi;
-      for (double x = -currentRadius; x <= currentRadius; x += 2) {
-        final double wave = math.sin(t + x * 0.08) * 3 + math.cos(t * 0.8 + x * 0.04) * 2;
-        waterPath.lineTo(center.dx + x, waterLevel + wave);
-      }
-      waterPath.lineTo(center.dx + currentRadius, center.dy + currentRadius);
-      waterPath.close();
-
-      // Agua transparente: solo un ligero blanqueamiento
-      canvas.drawPath(waterPath, Paint()
-        ..color = Colors.white.withValues(alpha: 0.08)
-        ..style = PaintingStyle.fill
-      );
-      
-      // Línea de la superficie del agua (borde superior)
-      final Path surfacePath = Path();
-      for (double x = -currentRadius; x <= currentRadius; x += 2) {
-        final double wave = math.sin(t + x * 0.08) * 3 + math.cos(t * 0.8 + x * 0.04) * 2;
-        if (x == -currentRadius) surfacePath.moveTo(center.dx + x, waterLevel + wave);
-        else surfacePath.lineTo(center.dx + x, waterLevel + wave);
-      }
-      canvas.drawPath(surfacePath, Paint()
-        ..color = Colors.white.withValues(alpha: 0.25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8
-      );
-
-      canvas.restore(); // Fin máscara de agua
+    // Dibujar los 3 lados, dejando un gap en cada extremo
+    for (int i = 0; i < 3; i++) {
+      final a = verts[i];
+      final b = verts[(i + 1) % 3];
+      final dx = b.dx - a.dx;
+      final dy = b.dy - a.dy;
+      final len = math.sqrt(dx * dx + dy * dy);
+      final ux = dx / len;
+      final uy = dy / len;
+      // Recortar gap en ambos extremos
+      final start = Offset(a.dx + ux * gap, a.dy + uy * gap);
+      final end = Offset(b.dx - ux * gap, b.dy - uy * gap);
+      canvas.drawLine(start, end, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant GlassOrbPainter oldDelegate) => true;
+  bool shouldRepaint(covariant FragmentedTrianglePainter old) => true;
 }
 
 class AnimatedHamburger extends StatelessWidget {
@@ -234,10 +245,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   late Animation<Offset> _menuOffsetAnimation;
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   AppLifecycleState _notificationState = AppLifecycleState.resumed;
-  bool _isMenuOpen = false, _isRecording = false, _isOrbPressed = false, _showTextField = false, _showHistory = false;
-  Offset _orbOffset = Offset.zero;
-  Duration _recordDuration = Duration.zero;
-  Timer? _timer, _notificationPollingTimer;
+  bool _isMenuOpen = false, _isRecording = false, _showTextField = false, _showHistory = false;
+  Timer? _notificationPollingTimer;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _pendingImageBase64, _pendingImageName;
@@ -314,6 +323,20 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     if (res != null) {
       final bytes = await File(res.files.single.path!).readAsBytes();
       setState(() { _isMenuOpen = false; _showTextField = true; _pendingImageBase64 = base64Encode(bytes); _pendingImageName = res.files.single.name; });
+    }
+  }
+
+  Future<void> _pickFile() async {
+    FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (res != null && res.files.single.path != null) {
+      final bytes = await File(res.files.single.path!).readAsBytes();
+      setState(() {
+        _isMenuOpen = false;
+        _menuAnimationController.reverse();
+        _showTextField = true;
+        _pendingImageBase64 = base64Encode(bytes);
+        _pendingImageName = res.files.single.name;
+      });
     }
   }
 
@@ -458,7 +481,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                     scale: _showTextField ? 0.5 : 1.0,
                     child: AnimatedBuilder(
                       animation: _pulseController,
-                      builder: (context, _) => CustomPaint(painter: GlassOrbPainter(animationValue: _pulseController.value, offset: _orbOffset, isThinking: _isThinking, isRecording: _isRecording, isPressed: _isOrbPressed), size: const Size(200, 200)),
+                      builder: (context, _) => CustomPaint(
+                        painter: FragmentedTrianglePainter(
+                          animationValue: _pulseController.value,
+                          isThinking: _isThinking,
+                        ),
+                        size: const Size(180, 180),
+                      ),
                     ),
                   ),
                 ),
@@ -525,8 +554,21 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                     child: Column(
                       children: [
                         const SizedBox(height: 100),
-                        ListTile(leading: const Icon(Icons.add, color: Colors.white70), title: const Text("Nuevo Chat", style: TextStyle(color: Colors.white70)), onTap: _startNewChat),
-                        ListTile(leading: const Icon(Icons.image, color: Colors.white70), title: const Text("Añadir Imagen", style: TextStyle(color: Colors.white70)), onTap: _pickImage),
+                        ListTile(
+                          leading: const Icon(Icons.add_circle_outline, color: Colors.white60, size: 20),
+                          title: const Text("Nuevo Chat", style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
+                          onTap: _startNewChat,
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.image_outlined, color: Colors.white60, size: 20),
+                          title: const Text("Adjuntar Imagen", style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
+                          onTap: _pickImage,
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.attach_file_outlined, color: Colors.white60, size: 20),
+                          title: const Text("Adjuntar Archivo", style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
+                          onTap: _pickFile,
+                        ),
                       ],
                     ),
                   ),
@@ -547,17 +589,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("HISTORIAL", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                            const Text("HISTORIAL", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 3.5, color: Colors.white70)),
                             GestureDetector(
-                              behavior: HitTestBehavior.opaque, // Hace que toda el área sea "clickeable"
-                              onTap: () => setState(() => _showHistory = false),
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () { setState(() => _showHistory = false); },
                               child: SizedBox(
                                 width: 48, height: 48,
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
-                                    Transform.rotate(angle: 0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
-                                    Transform.rotate(angle: -0.785, child: Container(width: 26, height: 2.5, color: Colors.white)),
+                                    Transform.rotate(angle: math.pi / 4, child: Container(width: 22, height: 1.5, color: Colors.white70)),
+                                    Transform.rotate(angle: -math.pi / 4, child: Container(width: 22, height: 1.5, color: Colors.white70)),
                                   ],
                                 ),
                               ),
@@ -565,7 +607,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                           ],
                         ),
                       ),
-                      Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 30), itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(contentPadding: EdgeInsets.zero, title: Text(_chatSessions[i].first["text"], style: const TextStyle(color: Colors.white70)), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
+                      Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 30), itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(contentPadding: EdgeInsets.zero, title: Text(_chatSessions[i].first["text"] ?? "", style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 0.5)), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
                     ],
                   ),
                 ),
