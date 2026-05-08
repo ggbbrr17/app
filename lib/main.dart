@@ -111,15 +111,28 @@ class FragmentedTrianglePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final r = size.width * 0.38; // radio circunscrito del triángulo
-    const gap = 10.0; // espacio vacío en cada vértice
-    const strokeW = 1.8;
+    final r = size.width * 0.22; // triángulo más pequeño
+    const gap = 7.0;             // espacio vacío en cada vértice
+    const strokeW = 1.4;
 
-    // Cuando piensa: rotar el triángulo completo con animación
-    double rotation = 0.0;
-    if (isThinking) {
-      rotation = animationValue * 2 * math.pi;
-    }
+    // Base: vértices del triángulo equilátero (vértice arriba)
+    List<Offset> verts = List.generate(3, (i) {
+      final angle = (i * 2 * math.pi / 3) - math.pi / 2;
+      double vx = cx + r * math.cos(angle);
+      double vy = cy + r * math.sin(angle);
+
+      if (isThinking) {
+        // Cada vértice se desplaza con una onda senoidal única → deformación orgánica
+        final t = animationValue * 2 * math.pi;
+        final phaseX = t + i * (2 * math.pi / 3);       // desfase por vértice
+        final phaseY = t + i * (2 * math.pi / 3) + 1.2;
+        final amp = r * 0.28;  // amplitud del desplazamiento
+        vx += math.sin(phaseX) * amp;
+        vy += math.cos(phaseY) * amp * 0.7;
+      }
+
+      return Offset(vx, vy);
+    });
 
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: opacity)
@@ -127,25 +140,18 @@ class FragmentedTrianglePainter extends CustomPainter {
       ..strokeCap = StrokeCap.square
       ..style = PaintingStyle.stroke;
 
-    // Los 3 vértices del triángulo equilátero
-    // Top, bottom-left, bottom-right (rotado -90° para que el vértice quede arriba)
-    List<Offset> verts = List.generate(3, (i) {
-      final angle = rotation + (i * 2 * math.pi / 3) - math.pi / 2;
-      return Offset(cx + r * math.cos(angle), cy + r * math.sin(angle));
-    });
-
-    // Dibujar los 3 lados, dejando un gap en cada extremo
+    // Dibujar los 3 lados con gap en vértices
     for (int i = 0; i < 3; i++) {
       final a = verts[i];
       final b = verts[(i + 1) % 3];
       final dx = b.dx - a.dx;
       final dy = b.dy - a.dy;
       final len = math.sqrt(dx * dx + dy * dy);
+      if (len < gap * 2) continue; // segmento demasiado corto, omitir
       final ux = dx / len;
       final uy = dy / len;
-      // Recortar gap en ambos extremos
       final start = Offset(a.dx + ux * gap, a.dy + uy * gap);
-      final end = Offset(b.dx - ux * gap, b.dy - uy * gap);
+      final end   = Offset(b.dx - ux * gap, b.dy - uy * gap);
       canvas.drawLine(start, end, paint);
     }
   }
@@ -505,11 +511,19 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 scale: _showTextField ? 1.0 : 0.8,
                 curve: Curves.easeOutBack,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 5),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.transparent, // Totalmente transparente
+                    color: Colors.black.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(40),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 0.8),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 24,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Row(
                     children: [
