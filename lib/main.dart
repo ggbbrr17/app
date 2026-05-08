@@ -461,8 +461,6 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
             child: IgnorePointer(
               ignoring: _showTextField,
               child: GestureDetector(
-                onPanUpdate: (d) => setState(() => _orbOffset += d.delta),
-                onPanEnd: (d) => setState(() => _orbOffset = Offset.zero),
                 onTap: () {
                   setState(() => _showTextField = !_showTextField);
                   if (_showTextField) _focusNode.requestFocus();
