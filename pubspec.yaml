@@ -41,7 +41,9 @@ dependencies:
   path_provider: ^2.1.5
   path: ^1.9.0
   audioplayers: ^6.1.0
-  # flutter_tts removed (welcome audio disabled)
+  dio: ^5.7.0
+  # Para ejecutar el modelo en iOS usamos un plugin especializado
+  flutter_gemma: ^0.1.0
 
 dev_dependencies:
   flutter_test:
@@ -55,7 +57,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.4
 
 flutter_launcher_icons:
-  android: false
+  android: true
   ios: "AppIcon"
   image_path: "assets/logo.png"
   remove_alpha_ios: true
@@ -75,6 +77,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/models/.keep
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -14,14 +14,15 @@ import 'package:audioplayers/audioplayers.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return Container(
       color: Colors.black,
       child: Center(
         child: Text(
           "🚨 ERROR:\n${details.exception}",
-          style: const TextStyle(color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
+          style: const TextStyle(
+              color: Colors.white, fontSize: 12, fontFamily: 'monospace'),
           textAlign: TextAlign.center,
         ),
       ),
@@ -45,8 +46,8 @@ class GlyphMobileApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData.dark(useMaterial3: true).copyWith(
         textTheme: ThemeData.dark(useMaterial3: true).textTheme.apply(
-          fontFamily: 'serif',
-        ),
+              fontFamily: 'serif',
+            ),
       ),
       home: const SplashScreen(),
     );
@@ -60,23 +61,32 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _fade;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
-    _fade = Tween<double>(begin: 1.0, end: 0.0).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900));
+    _fade = Tween<double>(begin: 1.0, end: 0.0)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeIn));
     Future.delayed(const Duration(milliseconds: 1800), () async {
       await _ctrl.forward();
-      if (mounted) Navigator.of(context).pushReplacement(PageRouteBuilder(pageBuilder: (_, __, ___) => const ChatScreen(), transitionDuration: Duration.zero));
+      if (mounted)
+        Navigator.of(context).pushReplacement(PageRouteBuilder(
+            pageBuilder: (_, __, ___) => const ChatScreen(),
+            transitionDuration: Duration.zero));
     });
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +96,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
         opacity: _fade,
         child: Center(
           child: CustomPaint(
-            painter: FragmentedTrianglePainter(animationValue: 0.0, isThinking: false, opacity: 0.18),
+            painter: FragmentedTrianglePainter(
+                animationValue: 0.0, isThinking: false, opacity: 0.18),
             size: const Size(180, 180),
           ),
         ),
@@ -109,50 +120,56 @@ class FragmentedTrianglePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final cx = size.width / 2;
-    final cy = size.height / 2;
-    final r = size.width * 0.22; // triángulo más pequeño
-    const gap = 7.0;             // espacio vacío en cada vértice
-    const strokeW = 1.4;
-
-    // Base: vértices del triángulo equilátero (vértice arriba)
-    List<Offset> verts = List.generate(3, (i) {
-      final angle = (i * 2 * math.pi / 3) - math.pi / 2;
-      double vx = cx + r * math.cos(angle);
-      double vy = cy + r * math.sin(angle);
-
-      if (isThinking) {
-        // Cada vértice se desplaza con una onda senoidal única → deformación orgánica
-        final t = animationValue * 2 * math.pi;
-        final phaseX = t + i * (2 * math.pi / 3);       // desfase por vértice
-        final phaseY = t + i * (2 * math.pi / 3) + 1.2;
-        final amp = r * 0.28;  // amplitud del desplazamiento
-        vx += math.sin(phaseX) * amp;
-        vy += math.cos(phaseY) * amp * 0.7;
-      }
-
-      return Offset(vx, vy);
-    });
-
     final paint = Paint()
       ..color = Colors.white.withValues(alpha: opacity)
-      ..strokeWidth = strokeW
-      ..strokeCap = StrokeCap.square
-      ..style = PaintingStyle.stroke;
+      ..strokeWidth = 1.6
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
 
-    // Dibujar los 3 lados con gap en vértices
-    for (int i = 0; i < 3; i++) {
-      final a = verts[i];
-      final b = verts[(i + 1) % 3];
-      final dx = b.dx - a.dx;
-      final dy = b.dy - a.dy;
-      final len = math.sqrt(dx * dx + dy * dy);
-      if (len < gap * 2) continue; // segmento demasiado corto, omitir
-      final ux = dx / len;
-      final uy = dy / len;
-      final start = Offset(a.dx + ux * gap, a.dy + uy * gap);
-      final end   = Offset(b.dx - ux * gap, b.dy - uy * gap);
-      canvas.drawLine(start, end, paint);
+    // Triángulo más pequeño (padding del 28%)
+    double padding = size.width * 0.28;
+    Offset v1 = Offset(size.width / 2, padding);
+    Offset v2 = Offset(padding, size.height - padding);
+    Offset v3 = Offset(size.width - padding, size.height - padding);
+
+    List<List<Offset>> sides = [
+      [v1, v2],
+      [v2, v3],
+      [v3, v1]
+    ];
+
+    for (int i = 0; i < sides.length; i++) {
+      Offset start = sides[i][0];
+      Offset end = sides[i][1];
+
+      if (isThinking) {
+        // Contracción orgánica hacia los vértices (3 puntos)
+        double contract = 0.85;
+        // Contraemos la línea hacia el vértice de inicio
+        Offset animStart = start;
+        Offset animEnd = Offset.lerp(start, end, 1.0 - contract)!;
+
+        Path path = Path();
+        path.moveTo(animStart.dx, animStart.dy);
+
+        // Animación de onda individual por lado
+        for (double t = 0.1; t <= 1.0; t += 0.1) {
+          Offset point = Offset.lerp(animStart, animEnd, t)!;
+          double wave = math.sin((animationValue * 2 * math.pi) +
+                  (t * math.pi * 2) +
+                  (i * 2.0)) *
+              3.5;
+          double angle =
+              math.atan2(animEnd.dy - animStart.dy, animEnd.dx - animStart.dx) +
+                  math.pi / 2;
+          path.lineTo(point.dx + math.cos(angle) * wave,
+              point.dy + math.sin(angle) * wave);
+        }
+        canvas.drawPath(path, paint);
+      } else {
+        // Estado normal: Triángulo extendido
+        canvas.drawLine(start, end, paint);
+      }
     }
   }
 
@@ -163,7 +180,8 @@ class FragmentedTrianglePainter extends CustomPainter {
 class AnimatedHamburger extends StatelessWidget {
   final bool isOpen;
   final VoidCallback onTap;
-  const AnimatedHamburger({super.key, required this.isOpen, required this.onTap});
+  const AnimatedHamburger(
+      {super.key, required this.isOpen, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -176,9 +194,28 @@ class AnimatedHamburger extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            AnimatedPositioned(duration: const Duration(milliseconds: 500), curve: Curves.easeOutBack, top: isOpen ? 23 : 16, child: AnimatedRotation(duration: const Duration(milliseconds: 500), turns: isOpen ? 0.125 : 0, child: Container(width: 26, height: 2.5, color: Colors.white))),
-            AnimatedOpacity(duration: const Duration(milliseconds: 300), opacity: isOpen ? 0.0 : 1.0, child: Container(width: 16, height: 2.5, color: Colors.white)),
-            AnimatedPositioned(duration: const Duration(milliseconds: 500), curve: Curves.easeOutBack, bottom: isOpen ? 23 : 16, child: AnimatedRotation(duration: const Duration(milliseconds: 500), turns: isOpen ? -0.125 : 0, child: Container(width: 26, height: 2.5, color: Colors.white))),
+            AnimatedPositioned(
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutBack,
+                top: isOpen ? 23 : 16,
+                child: AnimatedRotation(
+                    duration: const Duration(milliseconds: 500),
+                    turns: isOpen ? 0.125 : 0,
+                    child: Container(
+                        width: 26, height: 2.5, color: Colors.white))),
+            AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: isOpen ? 0.0 : 1.0,
+                child: Container(width: 16, height: 2.5, color: Colors.white)),
+            AnimatedPositioned(
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOutBack,
+                bottom: isOpen ? 23 : 16,
+                child: AnimatedRotation(
+                    duration: const Duration(milliseconds: 500),
+                    turns: isOpen ? -0.125 : 0,
+                    child: Container(
+                        width: 26, height: 2.5, color: Colors.white))),
           ],
         ),
       ),
@@ -201,17 +238,35 @@ class MeshGradientBackground extends StatelessWidget {
           child: Stack(
             children: [
               _buildAurora(context, const Color(0xFF00E5FF), 0.1, 0.2, t, 1.4),
-              _buildAurora(context, const Color(0xFFD4FF00), 0.9, 0.5, t + 2.0, 1.6),
-              _buildAurora(context, const Color(0xFF9C27B0), 0.4, 0.8, t + 4.0, 1.5),
+              _buildAurora(
+                  context, const Color(0xFFD4FF00), 0.9, 0.5, t + 2.0, 1.6),
+              _buildAurora(
+                  context, const Color(0xFF9C27B0), 0.4, 0.8, t + 4.0, 1.5),
               // Reflejo Acuático
               Positioned(
-                bottom: 0, left: 0, right: 0, height: MediaQuery.of(context).size.height * 0.3,
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: MediaQuery.of(context).size.height * 0.3,
                 child: Opacity(
                   opacity: 0.3,
-                  child: BackdropFilter(filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), child: Container(decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.cyanAccent.withValues(alpha: 0.1)])))),
+                  child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: Container(
+                          decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                            Colors.transparent,
+                            Colors.cyanAccent.withValues(alpha: 0.1)
+                          ])))),
                 ),
               ),
-              BackdropFilter(filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35), child: Container(color: Colors.black.withValues(alpha: 0.45))),
+              BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 35, sigmaY: 35),
+                  child:
+                      Container(color: Colors.black.withValues(alpha: 0.45))),
             ],
           ),
         );
@@ -219,7 +274,8 @@ class MeshGradientBackground extends StatelessWidget {
     );
   }
 
-  Widget _buildAurora(BuildContext context, Color color, double x, double y, double t, double sizeMult) {
+  Widget _buildAurora(BuildContext context, Color color, double x, double y,
+      double t, double sizeMult) {
     final size = MediaQuery.of(context).size;
     final dx = math.sin(t) * 150;
     final dy = math.cos(t) * 150;
@@ -229,7 +285,11 @@ class MeshGradientBackground extends StatelessWidget {
       child: Container(
         width: 500 * sizeMult,
         height: 500 * sizeMult,
-        decoration: BoxDecoration(shape: BoxShape.circle, gradient: RadialGradient(colors: [color.withValues(alpha: 0.25), Colors.transparent], stops: const [0.2, 1.0])),
+        decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+                colors: [color.withValues(alpha: 0.25), Colors.transparent],
+                stops: const [0.2, 1.0])),
       ),
     );
   }
@@ -241,17 +301,23 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _ChatScreenState extends State<ChatScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final List<Map<String, dynamic>> _messages = [];
   bool _isThinking = false;
   final ScrollController _scrollController = ScrollController();
-  late AnimationController _pulseController, _waveController, _menuAnimationController;
+  late AnimationController _pulseController,
+      _waveController,
+      _menuAnimationController;
   late Animation<Offset> _menuOffsetAnimation;
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   AppLifecycleState _notificationState = AppLifecycleState.resumed;
-  bool _isMenuOpen = false, _isRecording = false, _showTextField = false, _showHistory = false;
+  bool _isMenuOpen = false,
+      _isRecording = false,
+      _showTextField = false,
+      _showHistory = false;
   Timer? _notificationPollingTimer;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -259,34 +325,50 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   final List<List<Map<String, dynamic>>> _chatSessions = [];
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
-  final String notificationUrl = "https://service-cv3f.onrender.com/api/v1/notifications";
+  final String notificationUrl =
+      "https://service-cv3f.onrender.com/api/v1/notifications";
   final String secret = "glyph123";
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _pulseController = AnimationController(vsync: this, duration: const Duration(seconds: 10))..repeat(reverse: true);
-    _waveController = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
-    _menuAnimationController = AnimationController(vsync: this, duration: const Duration(milliseconds: 300));
-    _menuOffsetAnimation = Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(CurvedAnimation(parent: _menuAnimationController, curve: Curves.easeOut));
+    _pulseController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 10))
+          ..repeat(reverse: true);
+    _waveController =
+        AnimationController(vsync: this, duration: const Duration(seconds: 20))
+          ..repeat();
+    _menuAnimationController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 300));
+    _menuOffsetAnimation =
+        Tween<Offset>(begin: const Offset(-1.0, 0.0), end: Offset.zero).animate(
+            CurvedAnimation(
+                parent: _menuAnimationController, curve: Curves.easeOut));
     _initializeNotifications();
     _startNotificationPolling();
   }
 
   void _startNotificationPolling() {
-    _notificationPollingTimer = Timer.periodic(const Duration(seconds: 15), (timer) => _checkForNotifications());
+    _notificationPollingTimer = Timer.periodic(
+        const Duration(seconds: 15), (timer) => _checkForNotifications());
   }
 
   Future<void> _checkForNotifications() async {
     try {
-      final r = await http.get(Uri.parse(notificationUrl), headers: {"X-Glyph-Secret": secret});
+      final r = await http
+          .get(Uri.parse(notificationUrl), headers: {"X-Glyph-Secret": secret});
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         for (var note in (data['notifications'] ?? [])) {
           setState(() {
-            _messages.add({"role": "glyph", "text": note['message'] ?? "", "isThought": note['type'] == "autonomous_thought"});
-            if (_notificationState != AppLifecycleState.resumed) _showNotification('Glyph', note['message'] ?? "");
+            _messages.add({
+              "role": "glyph",
+              "text": note['message'] ?? "",
+              "isThought": note['type'] == "autonomous_thought"
+            });
+            if (_notificationState != AppLifecycleState.resumed)
+              _showNotification('Glyph', note['message'] ?? "");
           });
           _scrollToBottom();
         }
@@ -296,44 +378,62 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
 
   Future<void> _initializeNotifications() async {
     flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(android: AndroidInitializationSettings('@mipmap/ic_launcher'), iOS: DarwinInitializationSettings()));
+    await flutterLocalNotificationsPlugin.initialize(
+        const InitializationSettings(
+            android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+            iOS: DarwinInitializationSettings()));
   }
 
   Future<void> _showNotification(String title, String body) async {
-    await flutterLocalNotificationsPlugin.show(0, title, body, const NotificationDetails(iOS: DarwinNotificationDetails()));
+    await flutterLocalNotificationsPlugin.show(0, title, body,
+        const NotificationDetails(iOS: DarwinNotificationDetails()));
   }
 
   @override
   void dispose() {
     _focusNode.dispose();
     _notificationPollingTimer?.cancel();
-    _pulseController.dispose(); _waveController.dispose(); _menuAnimationController.dispose();
-    _audioPlayer.dispose(); _audioRecorder.dispose();
+    _pulseController.dispose();
+    _waveController.dispose();
+    _menuAnimationController.dispose();
+    _audioPlayer.dispose();
+    _audioRecorder.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      if (_scrollController.hasClients)
+        _scrollController.animateTo(_scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
   }
 
   Future<void> _playWaterSound() async {
-    try { await _audioPlayer.play(AssetSource('water_click.mp3')); } catch (_) {}
+    try {
+      await _audioPlayer.play(AssetSource('water_click.mp3'));
+    } catch (_) {}
   }
 
   Future<void> _pickImage() async {
     _playWaterSound();
-    FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.image);
+    FilePickerResult? res =
+        await FilePicker.platform.pickFiles(type: FileType.image);
     if (res != null) {
       final bytes = await File(res.files.single.path!).readAsBytes();
-      setState(() { _isMenuOpen = false; _showTextField = true; _pendingImageBase64 = base64Encode(bytes); _pendingImageName = res.files.single.name; });
+      setState(() {
+        _isMenuOpen = false;
+        _showTextField = true;
+        _pendingImageBase64 = base64Encode(bytes);
+        _pendingImageName = res.files.single.name;
+      });
     }
   }
 
   Future<void> _pickFile() async {
-    FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.any);
+    FilePickerResult? res =
+        await FilePicker.platform.pickFiles(type: FileType.any);
     if (res != null && res.files.single.path != null) {
       final bytes = await File(res.files.single.path!).readAsBytes();
       setState(() {
@@ -348,7 +448,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
 
   Future<void> _startRecording() async {
     if (await _audioRecorder.hasPermission()) {
-      final path = p.join((await getTemporaryDirectory()).path, 'audio_${DateTime.now().ms}.m4a');
+      final path = p.join((await getTemporaryDirectory()).path,
+          'audio_${DateTime.now().ms}.m4a');
       await _audioRecorder.start(const RecordConfig(), path: path);
       setState(() => _isRecording = true);
     }
@@ -360,21 +461,42 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     return path != null ? base64Encode(await File(path).readAsBytes()) : null;
   }
 
-  Future<void> _sendMultimodalData({String question = "", String? base64Image, String? base64Audio}) async {
+  Future<void> _sendMultimodalData(
+      {String question = "", String? base64Image, String? base64Audio}) async {
     setState(() => _isThinking = true);
     try {
-      String history = _messages.take(10).map((m) => "${m['role'].toString().toUpperCase()}: ${m['text']}").join("\n");
-      final body = {"question": question, "history": history, "base64_image": base64Image, "base64_audio": base64Audio};
-      final res = await http.post(Uri.parse(apiUrl), headers: {"Content-Type": "application/json", "X-Glyph-Secret": secret}, body: jsonEncode(body));
+      String history = _messages
+          .take(10)
+          .map((m) => "${m['role'].toString().toUpperCase()}: ${m['text']}")
+          .join("\n");
+      final body = {
+        "question": question,
+        "history": history,
+        "base64_image": base64Image,
+        "base64_audio": base64Audio
+      };
+      final res = await http.post(Uri.parse(apiUrl),
+          headers: {
+            "Content-Type": "application/json",
+            "X-Glyph-Secret": secret
+          },
+          body: jsonEncode(body));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         setState(() {
-          if (data['metacognition']?.toString().isNotEmpty ?? false) _messages.add({"role": "glyph", "text": data['metacognition'], "isThought": true});
+          if (data['metacognition']?.toString().isNotEmpty ?? false)
+            _messages.add({
+              "role": "glyph",
+              "text": data['metacognition'],
+              "isThought": true
+            });
           _messages.add({"role": "glyph", "text": data['message'] ?? "..."});
         });
         _scrollToBottom();
       }
-    } finally { setState(() => _isThinking = false); }
+    } finally {
+      setState(() => _isThinking = false);
+    }
   }
 
   void _handleSend() {
@@ -384,7 +506,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
     _unfocus(); // Cierre automático del teclado
     setState(() {
       _messages.add({"role": "user", "text": text, "image": img});
-      _pendingImageBase64 = null; _pendingImageName = null;
+      _pendingImageBase64 = null;
+      _pendingImageName = null;
     });
     _controller.clear();
     _scrollToBottom();
@@ -392,7 +515,13 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
   }
 
   void _startNewChat() {
-    if (_messages.isNotEmpty) setState(() { _chatSessions.add(List.from(_messages)); _messages.clear(); _isMenuOpen = false; _menuAnimationController.reverse(); });
+    if (_messages.isNotEmpty)
+      setState(() {
+        _chatSessions.add(List.from(_messages));
+        _messages.clear();
+        _isMenuOpen = false;
+        _menuAnimationController.reverse();
+      });
   }
 
   void _unfocus() {
@@ -409,11 +538,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 16),
         padding: const EdgeInsets.all(12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
-          color: isThought ? Colors.cyanAccent.withValues(alpha: 0.1) : Colors.white.withValues(alpha: isUser ? 0.15 : 0.05),
+          color: isThought
+              ? Colors.cyanAccent.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: isUser ? 0.15 : 0.05),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: isThought ? Colors.cyanAccent.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(
+              color: isThought
+                  ? Colors.cyanAccent.withValues(alpha: 0.3)
+                  : Colors.white.withValues(alpha: 0.1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,11 +558,17 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 padding: const EdgeInsets.only(bottom: 8),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.memory(base64Decode(msg["image"]), width: 180, fit: BoxFit.cover),
+                  child: Image.memory(base64Decode(msg["image"]),
+                      width: 180, fit: BoxFit.cover),
                 ),
               ),
             if (msg["text"].toString().isNotEmpty)
-              Text(msg["text"], style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 14, fontStyle: isThought ? FontStyle.italic : FontStyle.normal)),
+              Text(msg["text"],
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14,
+                      fontStyle:
+                          isThought ? FontStyle.italic : FontStyle.normal)),
           ],
         ),
       ),
@@ -443,143 +584,126 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
         behavior: HitTestBehavior.opaque,
         child: Stack(
           children: [
-          MeshGradientBackground(animation: _waveController),
-          Positioned.fill(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.only(top: 100, bottom: 250),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) => _buildChatBubble(_messages[index]),
+            MeshGradientBackground(animation: _waveController),
+            Positioned.fill(
+              child: ListView.builder(
+                controller: _scrollController,
+                padding: const EdgeInsets.only(top: 100, bottom: 250),
+                itemCount: _messages.length,
+                itemBuilder: (context, index) =>
+                    _buildChatBubble(_messages[index]),
+              ),
             ),
-          ),
-          Positioned(
-            top: 50, left: 20, right: 20,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                AnimatedHamburger(isOpen: _isMenuOpen, onTap: _toggleMenu),
-                IconButton(icon: Icon(_showHistory ? Icons.chat_bubble : Icons.history, color: Colors.white), onPressed: () => setState(() => _showHistory = !_showHistory)),
-              ],
+            Positioned(
+              top: 50,
+              left: 20,
+              right: 20,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  AnimatedHamburger(isOpen: _isMenuOpen, onTap: _toggleMenu),
+                  IconButton(
+                      icon: Icon(
+                          _showHistory ? Icons.chat_bubble : Icons.history,
+                          color: Colors.white),
+                      onPressed: () =>
+                          setState(() => _showHistory = !_showHistory)),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 30, left: 0, right: 0,
-            child: IgnorePointer(
-              ignoring: _showTextField,
-              child: GestureDetector(
-                onTap: () {
-                  setState(() => _showTextField = !_showTextField);
-                  if (_showTextField) _focusNode.requestFocus();
-                  else _focusNode.unfocus();
-                },
-                onLongPressStart: (_) => _startRecording(),
-                onLongPressEnd: (_) async {
-                  final audio = await _stopRecording();
-                  if (audio != null) _sendMultimodalData(question: "Analiza este audio.", base64Audio: audio);
-                },
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 300),
-                  opacity: _showTextField ? 0.0 : 1.0,
-                  child: AnimatedScale(
+            Positioned(
+              bottom: 30,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: _showTextField,
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _showTextField = !_showTextField);
+                    if (_showTextField)
+                      _focusNode.requestFocus();
+                    else
+                      _focusNode.unfocus();
+                  },
+                  onLongPressStart: (_) => _startRecording(),
+                  onLongPressEnd: (_) async {
+                    final audio = await _stopRecording();
+                    if (audio != null)
+                      _sendMultimodalData(
+                          question: "Analiza este audio.", base64Audio: audio);
+                  },
+                  child: AnimatedOpacity(
                     duration: const Duration(milliseconds: 300),
-                    scale: _showTextField ? 0.5 : 1.0,
-                    child: AnimatedBuilder(
-                      animation: _pulseController,
-                      builder: (context, _) => CustomPaint(
-                        painter: FragmentedTrianglePainter(
-                          animationValue: _pulseController.value,
-                          isThinking: _isThinking,
+                    opacity: _showTextField ? 0.0 : 1.0,
+                    child: AnimatedScale(
+                      duration: const Duration(milliseconds: 300),
+                      scale: _showTextField ? 0.5 : 1.0,
+                      child: AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, _) => CustomPaint(
+                          painter: FragmentedTrianglePainter(
+                            animationValue: _pulseController.value,
+                            isThinking: _isThinking,
+                          ),
+                          size: const Size(180, 180),
                         ),
-                        size: const Size(180, 180),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeOutBack,
-            bottom: _showTextField ? 100 : 80,
-            left: 30, right: 30,
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 400),
-              opacity: _showTextField ? 1.0 : 0.0,
-              child: AnimatedScale(
-                duration: const Duration(milliseconds: 500),
-                scale: _showTextField ? 1.0 : 0.8,
-                curve: Curves.easeOutBack,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(40),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        blurRadius: 24,
-                        spreadRadius: 2,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          focusNode: _focusNode,
-                          autofocus: false,
-                          onSubmitted: (_) => _handleSend(),
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
-                          decoration: const InputDecoration(
-                            hintText: "", // Limpio
-                            border: InputBorder.none,
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOutBack,
+              bottom: _showTextField ? 100 : 80,
+              left: 30,
+              right: 30,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 400),
+                opacity: _showTextField ? 1.0 : 0.0,
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 500),
+                  scale: _showTextField ? 1.0 : 0.8,
+                  curve: Curves.easeOutBack,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(40),
+                      border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          width: 0.8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            focusNode: _focusNode,
+                            autofocus: false,
+                            onSubmitted: (_) => _handleSend(),
+                            style: const TextStyle(
+                                color: Colors.white, fontSize: 16),
+                            decoration: const InputDecoration(
+                              hintText: "", // Limpio
+                              border: InputBorder.none,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.send_rounded, color: Colors.cyanAccent, size: 22),
-                        onPressed: _handleSend,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (_isMenuOpen)
-            GestureDetector(
-              onTap: _toggleMenu,
-              child: Container(
-                color: Colors.black54,
-                child: SlideTransition(
-                  position: _menuOffsetAnimation,
-                  child: Container(
-                    width: MediaQuery.of(context).size.width * 0.7,
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.5)),
-                    ),
-                    child: Column(
-                      children: [
-                        const SizedBox(height: 100),
-                        ListTile(
-                          leading: const Icon(Icons.add_circle_outline, color: Colors.white60, size: 20),
-                          title: const Text("Nuevo Chat", style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
-                          onTap: _startNewChat,
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.image_outlined, color: Colors.white60, size: 20),
-                          title: const Text("Adjuntar Imagen", style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
-                          onTap: _pickImage,
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.attach_file_outlined, color: Colors.white60, size: 20),
-                          title: const Text("Adjuntar Archivo", style: TextStyle(color: Colors.white60, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 1.2)),
-                          onTap: _pickFile,
+                        IconButton(
+                          icon: const Icon(Icons.send_rounded,
+                              color: Colors.cyanAccent, size: 22),
+                          onPressed: _handleSend,
                         ),
                       ],
                     ),
@@ -587,51 +711,156 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin, 
                 ),
               ),
             ),
-          if (_showHistory)
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+            if (_isMenuOpen)
+              GestureDetector(
+                onTap: _toggleMenu,
                 child: Container(
-                  color: Colors.black.withValues(alpha: 0.5), // Más opaco para mejor lectura
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 80),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 30),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("HISTORIAL", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 3.5, color: Colors.white70)),
-                            GestureDetector(
-                              behavior: HitTestBehavior.opaque,
-                              onTap: () { setState(() => _showHistory = false); },
-                              child: SizedBox(
-                                width: 48, height: 48,
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    Transform.rotate(angle: math.pi / 4, child: Container(width: 22, height: 1.5, color: Colors.white70)),
-                                    Transform.rotate(angle: -math.pi / 4, child: Container(width: 22, height: 1.5, color: Colors.white70)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                  color: Colors.black54,
+                  child: SlideTransition(
+                    position: _menuOffsetAnimation,
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.7,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border(
+                            right: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.1),
+                                width: 0.5)),
                       ),
-                      Expanded(child: ListView.builder(padding: const EdgeInsets.symmetric(horizontal: 30), itemCount: _chatSessions.length, itemBuilder: (c, i) => ListTile(contentPadding: EdgeInsets.zero, title: Text(_chatSessions[i].first["text"] ?? "", style: const TextStyle(color: Colors.white54, fontSize: 13, fontWeight: FontWeight.w300, letterSpacing: 0.5)), onTap: () => setState(() { _messages.clear(); _messages.addAll(_chatSessions[i]); _showHistory = false; })))),
-                    ],
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 100),
+                          ListTile(
+                            leading: const Icon(Icons.add_circle_outline,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Nuevo Chat",
+                                style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: _startNewChat,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.image_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Adjuntar Imagen",
+                                style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: _pickImage,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.attach_file_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Adjuntar Archivo",
+                                style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: _pickFile,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+            if (_showHistory)
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: Container(
+                    color: Colors.black
+                        .withValues(alpha: 0.5), // Más opaco para mejor lectura
+                    child: Column(
+                      children: [
+                        const SizedBox(height: 80),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 30),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("HISTORIAL",
+                                  style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w300,
+                                      letterSpacing: 3.5,
+                                      color: Colors.white70)),
+                              GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  setState(() => _showHistory = false);
+                                },
+                                child: SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: Stack(
+                                    alignment: Alignment.center,
+                                    children: [
+                                      Transform.rotate(
+                                          angle: math.pi / 4,
+                                          child: Container(
+                                              width: 22,
+                                              height: 1.5,
+                                              color: Colors.white70)),
+                                      Transform.rotate(
+                                          angle: -math.pi / 4,
+                                          child: Container(
+                                              width: 22,
+                                              height: 1.5,
+                                              color: Colors.white70)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                            child: ListView.builder(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 30),
+                                itemCount: _chatSessions.length,
+                                itemBuilder: (c, i) => ListTile(
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                        _chatSessions[i].first["text"] ?? "",
+                                        style: const TextStyle(
+                                            color: Colors.white54,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w300,
+                                            letterSpacing: 0.5)),
+                                    onTap: () => setState(() {
+                                          _messages.clear();
+                                          _messages.addAll(_chatSessions[i]);
+                                          _showHistory = false;
+                                        })))),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
+
+  void _toggleMenu() {
+    setState(() {
+      _isMenuOpen = !_isMenuOpen;
+      if (_isMenuOpen)
+        _menuAnimationController.forward();
+      else
+        _menuAnimationController.reverse();
+    });
+  }
 }
 
-  void _toggleMenu() { setState(() { _isMenuOpen = !_isMenuOpen; if (_isMenuOpen) _menuAnimationController.forward(); else _menuAnimationController.reverse(); }); }
+extension DateExt on DateTime {
+  int get ms => millisecondsSinceEpoch;
 }
-
-extension DateExt on DateTime { int get ms => millisecondsSinceEpoch; }
