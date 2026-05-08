@@ -32,6 +32,9 @@ jobs:
 
       - name: Configurar Xcode (Sin Firma)
         run: |
+          # Forzar enlace estático para evitar error de MediaPipe/Gemma
+          sed -i '' 's/^.*use_frameworks!.*/use_frameworks! :linkage => :static/g' ios/Podfile
+
           # Configuración de Identificador de Bundle
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
           
