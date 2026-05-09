@@ -633,8 +633,6 @@ class _ChatScreenState extends State<ChatScreen>
                });
                if (mounted) {
                  setState(() {
-                   _isListening = false;
-                   _isProcessingSpeech = true;
                    _messages.add({
                      "role": "glyph",
                      "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
