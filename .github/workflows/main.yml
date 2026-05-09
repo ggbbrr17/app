@@ -36,6 +36,7 @@ jobs:
         run: |
           # Forzar al Podfile a usar la ruta de Flutter del servidor
           sed -i '' 's|.*flutter_root.*=.*|flutter_root = ENV["FLUTTER_ROOT"]|g' ios/Podfile
+          sed -i '' 's/^.*use_frameworks!.*/use_frameworks! :linkage => :static/g' ios/Podfile
 
           # Forzar el Bundle ID y actualizar el Target de iOS a 13.0
           sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = [^;]*;/PRODUCT_BUNDLE_IDENTIFIER = "com.xglyphx.glyph";/g' ios/Runner.xcodeproj/project.pbxproj
