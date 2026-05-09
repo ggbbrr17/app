@@ -589,11 +589,11 @@ class _ChatScreenState extends State<ChatScreen>
                  
                  String simplifiedDiag = "";
                  if (result.diagnosis.contains("Normal")) {
-                   simplifiedDiag = "Está creciendo sano y fuerte.";
+                   simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
                  } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-                   simplifiedDiag = "Precaución. Necesita atención y alimento urgente.";
+                   simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.";
                  } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-                   simplifiedDiag = "Precaución. Tiene exceso de peso.";
+                   simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Promueva el juego activo y reduzca los alimentos con mucha azúcar. Consulte con un promotor de salud.";
                  }
                  
                  final speechText = "He registrado a $nombre. $simplifiedDiag";
