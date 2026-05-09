@@ -44,6 +44,11 @@ dependencies:
   dio: ^5.7.0
   # Para ejecutar el modelo en iOS usamos un plugin especializado
   flutter_gemma: ^0.14.5
+  sqflite: ^2.4.2+1
+  fl_chart: ^1.2.0
+  growth_standards: ^4.4.1
+  share_plus: ^12.0.2
+  flutter_tts: ^4.2.5
 
 dev_dependencies:
   flutter_test:

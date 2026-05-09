@@ -3,6 +3,14 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+
+import 'anthro_service.dart';
+import 'anthro_chart_widget.dart';
+import 'database_helper.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path/path.dart' as p;
+import 'package:flutter_tts/flutter_tts.dart';
+
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -336,6 +344,7 @@ class _ChatScreenState extends State<ChatScreen>
   Timer? _notificationPollingTimer;
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
+  final FlutterTts _flutterTts = FlutterTts();
   String? _pendingImageBase64, _pendingImageName;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
   
@@ -351,6 +360,7 @@ class _ChatScreenState extends State<ChatScreen>
   @override
   void initState() {
     super.initState();
+    _initTts();
     WidgetsBinding.instance.addObserver(this);
     _pulseController =
         AnimationController(vsync: this, duration: const Duration(seconds: 10))
@@ -366,6 +376,13 @@ class _ChatScreenState extends State<ChatScreen>
                 parent: _menuAnimationController, curve: Curves.easeOut));
     _initializeNotifications();
     _startNotificationPolling();
+  }
+
+  Future<void> _initTts() async {
+    await _flutterTts.setLanguage("es-ES");
+    await _flutterTts.setSpeechRate(0.5);
+    await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0);
   }
 
   void _startNotificationPolling() {
@@ -417,6 +434,7 @@ class _ChatScreenState extends State<ChatScreen>
     _menuAnimationController.dispose();
     _audioPlayer.dispose();
     _audioRecorder.dispose();
+    _flutterTts.stop();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -497,7 +515,32 @@ class _ChatScreenState extends State<ChatScreen>
             .install();
             
         _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
-        _gemmaChat = await _gemmaModel!.createChat();
+        _gemmaChat = await _gemmaModel!.createChat(
+          supportsFunctionCalls: true,
+          toolChoice: ToolChoice.auto,
+          tools: [
+            Tool(
+              name: "registrar_medicion_pediatrica",
+              description: "Registra los datos antropométricos de un paciente pediátrico para calcular su diagnóstico nutricional OMS.",
+              parameters: {
+                "type": "object",
+                "properties": {
+                  "nombre": {"type": "string", "description": "Nombre del niño"},
+                  "edad_meses": {"type": "integer", "description": "Edad en meses"},
+                  "peso_kg": {"type": "number", "description": "Peso en kilogramos"},
+                  "talla_cm": {"type": "number", "description": "Talla en centímetros"},
+                  "genero": {"type": "string", "description": "Género (m o f)"}
+                },
+                "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
+              }
+            ),
+            Tool(
+              name: "exportar_base_datos",
+              description: "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
+              parameters: {"type": "object", "properties": {}}
+            )
+          ]
+        );
         
         setState(() {
           _isOfflineMode = true;
@@ -533,6 +576,59 @@ class _ChatScreenState extends State<ChatScreen>
         setState(() {
           if (response is TextResponse) {
              _messages.add({"role": "glyph", "text": response.text});
+          } else if (response is FunctionCallResponse) {
+             if (response.name == "registrar_medicion_pediatrica") {
+                 final params = response.parameters;
+                 final nombre = params['nombre'];
+                 final edad = params['edad_meses'];
+                 final peso = (params['peso_kg'] as num).toDouble();
+                 final talla = (params['talla_cm'] as num).toDouble();
+                 final genero = params['genero'];
+                 
+                 final result = AnthroService.calculate(edad, peso, talla, genero);
+                 
+                 String simplifiedDiag = "";
+                 if (result.diagnosis.contains("Normal")) {
+                   simplifiedDiag = "Está creciendo sano y fuerte.";
+                 } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+                   simplifiedDiag = "Precaución. Necesita atención y alimento urgente.";
+                 } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+                   simplifiedDiag = "Precaución. Tiene exceso de peso.";
+                 }
+                 
+                 final speechText = "He registrado a $nombre. $simplifiedDiag";
+                 
+                 _messages.add({
+                    "role": "glyph", 
+                    "type": "anthro_chart",
+                    "data": {
+                        "edad": edad, "peso": peso, "genero": genero, 
+                        "diag": result.diagnosis, 
+                        "text": speechText
+                    }
+                 });
+                 
+                 _flutterTts.speak(speechText);
+                 
+                 // Guardar en SQLite
+                 DatabaseHelper.instance.insertPatient({
+                   "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
+                 }).then((pid) {
+                   DatabaseHelper.instance.insertMeasurement({
+                     "patient_id": pid, "date": DateTime.now().toIso8601String(),
+                     "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
+                     "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
+                     "diagnosis": result.diagnosis
+                   });
+                 });
+             } else if (response.name == "exportar_base_datos") {
+                 final csvFile = await _exportDatabaseToCSV();
+                 _messages.add({
+                    "role": "glyph", 
+                    "type": "file_share",
+                    "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
+                 });
+             }
           } else {
              _messages.add({"role": "glyph", "text": "Respuesta generada, pero formato no soportado."});
           }
@@ -647,7 +743,27 @@ class _ChatScreenState extends State<ChatScreen>
                       width: 180, fit: BoxFit.cover),
                 ),
               ),
-            if (msg["text"].toString().isNotEmpty)
+            if (msg["type"] == "anthro_chart" && msg["data"] != null) ...[
+              Text(msg["data"]["text"], style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              AnthroChartWidget(
+                ageInMonths: msg["data"]["edad"],
+                weightKg: msg["data"]["peso"],
+                genderStr: msg["data"]["genero"],
+                diagnosis: msg["data"]["diag"],
+              ),
+            ],
+            if (msg["type"] == "file_share" && msg["data"] != null) ...[
+              GestureDetector(
+                onTap: () => Share.shareXFiles([XFile(msg["data"]["path"])], text: "Base de datos exportada desde Glyph"),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5))),
+                  child: Row(children: [const Icon(Icons.file_download, color: Colors.white), const SizedBox(width: 12), Expanded(child: Text(msg["data"]["text"], style: const TextStyle(color: Colors.white)))])
+                )
+              ),
+            ],
+            if (msg["type"] != "file_share" && msg["text"]?.toString().isNotEmpty == true)
               Text(msg["text"],
                   style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.9),
@@ -980,9 +1096,31 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
+  Future<File> _exportDatabaseToCSV() async {
+    final patients = await DatabaseHelper.instance.getAllPatients();
+    String csv = "ID,Nombre,Genero,FechaNacimiento,Medicion_ID,FechaMedicion,EdadMeses,PesoKg,TallaCm,Z_WFA,Z_HFA,Z_BMI,Diagnostico\n";
+    for (var pat in patients) {
+       final measurements = await DatabaseHelper.instance.getPatientMeasurements(pat['id']);
+       if (measurements.isEmpty) {
+          csv += "${pat['id']},${pat['name']},${pat['gender']},${pat['birthDate']},,,,,,,,,\n";
+       } else {
+          for (var m in measurements) {
+             csv += "${pat['id']},${pat['name']},${pat['gender']},${pat['birthDate']},${m['id']},${m['date']},${m['age_months']},${m['weight_kg']},${m['height_cm']},${m['z_wfa']},${m['z_hfa']},${m['z_bmi']},${m['diagnosis']}\n";
+          }
+       }
+    }
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dir.path, "base_datos_pediatrica_${DateTime.now().ms}.csv"));
+    await file.writeAsString(csv);
+    return file;
+  }
+
   Future<void> _showGeneratedFiles() async {
     setState(() => _isMenuOpen = false);
     _menuAnimationController.reverse();
+    
+    final dir = await getApplicationDocumentsDirectory();
+    final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.csv')).toList();
     
     showModalBottomSheet(
       context: context,
@@ -999,18 +1137,35 @@ class _ChatScreenState extends State<ChatScreen>
             children: [
               const Text("Archivos Generados", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 1.2)),
               const SizedBox(height: 20),
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.folder_open, color: Colors.white.withValues(alpha: 0.2), size: 48),
-                      const SizedBox(height: 10),
-                      Text("No hay archivos generados aún", style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w300)),
-                    ],
-                  ),
+              if (files.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.folder_open, color: Colors.white.withValues(alpha: 0.2), size: 48),
+                        const SizedBox(height: 10),
+                        Text("No hay archivos generados aún", style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w300)),
+                      ],
+                    ),
+                  )
                 )
-              )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: files.length,
+                    itemBuilder: (ctx, i) {
+                      return ListTile(
+                        leading: const Icon(Icons.table_chart, color: Colors.greenAccent),
+                        title: Text(p.basename(files[i].path), style: const TextStyle(color: Colors.white)),
+                        trailing: const Icon(Icons.share, color: Colors.white54),
+                        onTap: () {
+                          Share.shareXFiles([XFile(files[i].path)]);
+                        },
+                      );
+                    }
+                  )
+                )
             ],
           )
         );
