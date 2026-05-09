@@ -13,7 +13,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart' as fln;
 import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
@@ -573,74 +573,76 @@ class _ChatScreenState extends State<ChatScreen>
         await _gemmaChat!.addQuery(Message(text: question, isUser: true));
         final response = await _gemmaChat!.generateChatResponse();
         
-        setState(() {
-          if (response is TextResponse) {
-             _messages.add({"role": "glyph", "text": response.text});
-          } else if (response is FunctionCallResponse) {
-             if (response.name == "registrar_medicion_pediatrica") {
-                 final params = response.parameters;
-                 final nombre = params['nombre'];
-                 final edad = params['edad_meses'];
-                 final peso = (params['peso_kg'] as num).toDouble();
-                 final talla = (params['talla_cm'] as num).toDouble();
-                 final genero = params['genero'];
-                 
-                 final result = AnthroService.calculate(edad, peso, talla, genero);
-                 
-                 String simplifiedDiag = "";
-                 if (result.diagnosis.contains("Normal")) {
-                   simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
-                 } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-                   simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.";
-                 } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-                   simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Promueva el juego activo y reduzca los alimentos con mucha azúcar. Consulte con un promotor de salud.";
-                 }
-                 
-                 final speechText = "He registrado a $nombre. $simplifiedDiag";
-                 
-                 _messages.add({
-                    "role": "glyph", 
-                    "type": "anthro_chart",
-                    "data": {
-                        "edad": edad, "peso": peso, "genero": genero, 
-                        "diag": result.diagnosis, 
-                        "text": speechText
-                    }
-                 });
-                 
-                 _flutterTts.speak(speechText);
-                 
-                 if (result.diagnosis.contains("Normal")) {
-                   _audioPlayer.play(AssetSource('wayuu_sano.mp3'));
-                 } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-                   _audioPlayer.play(AssetSource('wayuu_peligro.mp3'));
-                 } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-                   _audioPlayer.play(AssetSource('wayuu_precaucion.mp3'));
-                 }
-                 
-                 // Guardar en SQLite
-                 DatabaseHelper.instance.insertPatient({
-                   "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
-                 }).then((pid) {
-                   DatabaseHelper.instance.insertMeasurement({
-                     "patient_id": pid, "date": DateTime.now().toIso8601String(),
-                     "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
-                     "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
-                     "diagnosis": result.diagnosis
-                   });
-                 });
-             } else if (response.name == "exportar_base_datos") {
-                 final csvFile = await _exportDatabaseToCSV();
-                 _messages.add({
-                    "role": "glyph", 
-                    "type": "file_share",
-                    "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
-                 });
+        if (response is TextResponse) {
+           setState(() {
+              _messages.add({"role": "glyph", "text": response.response});
+           });
+        } else if (response is FunctionCallResponse) {
+           if (response.name == "registrar_medicion_pediatrica") {
+             final nombre = response.args['nombre'];
+             final edad = response.args['edad_meses'];
+             final peso = (response.args['peso_kg'] as num).toDouble();
+             final talla = (response.args['talla_cm'] as num).toDouble();
+             final genero = response.args['genero'];
+             
+             final result = AnthroService.calculate(edad, peso, talla, genero);
+             
+             String simplifiedDiag = "";
+             if (result.diagnosis.contains("Normal")) {
+               simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
+             } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+               simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.";
+             } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+               simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.";
              }
-          } else {
-             _messages.add({"role": "glyph", "text": "Respuesta generada, pero formato no soportado."});
-          }
-        });
+             
+             final speechText = "He registrado a $nombre. $simplifiedDiag";
+             
+             setState(() {
+               _messages.add({
+                  "role": "glyph", 
+                  "type": "anthro_chart",
+                  "data": {
+                      "edad": edad, "peso": peso, "genero": genero, 
+                      "diag": result.diagnosis, 
+                      "text": speechText
+                  }
+               });
+             });
+             
+             _flutterTts.speak(speechText);
+             
+             // Reproducir audio robótico en Wayuunaiki
+             if (result.diagnosis.contains("Normal")) {
+               _audioPlayer.play(AssetSource('wayuu_sano.mp3'));
+             } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+               _audioPlayer.play(AssetSource('wayuu_peligro.mp3'));
+             } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+               _audioPlayer.play(AssetSource('wayuu_precaucion.mp3'));
+             }
+             
+             // Guardar en SQLite
+             DatabaseHelper.instance.insertPatient({
+               "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
+             }).then((pid) {
+               DatabaseHelper.instance.insertMeasurement({
+                 "patient_id": pid, "date": DateTime.now().toIso8601String(),
+                 "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
+                 "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
+                 "diagnosis": result.diagnosis
+               });
+             });
+           } else if (response.name == "exportar_base_datos") {
+             final csvFile = await _exportDatabaseToCSV();
+             setState(() {
+               _messages.add({
+                  "role": "glyph", 
+                  "type": "file_share",
+                  "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
+               });
+             });
+           }
+        }
         _scrollToBottom();
       } catch (e) {
          setState(() {
