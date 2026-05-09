@@ -137,7 +137,7 @@ class FragmentedTrianglePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // Triángulo (padding ajustable para el tamaño interno)
-    double padding = size.width * 0.15;
+    double padding = size.width * 0.25; // Más pequeño y centrado
     Offset v1 = Offset(size.width / 2, padding);
     Offset v2 = Offset(padding, size.height - padding);
     Offset v3 = Offset(size.width - padding, size.height - padding);
@@ -521,7 +521,7 @@ class _ChatScreenState extends State<ChatScreen>
           tools: [
             Tool(
               name: "registrar_medicion_pediatrica",
-              description: "Registra los datos antropométricos de un paciente pediátrico para calcular su diagnóstico nutricional OMS.",
+              description: "IMPORTANT: Use this tool ALWAYS when the user provides pediatric data (name, age, weight, height, gender) to calculate the nutritional diagnosis. Data: Pedro, 12 months, 0kg, 60cm, male.",
               parameters: {
                 "type": "object",
                 "properties": {
@@ -546,6 +546,12 @@ class _ChatScreenState extends State<ChatScreen>
           _isOfflineMode = true;
           _messages.add({"role": "glyph", "text": "¡Modelo local cargado exitosamente! Ahora estoy funcionando 100% offline."});
         });
+        
+        // Inyectar instrucción de sistema para asegurar el uso de herramientas
+        await _gemmaChat!.addQuery(Message(
+          text: "Eres un asistente de salud pediátrica. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, DEBES usar la herramienta 'registrar_medicion_pediatrica'. No respondas con texto plano si puedes usar la herramienta. Ejemplo: Pedro, 12 meses, 0kg, 60cm -> Llama a la función con esos datos.",
+          isUser: false
+        ));
       } catch (e) {
         setState(() {
           _messages.add({"role": "glyph", "text": "Error al cargar modelo local: $e"});
@@ -833,41 +839,40 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
             Positioned(
-              bottom: 30,
+              bottom: 40,
               left: 0,
               right: 0,
-              child: IgnorePointer(
-                ignoring: _showTextField,
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() => _showTextField = !_showTextField);
-                    if (_showTextField)
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 300),
+                opacity: _showTextField ? 0.0 : 1.0,
+                child: IgnorePointer(
+                  ignoring: _showTextField,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _showTextField = true);
                       _focusNode.requestFocus();
-                    else
-                      _focusNode.unfocus();
-                  },
-                  onLongPressStart: (_) => _startRecording(),
-                  onLongPressEnd: (_) async {
-                    final audio = await _stopRecording();
-                    if (audio != null)
-                      _sendMultimodalData(
-                          question: "Analiza este audio.", base64Audio: audio);
-                  },
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: _showTextField ? 0.0 : 1.0,
-                    child: AnimatedScale(
-                      duration: const Duration(milliseconds: 300),
-                      scale: _showTextField ? 0.5 : 1.0,
-                      child: AnimatedBuilder(
-                        animation: Listenable.merge([_pulseController, _waveController]),
-                        builder: (context, _) => CustomPaint(
-                          painter: FragmentedTrianglePainter(
-                            animationValue: _waveController.value,
-                            isThinking: _isThinking,
-                            isRecording: _isRecording,
+                    },
+                    onLongPressStart: (_) => _startRecording(),
+                    onLongPressEnd: (_) async {
+                      final audio = await _stopRecording();
+                      if (audio != null) {
+                        _sendMultimodalData(question: "Analiza este audio.", base64Audio: audio);
+                      }
+                    },
+                    child: Center(
+                      child: AnimatedScale(
+                        duration: const Duration(milliseconds: 300),
+                        scale: _showTextField ? 0.4 : 1.0,
+                        child: AnimatedBuilder(
+                          animation: Listenable.merge([_pulseController, _waveController]),
+                          builder: (context, _) => CustomPaint(
+                            painter: FragmentedTrianglePainter(
+                              animationValue: _waveController.value,
+                              isThinking: _isThinking,
+                              isRecording: _isRecording,
+                            ),
+                            size: const Size(60, 60), // Más pequeño y elegante
                           ),
-                          size: const Size(120, 120),
                         ),
                       ),
                     ),
