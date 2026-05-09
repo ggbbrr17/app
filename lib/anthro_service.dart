@@ -22,8 +22,8 @@ class AnthroService {
         : Sex.female;
 
     final age = Age.byMonthsAgo(ageInMonths);
-    final weight = Mass.kilograms(weightKg);
-    final height = Length.centimeters(heightCm);
+    final weight = Mass$Kilogram(weightKg);
+    final height = Length$Centimeter(heightCm);
     
     double zWfa = double.nan;
     double zHfa = double.nan;
@@ -43,8 +43,15 @@ class AnthroService {
         );
         zHfa = lfa.zScore().toDouble();
 
-        final bmiVal = BodyMassIndex(weight: weight, lengthHeight: height);
-        final bmi = WHOGrowthStandardsBodyMassIndexForAge(sex: sex, age: age, bmiForAge: bmiVal);
+        final bmiVal = weightKg / ((heightCm / 100) * (heightCm / 100));
+        final bmiMeasurement = WHOGrowthStandardsBodyMassIndexMeasurement(
+          bmiVal,
+          age: age,
+        );
+        final bmi = WHOGrowthStandardsBodyMassIndexForAge(
+          sex: sex,
+          bodyMassIndexMeasurement: bmiMeasurement,
+        );
         zBmi = bmi.zScore().toDouble();
 
       } else {
@@ -57,12 +64,19 @@ class AnthroService {
         final hfa = WHOGrowthReferenceHeightForAge(sex: sex, age: age, lengthHeight: height);
         zHfa = hfa.zScore().toDouble();
 
-        final bmiVal = BodyMassIndex(weight: weight, lengthHeight: height);
-        final bmi = WHOGrowthReferenceBodyMassIndexForAge(sex: sex, age: age, bmiForAge: bmiVal);
+        final bmiVal = weightKg / ((heightCm / 100) * (heightCm / 100));
+        final bmiMeasurement = WHOGrowthReferenceBodyMassIndexMeasurement(
+          bmiVal,
+        );
+        final bmi = WHOGrowthReferenceBodyMassIndexForAge(
+          sex: sex,
+          age: age,
+          bodyMassIndexMeasurement: bmiMeasurement,
+        );
         zBmi = bmi.zScore().toDouble();
       }
     } catch (e) {
-      print("Error calculating Anthro Z-scores: \$e");
+      print("Error calculating Anthro Z-scores: $e");
     }
 
     String diagnosis = _diagnose(zWfa, zHfa, zBmi, ageInMonths);

@@ -18,7 +18,6 @@ import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:audioplayers/audioplayers.dart';
 
 void main() async {
@@ -335,7 +334,7 @@ class _ChatScreenState extends State<ChatScreen>
       _waveController,
       _menuAnimationController;
   late Animation<Offset> _menuOffsetAnimation;
-  late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  late fln.FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
   AppLifecycleState _notificationState = AppLifecycleState.resumed;
   bool _isMenuOpen = false,
       _isRecording = false,
@@ -413,16 +412,17 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _initializeNotifications() async {
-    flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-    await flutterLocalNotificationsPlugin.initialize(
-        const InitializationSettings(
-            android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-            iOS: DarwinInitializationSettings()));
+    flutterLocalNotificationsPlugin = fln.FlutterLocalNotificationsPlugin();
+    var initializationSettings = fln.InitializationSettings(
+        android: fln.AndroidInitializationSettings('@mipmap/ic_launcher'),
+        iOS: fln.DarwinInitializationSettings());
+    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
   Future<void> _showNotification(String title, String body) async {
-    await flutterLocalNotificationsPlugin.show(0, title, body,
-        const NotificationDetails(iOS: DarwinNotificationDetails()));
+    var notificationDetails = fln.NotificationDetails(iOS: fln.DarwinNotificationDetails());
+    await flutterLocalNotificationsPlugin.show(
+        0, title, body, notificationDetails);
   }
 
   @override
@@ -575,7 +575,7 @@ class _ChatScreenState extends State<ChatScreen>
         
         if (response is TextResponse) {
            setState(() {
-              _messages.add({"role": "glyph", "text": response.response});
+              _messages.add({"role": "glyph", "text": response.token});
            });
         } else if (response is FunctionCallResponse) {
            if (response.name == "registrar_medicion_pediatrica") {
@@ -631,6 +631,16 @@ class _ChatScreenState extends State<ChatScreen>
                  "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
                  "diagnosis": result.diagnosis
                });
+               if (mounted) {
+                 setState(() {
+                   _isListening = false;
+                   _isProcessingSpeech = true;
+                   _messages.add({
+                     "role": "glyph",
+                     "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
+                   });
+                 });
+               }
              });
            } else if (response.name == "exportar_base_datos") {
              final csvFile = await _exportDatabaseToCSV();
@@ -706,8 +716,10 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   void _startNewChat() {
-    if (_messages.isNotEmpty)
-      setState(() {
+    if (_messages.isEmpty) {
+      return;
+    }
+    setState(() {
         _chatSessions.add(List.from(_messages));
         _messages.clear();
         _isMenuOpen = false;

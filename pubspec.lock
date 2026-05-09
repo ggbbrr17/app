@@ -862,7 +862,7 @@ packages:
     source: hosted
     version: "1.4.1"
   super_measurement:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: super_measurement
       sha256: "65d70eaa22ad6c4001af1bbc318fc520734cd4a0ec4fad577930ede0c197cc4e"
