@@ -97,8 +97,8 @@ class _SplashScreenState extends State<SplashScreen>
         child: Center(
           child: CustomPaint(
             painter: FragmentedTrianglePainter(
-                animationValue: 0.0, isThinking: false, opacity: 0.18),
-            size: const Size(180, 180),
+                animationValue: 0.0, isThinking: false, isRecording: false, opacity: 0.18),
+            size: const Size(120, 120),
           ),
         ),
       ),
@@ -110,11 +110,13 @@ class _SplashScreenState extends State<SplashScreen>
 class FragmentedTrianglePainter extends CustomPainter {
   final double animationValue;
   final bool isThinking;
+  final bool isRecording;
   final double opacity;
 
   FragmentedTrianglePainter({
     required this.animationValue,
     this.isThinking = false,
+    this.isRecording = false,
     this.opacity = 1.0,
   });
 
@@ -126,50 +128,62 @@ class FragmentedTrianglePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    // Triángulo más pequeño (padding del 28%)
-    double padding = size.width * 0.28;
+    // Triángulo (padding ajustable para el tamaño interno)
+    double padding = size.width * 0.15;
     Offset v1 = Offset(size.width / 2, padding);
     Offset v2 = Offset(padding, size.height - padding);
     Offset v3 = Offset(size.width - padding, size.height - padding);
 
-    List<List<Offset>> sides = [
-      [v1, v2],
-      [v2, v3],
-      [v3, v1]
-    ];
+    Path trianglePath = Path()
+      ..moveTo(v1.dx, v1.dy)
+      ..lineTo(v2.dx, v2.dy)
+      ..lineTo(v3.dx, v3.dy)
+      ..close();
 
-    for (int i = 0; i < sides.length; i++) {
-      Offset start = sides[i][0];
-      Offset end = sides[i][1];
-
-      if (isThinking) {
-        // Contracción orgánica hacia los vértices (3 puntos)
-        double contract = 0.85;
-        // Contraemos la línea hacia el vértice de inicio
-        Offset animStart = start;
-        Offset animEnd = Offset.lerp(start, end, 1.0 - contract)!;
-
-        Path path = Path();
-        path.moveTo(animStart.dx, animStart.dy);
-
-        // Animación de onda individual por lado
-        for (double t = 0.1; t <= 1.0; t += 0.1) {
-          Offset point = Offset.lerp(animStart, animEnd, t)!;
-          double wave = math.sin((animationValue * 2 * math.pi) +
-                  (t * math.pi * 2) +
-                  (i * 2.0)) *
-              3.5;
-          double angle =
-              math.atan2(animEnd.dy - animStart.dy, animEnd.dx - animStart.dx) +
-                  math.pi / 2;
-          path.lineTo(point.dx + math.cos(angle) * wave,
-              point.dy + math.sin(angle) * wave);
+    if (isRecording) {
+      // Animación minimalista para grabación
+      double scale = 1.0 + math.sin(animationValue * math.pi * 40) * 0.08;
+      canvas.save();
+      canvas.translate(size.width / 2, size.height / 2);
+      canvas.scale(scale);
+      canvas.translate(-size.width / 2, -size.height / 2);
+      
+      final recPaint = Paint()
+        ..color = Colors.cyanAccent.withValues(alpha: 0.8 * opacity)
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round;
+        
+      canvas.drawPath(trianglePath, recPaint);
+      canvas.restore();
+    } else if (isThinking) {
+      // El triángulo está quieto, pero las líneas cambian de posición a lo largo del perímetro
+      for (PathMetric measure in trianglePath.computeMetrics()) {
+        double length = measure.length;
+        double segmentLength = length / 3.0; // 3 lados
+        double gap = length * 0.2; // espacio entre líneas
+        double lineLength = segmentLength - gap;
+        
+        // Movimiento continuo a lo largo del perímetro
+        double offset = (animationValue * 10 * length) % length;
+        
+        for (int i = 0; i < 3; i++) {
+          double start = (offset + i * segmentLength) % length;
+          double end = start + lineLength;
+          if (end > length) {
+            Path extract1 = measure.extractPath(start, length);
+            Path extract2 = measure.extractPath(0, end - length);
+            canvas.drawPath(extract1, paint);
+            canvas.drawPath(extract2, paint);
+          } else {
+            Path extract = measure.extractPath(start, end);
+            canvas.drawPath(extract, paint);
+          }
         }
-        canvas.drawPath(path, paint);
-      } else {
-        // Estado normal: Triángulo extendido
-        canvas.drawLine(start, end, paint);
       }
+    } else {
+      // Estado normal: Triángulo extendido
+      canvas.drawPath(trianglePath, paint);
     }
   }
 
@@ -639,13 +653,14 @@ class _ChatScreenState extends State<ChatScreen>
                       duration: const Duration(milliseconds: 300),
                       scale: _showTextField ? 0.5 : 1.0,
                       child: AnimatedBuilder(
-                        animation: _pulseController,
+                        animation: Listenable.merge([_pulseController, _waveController]),
                         builder: (context, _) => CustomPaint(
                           painter: FragmentedTrianglePainter(
-                            animationValue: _pulseController.value,
+                            animationValue: _waveController.value,
                             isThinking: _isThinking,
+                            isRecording: _isRecording,
                           ),
-                          size: const Size(180, 180),
+                          size: const Size(120, 120),
                         ),
                       ),
                     ),
@@ -763,6 +778,17 @@ class _ChatScreenState extends State<ChatScreen>
                                     letterSpacing: 1.2)),
                             onTap: _pickFile,
                           ),
+                          ListTile(
+                            leading: const Icon(Icons.folder_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Archivos Generados",
+                                style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: _showGeneratedFiles,
+                          ),
                         ],
                       ),
                     ),
@@ -858,6 +884,44 @@ class _ChatScreenState extends State<ChatScreen>
       else
         _menuAnimationController.reverse();
     });
+  }
+
+  Future<void> _showGeneratedFiles() async {
+    setState(() => _isMenuOpen = false);
+    _menuAnimationController.reverse();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF121215),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          height: 350,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Archivos Generados", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 1.2)),
+              const SizedBox(height: 20),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.folder_open, color: Colors.white.withValues(alpha: 0.2), size: 48),
+                      const SizedBox(height: 10),
+                      Text("No hay archivos generados aún", style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w300)),
+                    ],
+                  ),
+                )
+              )
+            ],
+          )
+        );
+      }
+    );
   }
 }
 
