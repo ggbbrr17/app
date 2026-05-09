@@ -43,7 +43,10 @@ class ModelManager {
   Future<void> initializeGemma() async {
     if (await isModelDownloaded()) {
       final file = await _localFile;
-      await FlutterGemmaPlugin.instance.init(modelPath: file.path);
+      await FlutterGemma.initialize();
+      await FlutterGemma.installModel(modelType: ModelType.gemmaIt)
+          .fromFile(file.path)
+          .install();
     }
   }
 }

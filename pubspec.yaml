@@ -82,7 +82,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
-    - assets/models/.keep
+    - assets/wayuu_sano.mp3
+    - assets/wayuu_peligro.mp3
+    - assets/wayuu_precaucion.mp3
 
   # To add assets to your application, add an assets section, like this:
   # assets:

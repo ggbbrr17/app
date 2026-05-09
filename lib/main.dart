@@ -610,6 +610,14 @@ class _ChatScreenState extends State<ChatScreen>
                  
                  _flutterTts.speak(speechText);
                  
+                 if (result.diagnosis.contains("Normal")) {
+                   _audioPlayer.play(AssetSource('wayuu_sano.mp3'));
+                 } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+                   _audioPlayer.play(AssetSource('wayuu_peligro.mp3'));
+                 } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+                   _audioPlayer.play(AssetSource('wayuu_precaucion.mp3'));
+                 }
+                 
                  // Guardar en SQLite
                  DatabaseHelper.instance.insertPatient({
                    "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
