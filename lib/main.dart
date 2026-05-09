@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -337,6 +338,10 @@ class _ChatScreenState extends State<ChatScreen>
   final AudioPlayer _audioPlayer = AudioPlayer();
   String? _pendingImageBase64, _pendingImageName;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
+  
+  bool _isOfflineMode = false;
+  InferenceModel? _gemmaModel;
+  InferenceChat? _gemmaChat;
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl =
@@ -475,9 +480,75 @@ class _ChatScreenState extends State<ChatScreen>
     return path != null ? base64Encode(await File(path).readAsBytes()) : null;
   }
 
+  Future<void> _loadGemmaModel() async {
+    FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (res != null && res.files.single.path != null) {
+      final path = res.files.single.path!;
+      setState(() {
+        _isMenuOpen = false;
+        _isThinking = true;
+      });
+      _menuAnimationController.reverse();
+
+      try {
+        await FlutterGemma.initialize();
+        await FlutterGemma.installModel(modelType: ModelType.gemmaIt)
+            .fromFile(path)
+            .install();
+            
+        _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
+        _gemmaChat = await _gemmaModel!.createChat();
+        
+        setState(() {
+          _isOfflineMode = true;
+          _messages.add({"role": "glyph", "text": "¡Modelo local cargado exitosamente! Ahora estoy funcionando 100% offline."});
+        });
+      } catch (e) {
+        setState(() {
+          _messages.add({"role": "glyph", "text": "Error al cargar modelo local: $e"});
+        });
+      } finally {
+        setState(() => _isThinking = false);
+        _scrollToBottom();
+      }
+    }
+  }
+
   Future<void> _sendMultimodalData(
       {String question = "", String? base64Image, String? base64Audio}) async {
     setState(() => _isThinking = true);
+
+    if (_isOfflineMode && _gemmaChat != null) {
+      try {
+        if (base64Image != null || base64Audio != null) {
+          setState(() {
+            _messages.add({"role": "glyph", "text": "El modo offline local actualmente solo soporta texto. Ignorando imagen/audio."});
+          });
+          _scrollToBottom();
+        }
+        
+        await _gemmaChat!.addQuery(Message(text: question, isUser: true));
+        final response = await _gemmaChat!.generateChatResponse();
+        
+        setState(() {
+          if (response is TextResponse) {
+             _messages.add({"role": "glyph", "text": response.text});
+          } else {
+             _messages.add({"role": "glyph", "text": "Respuesta generada, pero formato no soportado."});
+          }
+        });
+        _scrollToBottom();
+      } catch (e) {
+         setState(() {
+          _messages.add({"role": "glyph", "text": "Error interno del modelo local: $e"});
+        });
+        _scrollToBottom();
+      } finally {
+        setState(() => _isThinking = false);
+      }
+      return;
+    }
+
     try {
       String history = _messages
           .take(10)
@@ -788,6 +859,29 @@ class _ChatScreenState extends State<ChatScreen>
                                     fontWeight: FontWeight.w300,
                                     letterSpacing: 1.2)),
                             onTap: _showGeneratedFiles,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.memory_outlined,
+                                color: Colors.white60, size: 20),
+                            title: Text(_isOfflineMode ? "Desactivar Offline" : "Modo Offline (Gemma)",
+                                style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: () {
+                              if (_isOfflineMode) {
+                                setState(() {
+                                  _isOfflineMode = false;
+                                  _isMenuOpen = false;
+                                  _messages.add({"role": "glyph", "text": "Modo offline desactivado. Usando la nube."});
+                                });
+                                _menuAnimationController.reverse();
+                                _scrollToBottom();
+                              } else {
+                                _loadGemmaModel();
+                              }
+                            },
                           ),
                         ],
                       ),
