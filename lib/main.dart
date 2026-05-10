@@ -557,14 +557,9 @@ class _ChatScreenState extends State<ChatScreen>
     return path != null ? base64Encode(await File(path).readAsBytes()) : null;
   }
 
-  Future<void> _initGemmaChat(String modelPath) async {
-    await FlutterGemma.initialize();
-    await FlutterGemma.installModel(
-      modelType: ModelType.gemma4,
-      fileType: ModelFileType.litertlm,
-    )
-        .fromFile(modelPath)
-        .install();
+  Future<void> _initGemmaChat() async {
+    final manager = ModelManager();
+    await manager.initializeGemma();
 
     _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
     _gemmaChat = await _gemmaModel!.createChat(
@@ -615,8 +610,7 @@ class _ChatScreenState extends State<ChatScreen>
     if (await manager.isModelDownloaded()) {
       setState(() => _isThinking = true);
       try {
-        final file = await manager.localFile;
-        await _initGemmaChat(file.path);
+        await _initGemmaChat();
         setState(() => _isOfflineMode = true);
         _addMessage({"role": "glyph", "text": "✅ ¡Modelo Gemma 4 cargado! Funcionando 100% offline."});
       } catch (e) {
@@ -682,8 +676,7 @@ class _ChatScreenState extends State<ChatScreen>
         if (mounted) Navigator.of(context, rootNavigator: true).pop();
         setState(() => _isThinking = true);
         try {
-          final file = await manager.localFile;
-          await _initGemmaChat(file.path);
+          await _initGemmaChat();
           setState(() => _isOfflineMode = true);
           _addMessage({"role": "glyph", "text": "✅ ¡Gemma 4 descargado y listo! Funcionando 100% offline."});
         } catch (e) {
