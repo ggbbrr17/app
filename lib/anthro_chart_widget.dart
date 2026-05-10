@@ -37,7 +37,8 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
       diagIcon = Icons.error_outline;
     }
 
-    final bmi = widget.weightKg / ((widget.heightCm / 100) * (widget.heightCm / 100));
+    final rawBmi = widget.weightKg / ((widget.heightCm / 100) * (widget.heightCm / 100));
+    final bmi = rawBmi.isFinite ? rawBmi : 0.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -225,7 +226,7 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
             LineChartBarData(spots: lineMinus2, color: Colors.orangeAccent.withValues(alpha: 0.5), isCurved: true, dotData: const FlDotData(show: false), barWidth: 1),
             LineChartBarData(spots: lineMinus3, color: Colors.redAccent.withValues(alpha: 0.5), isCurved: true, dotData: const FlDotData(show: false), barWidth: 1),
             LineChartBarData(
-              spots: [FlSpot(xValue, yValue)],
+              spots: [FlSpot(xValue.isFinite ? xValue : 0.0, yValue.isFinite ? yValue : 0.0)],
               color: Colors.cyanAccent,
               dotData: FlDotData(
                 show: true,

@@ -764,6 +764,8 @@ class _ChatScreenState extends State<ChatScreen>
                 "type": "file_share",
                 "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
              });
+           } else {
+             _addMessage({"role": "glyph", "text": "He procesado tu petición, pero hubo una confusión interna (${response.name}). ¿Podrías ser más específico con tu pregunta?"});
            }
         }
         _scrollToBottom();
@@ -834,7 +836,7 @@ class _ChatScreenState extends State<ChatScreen>
       setState(() => _isTutorMode = true);
       _addMessage({
         "role": "glyph", 
-        "text": "¡Hola! He activado el Modo Tutor bilingüe. 🌵 Responderé en Español y Wayuunaiki.\n\nSoy tu profesor de agricultura. ¿Con qué cultivo te gustaría iniciar hoy? ¿Frijol Guajirito o Moringa?"
+        "text": "¡Hola! He activado el Modo Tutor bilingüe. 🌵 Responderé en Español y Wayuunaiki.\n\nSoy tu profesor de agricultura. ¿Con qué cultivo te gustaría iniciar hoy? ¿Frijol Guajirito o Moringa?\n\n🌵 Wayuunaiki:\nTaya ekirajüi piamasü anüikika. Tapütüjain piamasü nümüin alijuna siia wayuunaiki.\nKasa püchekaka pütüjaain aa'u joolu'u? ¿Frijol Guajirito o Moringa?"
       });
       return;
     }
@@ -1517,7 +1519,7 @@ class _ChatScreenState extends State<ChatScreen>
     }
 
     if (result.muacDiagnosis.isNotEmpty) {
-      simplifiedDiag += "\\n" + result.muacDiagnosis;
+      simplifiedDiag += "\n\nMUAC: " + result.muacDiagnosis;
     }
     
     final speechText = "He registrado a $nombre. $simplifiedDiag";
