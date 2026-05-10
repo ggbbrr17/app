@@ -713,7 +713,14 @@ class _ChatScreenState extends State<ChatScreen>
           _scrollToBottom();
         }
         
-        String finalQuestion = question;
+        if (base64Image != null) {
+          setState(() {
+            _messages.add({"role": "glyph", "text": "Aviso: El modo offline local no puede 'ver' imágenes. Me basaré en el texto que escribiste."});
+          });
+          _scrollToBottom();
+        }
+        
+        // No re-declarar finalQuestion aquí, usar la que ya viene de arriba.
         if (_lastManualDiagnosis != null) {
           finalQuestion = "SISTEMA: Ya se calculó el estado nutricional: $_lastManualDiagnosis. "
               "INSTRUCCIÓN: No repitas el diagnóstico técnico. "
