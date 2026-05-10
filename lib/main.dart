@@ -579,7 +579,7 @@ class _ChatScreenState extends State<ChatScreen>
               "genero": {"type": "string", "description": "Género (m o f)"},
               "muac_cm": {"type": "number", "description": "Perímetro Braquial o MUAC en centímetros (opcional)"}
             },
-            "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
+            "required": ["nombre", "edad_meses", "genero"]
           }
         ),
         Tool(
@@ -759,8 +759,8 @@ class _ChatScreenState extends State<ChatScreen>
              _performAnthroCalculation(
                response.args['nombre'] ?? "Niño",
                response.args['edad_meses'] ?? 0,
-               (response.args['peso_kg'] as num).toDouble(),
-               (response.args['talla_cm'] as num).toDouble(),
+               (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
+               (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
                response.args['genero'] ?? "m",
                muacCm: response.args['muac_cm'] != null ? (response.args['muac_cm'] as num).toDouble() : null
              );

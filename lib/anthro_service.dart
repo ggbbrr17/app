@@ -95,6 +95,9 @@ class AnthroService {
     }
 
     String diagnosis = _diagnose(zWfa, zHfa, zBmi, zWfh, ageInMonths);
+    if (diagnosis.startsWith("Datos insuficientes") && muacCm != null) {
+      diagnosis = "Cribado por MUAC";
+    }
 
     String muacDiagnosis = "";
     if (muacCm != null && ageInMonths >= 6 && ageInMonths <= 59) {
