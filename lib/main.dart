@@ -393,7 +393,7 @@ class _ChatScreenState extends State<ChatScreen>
       _currentSessionId = await DatabaseHelper.instance.createSession();
       final defaultMsg = {
         "role": "glyph",
-        "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n\nPuedo ayudarte con lo siguiente:\n1. 📊 Calcular el estado nutricional (Envíame: Nombre, Edad en meses, Peso, Talla, Género y Perímetro Braquial opcional).\n2. 📸 Identificar alimentos: Envíame una foto de comida y te daré su valor nutricional y recomendaciones.\n3. 🌱 Tutor Agrícola: Pregúntame cómo cultivar Frijol Guajirito o Moringa.\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. Eesü süpüla tatüjaain:\n1. 📊 Tayaa tü kaa'uleein: Pütchajaa jintüt, kachon, nutuma, nütüjülü, tepichi o jintü, siia muac.\n2. 📸 Tayaa tü eküülü: Püshajaa wanee ayaakuaa süpüla tatüjaain tü eküülüka.\n3. 🌱 Ekirajüi: Püshajaa taya süpüla tapüla wunu'u (Frijol Guajirito o Moringa)."
+        "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n\nPuedo ayudarte con lo siguiente:\n1. 📊 Calcular el estado nutricional (Envíame: Nombre, Edad en meses, Peso, Talla, Género y Perímetro Braquial opcional).\n2. 🌱 Tutor Agrícola: Pregúntame cómo cultivar Frijol Guajirito o Moringa.\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. Eesü süpüla tatüjaain:\n1. 📊 Tayaa tü kaa'uleein: Pütchajaa jintüt, kachon, nutuma, nütüjülü, tepichi o jintü, siia muac.\n2. 🌱 Ekirajüi: Püshajaa taya süpüla tapüla wunu'u (Frijol Guajirito o Moringa)."
       };
       await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
       setState(() {
