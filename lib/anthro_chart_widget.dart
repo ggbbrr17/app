@@ -148,7 +148,7 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
        Map<num, dynamic>? wfhData = WHOGrowthStandardsWeightForHeightData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
 
        for (double h = minX; h <= maxX; h += 0.5) {
-          dynamic lms = h < 85 ? wflData?[h] : wfhData?[h];
+          dynamic lms = h < 85 ? (wflData?[h]) : (wfhData?[h]);
           if (lms != null) {
             line0.add(FlSpot(h, lms.standardDeviation(0).toDouble()));
             line2.add(FlSpot(h, lms.standardDeviation(2).toDouble()));
@@ -177,7 +177,7 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
        }
 
        for (int i = 0; i <= maxX; i++) {
-         dynamic lms = i <= 60 ? standardData?[i] : referenceData?[i];
+         dynamic lms = i <= 60 ? (standardData?[i]) : (referenceData?[i]);
          if (lms != null) {
            line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
            line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
