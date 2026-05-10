@@ -5,8 +5,8 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 
 class ModelManager {
   static const String modelUrl =
-      'https://huggingface.co/datasets/Gabriel/Glyph/resolve/main/gemma-2b-it-q4.tflite';
-  static const String modelFileName = 'gemma-2b-it-q4.tflite';
+      'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm';
+  static const String modelFileName = 'gemma-4-E2B-it.litertlm';
 
   Future<File> get _localFile async {
     final directory = await getApplicationDocumentsDirectory();
@@ -44,7 +44,7 @@ class ModelManager {
     if (await isModelDownloaded()) {
       final file = await _localFile;
       await FlutterGemma.initialize();
-      await FlutterGemma.installModel(modelType: ModelType.gemmaIt)
+      await FlutterGemma.installModel(modelType: ModelType.gemma4)
           .fromFile(file.path)
           .install();
     }

@@ -563,7 +563,7 @@ class _ChatScreenState extends State<ChatScreen>
 
       try {
         await FlutterGemma.initialize();
-        await FlutterGemma.installModel(modelType: ModelType.gemmaIt)
+        await FlutterGemma.installModel(modelType: ModelType.gemma4)
             .fromFile(path)
             .install();
             
