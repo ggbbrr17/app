@@ -351,6 +351,7 @@ class _ChatScreenState extends State<ChatScreen>
   InferenceModel? _gemmaModel;
   InferenceChat? _gemmaChat;
   bool _isTutorMode = false;
+  String? _lastManualDiagnosis;
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl =
@@ -629,7 +630,14 @@ class _ChatScreenState extends State<ChatScreen>
         }
         
         String finalQuestion = question;
-        if (_isTutorMode) {
+        if (_lastManualDiagnosis != null) {
+          finalQuestion = "SISTEMA: Ya se calculó el estado nutricional: $_lastManualDiagnosis. "
+              "INSTRUCCIÓN: No repitas el diagnóstico técnico. "
+              "Si estás en 'Modo Tutor', da recomendaciones sobre Frijol Guajirito o Moringa en Wayuunaiki basándote en este diagnóstico. "
+              "Si no, da un mensaje breve de apoyo. "
+              "PREGUNTA DEL USUARIO: $question";
+          _lastManualDiagnosis = null; // Limpiar para el siguiente mensaje
+        } else if (_isTutorMode) {
           finalQuestion = "ROL: Eres un profesor experto en cultivo de Frijol Guajirito (Vigna unguiculata) y Moringa (Moringa oleifera). "
               "Responde SIEMPRE en idioma Wayuunaiki. Explica que el frijol es resistente a sequía y rico en proteína, y que la moringa es el árbol de la vida con calcio y vitaminas. "
               "PREGUNTA DEL USUARIO: $question";
@@ -1262,6 +1270,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _performAnthroCalculation(String nombre, int edad, double peso, double talla, String genero) {
     final result = AnthroService.calculate(edad, peso, talla, genero);
+    setState(() => _lastManualDiagnosis = result.diagnosis);
     
     String simplifiedDiag = "";
     if (result.diagnosis.contains("Normal")) {
