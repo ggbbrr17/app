@@ -388,7 +388,7 @@ class _ChatScreenState extends State<ChatScreen>
       _currentSessionId = await DatabaseHelper.instance.createSession();
       final defaultMsg = {
         "role": "glyph",
-        "text": "¡Hola! Soy Glyph. Por favor, dame los datos para realizar el cálculo: nombre, edad (en meses), peso (kg), talla (cm) y género (niño o niña)."
+        "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica.\n\nPor favor, comparte los siguientes datos para calcular el estado nutricional:\n• Nombre\n• Edad (en meses)\n• Peso (en kg)\n• Talla (en cm)\n• Género (niño o niña)\n\n📏 Instrucción de medición de talla:\n- Niños menores de 24 meses → medir ACOSTADO (longitud).\n- Niños de 24 meses o más → medir DE PIE (talla).\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai.\nPütchajaa tü wayuukalü:\n• Jintüt (nombre)\n• Kachon (edad en meses)\n• Nutuma (peso en kg)\n• Nütüjülü (talla en cm)\n• Tepichi o Jintü (niño o niña)\n\n📏 Süpüla ekirajaa nütüjülü:\n- Tepichi maa akumajünüshi 24 kachon → kataajalaa SÜPÜSHUA (acostado).\n- Tepichi 24 kachon o sümüin → kataajalaa NUKUJULEE (de pie)."
       };
       await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
       setState(() {
@@ -764,7 +764,7 @@ class _ChatScreenState extends State<ChatScreen>
     _currentSessionId = await DatabaseHelper.instance.createSession();
     final defaultMsg = {
       "role": "glyph",
-      "text": "¡Hola! Soy Glyph. Por favor, dame los datos para realizar el cálculo: nombre, edad (en meses), peso (kg), talla (cm) y género (niño o niña)."
+      "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica.\n\nPor favor, comparte los siguientes datos para calcular el estado nutricional:\n• Nombre\n• Edad (en meses)\n• Peso (en kg)\n• Talla (en cm)\n• Género (niño o niña)\n\n📏 Instrucción de medición de talla:\n- Niños menores de 24 meses → medir ACOSTADO (longitud).\n- Niños de 24 meses o más → medir DE PIE (talla).\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai.\nPütchajaa tü wayuukalü:\n• Jintüt (nombre)\n• Kachon (edad en meses)\n• Nutuma (peso en kg)\n• Nütüjülü (talla en cm)\n• Tepichi o Jintü (niño o niña)\n\n📏 Süpüla ekirajaa nütüjülü:\n- Tepichi maa akumajünüshi 24 kachon → kataajalaa SÜPÜSHUA (acostado).\n- Tepichi 24 kachon o sümüin → kataajalaa NUKUJULEE (de pie)."
     };
     await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
 
