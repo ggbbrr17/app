@@ -577,14 +577,20 @@ class _ChatScreenState extends State<ChatScreen>
         }
         
         await _gemmaChat!.addQuery(Message(text: question, isUser: true));
+        
+        // Intentar extracción directa SIEMPRE, antes de la respuesta del modelo
+        _tryManualExtraction(question);
+        
         final response = await _gemmaChat!.generateChatResponse();
         
         if (response is TextResponse) {
-           setState(() {
-              _messages.add({"role": "glyph", "text": response.token});
-           });
-           // Fallback: Si el modelo respondió con texto pero el mensaje original tiene datos, intentamos extraerlos
-           _tryManualExtraction(question);
+           // Solo mostrar el texto si NO era una solicitud de cálculo (ya procesada arriba)
+           final hasCalcData = RegExp(r"\d+\s*m[ea]s|\w+\s+m[ea]s").hasMatch(question.toLowerCase());
+           if (!hasCalcData) {
+             setState(() {
+                _messages.add({"role": "glyph", "text": response.token});
+             });
+           }
         } else if (response is FunctionCallResponse) {
            if (response.name == "registrar_medicion_pediatrica") {
              _performAnthroCalculation(
@@ -1202,19 +1208,73 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
+  // Convierte palabras numéricas en español a enteros
+  int? _spanishWordToNumber(String word) {
+    const map = {
+      "cero": 0, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4,
+      "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9,
+      "diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14,
+      "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18,
+      "diecinueve": 19, "veinte": 20, "veintiuno": 21, "veintidós": 22,
+      "veintitrés": 23, "veinticuatro": 24, "veinticinco": 25,
+      "veintiséis": 26, "veintisiete": 27, "veintiocho": 28,
+      "veintinueve": 29, "treinta": 30, "cuarenta": 40, "cincuenta": 50,
+      "sesenta": 60,
+    };
+    return map[word.toLowerCase().trim()];
+  }
+
   void _tryManualExtraction(String userText) {
-    final ageMatch = RegExp(r"(\d+)\s*meses").firstMatch(userText);
-    final weightMatch = RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos)").firstMatch(userText.toLowerCase());
-    final heightMatch = RegExp(r"(\d+(\.\d+)?)\s*cm").firstMatch(userText.toLowerCase());
-    final nameMatch = RegExp(r"([A-Z][a-z]+)").firstMatch(userText);
-    
-    if (ageMatch != null && weightMatch != null && heightMatch != null) {
-      final nombre = nameMatch?.group(1) ?? "Pedro";
-      final edad = int.parse(ageMatch.group(1)!);
-      final peso = double.parse(weightMatch.group(1)!);
-      final talla = double.parse(heightMatch.group(1)!);
-      final genero = userText.toLowerCase().contains("niña") || userText.toLowerCase().contains("f") ? "f" : "m";
-      
+    final lower = userText.toLowerCase();
+
+    // ── Edad ─────────────────────────────────────────────────────────────────
+    // Primero intenta número + meses (ej. "12 meses")
+    int? edad;
+    final ageDigitMatch = RegExp(r"(\d+)\s*mes").firstMatch(lower);
+    if (ageDigitMatch != null) {
+      edad = int.tryParse(ageDigitMatch.group(1)!);
+    } else {
+      // Busca palabra numérica antes de "mes" (ej. "doce meses", "seis meses")
+      final ageWordMatch = RegExp(r"(\w+)\s+mes").firstMatch(lower);
+      if (ageWordMatch != null) {
+        edad = _spanishWordToNumber(ageWordMatch.group(1)!);
+      }
+    }
+
+    // ── Peso ─────────────────────────────────────────────────────────────────
+    // Número + kg/kilos (ej. "3kg", "3 kg", "3 kilos")
+    double? peso;
+    final weightDigitMatch = RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos?)").firstMatch(lower);
+    if (weightDigitMatch != null) {
+      peso = double.tryParse(weightDigitMatch.group(1)!);
+    } else {
+      // Palabra numérica + kg (ej. "tres kg")
+      final weightWordMatch = RegExp(r"(\w+)\s*(kg|kilos?)").firstMatch(lower);
+      if (weightWordMatch != null) {
+        final n = _spanishWordToNumber(weightWordMatch.group(1)!);
+        if (n != null) peso = n.toDouble();
+      }
+    }
+
+    // ── Talla ─────────────────────────────────────────────────────────────────
+    double? talla;
+    final heightDigitMatch = RegExp(r"(\d+(\.\d+)?)\s*cm").firstMatch(lower);
+    if (heightDigitMatch != null) {
+      talla = double.tryParse(heightDigitMatch.group(1)!);
+    } else {
+      final heightWordMatch = RegExp(r"(\w+)\s*cm").firstMatch(lower);
+      if (heightWordMatch != null) {
+        final n = _spanishWordToNumber(heightWordMatch.group(1)!);
+        if (n != null) talla = n.toDouble();
+      }
+    }
+
+    // ── Nombre y género ───────────────────────────────────────────────────────
+    final nameMatch = RegExp(r"\b([A-Z][a-záéíóúñ]+)\b").firstMatch(userText);
+    final nombre = nameMatch?.group(1) ?? "Niño";
+    final genero = lower.contains("niña") || lower.contains("femenino") ? "f" : "m";
+
+    if (edad != null && peso != null && talla != null) {
       _performAnthroCalculation(nombre, edad, peso, talla, genero);
     }
   }
