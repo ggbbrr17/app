@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'dart:convert';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -17,39 +18,64 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    await db.execute('''
+CREATE TABLE sessions (
+  id $idType,
+  date $textType
+)
+''');
+
+    await db.execute('''
+CREATE TABLE chat_messages (
+  id $idType,
+  session_id INTEGER,
+  role $textType,
+  text $textType,
+  type TEXT,
+  data TEXT,
+  isThought INTEGER,
+  timestamp $textType,
+  FOREIGN KEY (session_id) REFERENCES sessions (id)
+)
+''');
   }
 
-  Future _createDB(Database db, int version) async {
-    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
-    const textType = 'TEXT NOT NULL';
-    const realType = 'REAL NOT NULL';
+  Future<int> createSession() async {
+    final db = await instance.database;
+    return await db.insert('sessions', {'date': DateTime.now().toIso8601String()});
+  }
 
-    await db.execute('''
-CREATE TABLE patients (
-  id $idType,
-  name $textType,
-  birthDate $textType,
-  gender $textType
-)
-''');
+  Future<List<Map<String, dynamic>>> getSessions() async {
+    final db = await instance.database;
+    return await db.query('sessions', orderBy: 'date DESC');
+  }
 
-    await db.execute('''
-CREATE TABLE measurements (
-  id $idType,
-  patient_id INTEGER,
-  date $textType,
-  age_months $realType,
-  weight_kg $realType,
-  height_cm $realType,
-  bmi $realType,
-  z_wfa $realType,
-  z_hfa $realType,
-  z_bmi $realType,
-  diagnosis $textType,
-  FOREIGN KEY (patient_id) REFERENCES patients (id)
-)
-''');
+  Future<int> insertMessage(int sessionId, Map<String, dynamic> msg) async {
+    final db = await instance.database;
+    return await db.insert('chat_messages', {
+      'session_id': sessionId,
+      'role': msg['role'],
+      'text': msg['text'] ?? "",
+      'type': msg['type'],
+      'data': msg['data'] != null ? jsonEncode(msg['data']) : null,
+      'isThought': (msg['isThought'] ?? false) ? 1 : 0,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getSessionMessages(int sessionId) async {
+    final db = await instance.database;
+    return await db.query(
+      'chat_messages',
+      where: 'session_id = ?',
+      whereArgs: [sessionId],
+      orderBy: 'id ASC',
+    );
+  }
+
+  Future<void> clearCurrentSessionMessages(int sessionId) async {
+    final db = await instance.database;
+    await db.delete('chat_messages', where: 'session_id = ?', whereArgs: [sessionId]);
   }
 
   Future<int> insertPatient(Map<String, dynamic> row) async {

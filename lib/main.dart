@@ -355,6 +355,8 @@ class _ChatScreenState extends State<ChatScreen>
   final String notificationUrl =
       "https://service-cv3f.onrender.com/api/v1/notifications";
   final String secret = "glyph123";
+  int? _currentSessionId;
+  List<int> _sessionIds = [];
 
   @override
   void initState() {
@@ -375,6 +377,50 @@ class _ChatScreenState extends State<ChatScreen>
                 parent: _menuAnimationController, curve: Curves.easeOut));
     _initializeNotifications();
     _startNotificationPolling();
+    _loadPersistedHistory();
+  }
+
+  Future<void> _loadPersistedHistory() async {
+    final sessions = await DatabaseHelper.instance.getSessions();
+    if (sessions.isEmpty) {
+      _currentSessionId = await DatabaseHelper.instance.createSession();
+      final defaultMsg = {
+        "role": "glyph",
+        "text": "¡Hola! Soy Glyph. Por favor, dame los datos para realizar el cálculo: nombre, edad (en meses), peso (kg), talla (cm) y género (niño o niña)."
+      };
+      await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
+      setState(() {
+        _messages.add(defaultMsg);
+      });
+    } else {
+      _currentSessionId = sessions.first['id'];
+      final msgs = await DatabaseHelper.instance.getSessionMessages(_currentSessionId!);
+      setState(() {
+        _messages.clear();
+        _messages.addAll(msgs.map((m) => {
+          "role": m['role'],
+          "text": m['text'],
+          "type": m['type'],
+          "data": m['data'] != null ? jsonDecode(m['data']) : null,
+          "isThought": m['isThought'] == 1,
+        }));
+      });
+      
+      _chatSessions.clear();
+      _sessionIds.clear();
+      for (var session in sessions) {
+        _sessionIds.add(session['id']);
+        final sMsgs = await DatabaseHelper.instance.getSessionMessages(session['id']);
+        _chatSessions.add(sMsgs.map((m) => {
+          "role": m['role'],
+          "text": m['text'],
+          "type": m['type'],
+          "data": m['data'] != null ? jsonDecode(m['data']) : null,
+          "isThought": m['isThought'] == 1,
+        }).toList());
+      }
+    }
+    _scrollToBottom();
   }
 
   Future<void> _initTts() async {
@@ -396,16 +442,11 @@ class _ChatScreenState extends State<ChatScreen>
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         for (var note in (data['notifications'] ?? [])) {
-          setState(() {
-            _messages.add({
-              "role": "glyph",
-              "text": note['message'] ?? "",
-              "isThought": note['type'] == "autonomous_thought"
-            });
-            if (_notificationState != AppLifecycleState.resumed)
-              _showNotification('Glyph', note['message'] ?? "");
+          _addMessage({
+            "role": "glyph",
+            "text": note['message'] ?? "",
+            "isThought": note['type'] == "autonomous_thought"
           });
-          _scrollToBottom();
         }
       }
     } catch (_) {}
@@ -445,6 +486,16 @@ class _ChatScreenState extends State<ChatScreen>
         _scrollController.animateTo(_scrollController.position.maxScrollExtent,
             duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     });
+  }
+
+  void _addMessage(Map<String, dynamic> msg) {
+    setState(() {
+      _messages.add(msg);
+    });
+    if (_currentSessionId != null) {
+      DatabaseHelper.instance.insertMessage(_currentSessionId!, msg);
+    }
+    _scrollToBottom();
   }
 
   Future<void> _playWaterSound() async {
@@ -544,7 +595,7 @@ class _ChatScreenState extends State<ChatScreen>
         
         setState(() {
           _isOfflineMode = true;
-          _messages.add({"role": "glyph", "text": "¡Modelo local cargado exitosamente! Ahora estoy funcionando 100% offline."});
+          _addMessage({"role": "glyph", "text": "¡Modelo local cargado exitosamente! Ahora estoy funcionando 100% offline."});
         });
         
         // Inyectar instrucción de sistema para asegurar el uso de herramientas
@@ -587,9 +638,7 @@ class _ChatScreenState extends State<ChatScreen>
            // Solo mostrar el texto si NO era una solicitud de cálculo (ya procesada arriba)
            final hasCalcData = RegExp(r"\d+\s*m[ea]s|\w+\s+m[ea]s").hasMatch(question.toLowerCase());
            if (!hasCalcData) {
-             setState(() {
-                _messages.add({"role": "glyph", "text": response.token});
-             });
+             _addMessage({"role": "glyph", "text": response.token});
            }
         } else if (response is FunctionCallResponse) {
            if (response.name == "registrar_medicion_pediatrica") {
@@ -602,20 +651,16 @@ class _ChatScreenState extends State<ChatScreen>
              );
            } else if (response.name == "exportar_base_datos") {
              final csvFile = await _exportDatabaseToCSV();
-             setState(() {
-               _messages.add({
-                  "role": "glyph", 
-                  "type": "file_share",
-                  "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
-               });
+             _addMessage({
+                "role": "glyph", 
+                "type": "file_share",
+                "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
              });
            }
         }
         _scrollToBottom();
       } catch (e) {
-         setState(() {
-          _messages.add({"role": "glyph", "text": "Error interno del modelo local: $e"});
-        });
+        _addMessage({"role": "glyph", "text": "Error interno del modelo local: $e"});
         _scrollToBottom();
       } finally {
         setState(() => _isThinking = false);
@@ -642,16 +687,14 @@ class _ChatScreenState extends State<ChatScreen>
           body: jsonEncode(body));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
-        setState(() {
-          if (data['metacognition']?.toString().isNotEmpty ?? false)
-            _messages.add({
-              "role": "glyph",
-              "text": data['metacognition'],
-              "isThought": true
-            });
-          _messages.add({"role": "glyph", "text": data['message'] ?? "..."});
-        });
-        _scrollToBottom();
+        if (data['metacognition']?.toString().isNotEmpty ?? false) {
+          _addMessage({
+            "role": "glyph",
+            "text": data['metacognition'],
+            "isThought": true
+          });
+        }
+        _addMessage({"role": "glyph", "text": data['message'] ?? "..."});
       }
     } finally {
       setState(() => _isThinking = false);
@@ -663,26 +706,32 @@ class _ChatScreenState extends State<ChatScreen>
     if (text.isEmpty && _pendingImageBase64 == null) return;
     final img = _pendingImageBase64;
     _unfocus(); // Cierre automático del teclado
-    setState(() {
-      _messages.add({"role": "user", "text": text, "image": img});
-      _pendingImageBase64 = null;
-      _pendingImageName = null;
-    });
+    _addMessage({"role": "user", "text": text, "image": img});
+    _pendingImageBase64 = null;
+    _pendingImageName = null;
     _controller.clear();
-    _scrollToBottom();
     _sendMultimodalData(question: text, base64Image: img);
   }
 
-  void _startNewChat() {
-    if (_messages.isEmpty) {
-      return;
-    }
+  void _startNewChat() async {
+    if (_messages.isEmpty) return;
+    
+    _currentSessionId = await DatabaseHelper.instance.createSession();
+    final defaultMsg = {
+      "role": "glyph",
+      "text": "¡Hola! Soy Glyph. Por favor, dame los datos para realizar el cálculo: nombre, edad (en meses), peso (kg), talla (cm) y género (niño o niña)."
+    };
+    await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
+
     setState(() {
-        _chatSessions.add(List.from(_messages));
         _messages.clear();
+        _messages.add(defaultMsg);
         _isMenuOpen = false;
         _menuAnimationController.reverse();
-      });
+    });
+    
+    // Recargar historial visual
+    _loadPersistedHistory();
   }
 
   void _unfocus() {
@@ -969,7 +1018,7 @@ class _ChatScreenState extends State<ChatScreen>
                                 setState(() {
                                   _isOfflineMode = false;
                                   _isMenuOpen = false;
-                                  _messages.add({"role": "glyph", "text": "Modo offline desactivado. Usando la nube."});
+                                  _addMessage({"role": "glyph", "text": "Modo offline desactivado. Usando la nube."});
                                 });
                                 _menuAnimationController.reverse();
                                 _scrollToBottom();
@@ -1049,11 +1098,14 @@ class _ChatScreenState extends State<ChatScreen>
                                             fontSize: 13,
                                             fontWeight: FontWeight.w300,
                                             letterSpacing: 0.5)),
-                                    onTap: () => setState(() {
-                                          _messages.clear();
-                                          _messages.addAll(_chatSessions[i]);
-                                          _showHistory = false;
-                                        })))),
+                                    onTap: () {
+                                      setState(() {
+                                        _currentSessionId = _sessionIds[i];
+                                        _messages.clear();
+                                        _messages.addAll(_chatSessions[i]);
+                                        _showHistory = false;
+                                      });
+                                    }))),
                       ],
                     ),
                   ),
@@ -1166,16 +1218,14 @@ class _ChatScreenState extends State<ChatScreen>
     
     final speechText = "He registrado a $nombre. $simplifiedDiag";
     
-    setState(() {
-      _messages.add({
-         "role": "glyph", 
-         "type": "anthro_chart",
-         "data": {
-             "edad": edad, "peso": peso, "genero": genero, 
-             "diag": result.diagnosis, 
-             "text": speechText
-         }
-      });
+    _addMessage({
+       "role": "glyph", 
+       "type": "anthro_chart",
+       "data": {
+           "edad": edad, "peso": peso, "genero": genero, 
+           "diag": result.diagnosis, 
+           "text": speechText
+       }
     });
     
     // Primero habla en español; cuando termine, reproduce el audio en Wayuunaiki
@@ -1210,11 +1260,9 @@ class _ChatScreenState extends State<ChatScreen>
         "diagnosis": result.diagnosis
       });
       if (mounted) {
-         setState(() {
-            _messages.add({
-               "role": "glyph",
-               "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
-            });
+         _addMessage({
+            "role": "glyph",
+            "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
          });
       }
     });
