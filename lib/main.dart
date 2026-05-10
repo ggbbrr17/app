@@ -710,6 +710,18 @@ class _ChatScreenState extends State<ChatScreen>
     _pendingImageBase64 = null;
     _pendingImageName = null;
     _controller.clear();
+
+    if (text.toLowerCase().contains("genera el archivo") || text.toLowerCase().contains("exportar")) {
+       _exportDatabaseToCSV().then((csvFile) {
+         _addMessage({
+            "role": "glyph", 
+            "type": "file_share",
+            "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He generado el archivo de la base de datos. Toca aquí para compartirlo."}
+         });
+       });
+       return;
+    }
+
     _sendMultimodalData(question: text, base64Image: img);
   }
 
