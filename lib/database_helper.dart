@@ -98,6 +98,12 @@ CREATE TABLE chat_messages (
     return await db.query('sessions', orderBy: 'date DESC');
   }
 
+  Future<void> deleteSession(int sessionId) async {
+    final db = await instance.database;
+    await db.delete('chat_messages', where: 'session_id = ?', whereArgs: [sessionId]);
+    await db.delete('sessions', where: 'id = ?', whereArgs: [sessionId]);
+  }
+
   Future<int> insertMessage(int sessionId, Map<String, dynamic> msg) async {
     final db = await instance.database;
     return await db.insert('chat_messages', {

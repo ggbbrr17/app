@@ -779,6 +779,13 @@ class _ChatScreenState extends State<ChatScreen>
     _loadPersistedHistory();
   }
 
+  String _getOrdinalName(int index, int total) {
+    final pos = total - index;
+    const names = ["Primera", "Segunda", "Tercera", "Cuarta", "Quinta", "Sexta", "Séptima", "Octava", "Novena", "Décima", "Undécima", "Duodécima"];
+    if (pos >= 1 && pos <= names.length) return "${names[pos - 1]} interacción";
+    return "Interacción #$pos";
+  }
+
   void _unfocus() {
     _focusNode.unfocus();
     FocusScope.of(context).unfocus();
@@ -1159,12 +1166,19 @@ class _ChatScreenState extends State<ChatScreen>
                                 itemBuilder: (c, i) => ListTile(
                                     contentPadding: EdgeInsets.zero,
                                     title: Text(
-                                        _chatSessions[i].first["text"] ?? "",
+                                        _getOrdinalName(i, _chatSessions.length),
                                         style: const TextStyle(
                                             color: Colors.white54,
                                             fontSize: 13,
                                             fontWeight: FontWeight.w300,
                                             letterSpacing: 0.5)),
+                                    trailing: IconButton(
+                                      icon: const Icon(Icons.delete_outline, color: Colors.white24, size: 18),
+                                      onPressed: () async {
+                                        await DatabaseHelper.instance.deleteSession(_sessionIds[i]);
+                                        _loadPersistedHistory();
+                                      },
+                                    ),
                                     onTap: () {
                                       setState(() {
                                         _currentSessionId = _sessionIds[i];
