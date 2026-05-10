@@ -350,6 +350,7 @@ class _ChatScreenState extends State<ChatScreen>
   bool _isOfflineMode = false;
   InferenceModel? _gemmaModel;
   InferenceChat? _gemmaChat;
+  bool _isTutorMode = false;
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl =
@@ -627,7 +628,14 @@ class _ChatScreenState extends State<ChatScreen>
           _scrollToBottom();
         }
         
-        await _gemmaChat!.addQuery(Message(text: question, isUser: true));
+        String finalQuestion = question;
+        if (_isTutorMode) {
+          finalQuestion = "ROL: Eres un profesor experto en cultivo de Frijol Guajirito (Vigna unguiculata) y Moringa (Moringa oleifera). "
+              "Responde SIEMPRE en idioma Wayuunaiki. Explica que el frijol es resistente a sequía y rico en proteína, y que la moringa es el árbol de la vida con calcio y vitaminas. "
+              "PREGUNTA DEL USUARIO: $question";
+        }
+        
+        await _gemmaChat!.addQuery(Message(text: finalQuestion, isUser: true));
         
         // Intentar extracción directa SIEMPRE, antes de la respuesta del modelo
         _tryManualExtraction(question);
@@ -722,6 +730,20 @@ class _ChatScreenState extends State<ChatScreen>
        return;
     }
 
+    if (text.toLowerCase().contains("modo tutor")) {
+      setState(() => _isTutorMode = true);
+      _addMessage({
+        "role": "glyph", 
+        "text": "Modo Tutor activado. Ahora soy tu profesor experto en Frijol Guajirito y Moringa. Te explicaré todo en Wayuunaiki."
+      });
+      return;
+    }
+    if (text.toLowerCase().contains("salir tutor") || text.toLowerCase().contains("modo normal")) {
+      setState(() => _isTutorMode = false);
+      _addMessage({"role": "glyph", "text": "Modo Tutor desactivado."});
+      return;
+    }
+
     _sendMultimodalData(question: text, base64Image: img);
   }
 
@@ -806,12 +828,33 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ],
             if (msg["type"] != "file_share" && msg["text"]?.toString().isNotEmpty == true)
-              Text(msg["text"],
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 14,
-                      fontStyle:
-                          isThought ? FontStyle.italic : FontStyle.normal)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(msg["text"],
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 14,
+                            fontStyle: isThought ? FontStyle.italic : FontStyle.normal)),
+                  ),
+                  if (!isUser && !isThought)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: GestureDetector(
+                        onTap: () => _flutterTts.speak(msg["text"]),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.cyanAccent.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.volume_up, color: Colors.cyanAccent, size: 16),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
           ],
         ),
       ),
