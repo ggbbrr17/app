@@ -583,69 +583,17 @@ class _ChatScreenState extends State<ChatScreen>
            setState(() {
               _messages.add({"role": "glyph", "text": response.token});
            });
+           // Fallback: Si el modelo respondió con texto pero el mensaje original tiene datos, intentamos extraerlos
+           _tryManualExtraction(question);
         } else if (response is FunctionCallResponse) {
            if (response.name == "registrar_medicion_pediatrica") {
-             final nombre = response.args['nombre'];
-             final edad = response.args['edad_meses'];
-             final peso = (response.args['peso_kg'] as num).toDouble();
-             final talla = (response.args['talla_cm'] as num).toDouble();
-             final genero = response.args['genero'];
-             
-             final result = AnthroService.calculate(edad, peso, talla, genero);
-             
-             String simplifiedDiag = "";
-             if (result.diagnosis.contains("Normal")) {
-               simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
-             } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-               simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.";
-             } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-               simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.";
-             }
-             
-             final speechText = "He registrado a $nombre. $simplifiedDiag";
-             
-             setState(() {
-               _messages.add({
-                  "role": "glyph", 
-                  "type": "anthro_chart",
-                  "data": {
-                      "edad": edad, "peso": peso, "genero": genero, 
-                      "diag": result.diagnosis, 
-                      "text": speechText
-                  }
-               });
-             });
-             
-             _flutterTts.speak(speechText);
-             
-             // Reproducir audio robótico en Wayuunaiki
-             if (result.diagnosis.contains("Normal")) {
-               _audioPlayer.play(AssetSource('wayuu_sano.mp3'));
-             } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-               _audioPlayer.play(AssetSource('wayuu_peligro.mp3'));
-             } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-               _audioPlayer.play(AssetSource('wayuu_precaucion.mp3'));
-             }
-             
-             // Guardar en SQLite
-             DatabaseHelper.instance.insertPatient({
-               "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
-             }).then((pid) {
-               DatabaseHelper.instance.insertMeasurement({
-                 "patient_id": pid, "date": DateTime.now().toIso8601String(),
-                 "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
-                 "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
-                 "diagnosis": result.diagnosis
-               });
-               if (mounted) {
-                 setState(() {
-                   _messages.add({
-                     "role": "glyph",
-                     "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
-                   });
-                 });
-               }
-             });
+             _performAnthroCalculation(
+               response.args['nombre'] ?? "Niño",
+               response.args['edad_meses'] ?? 0,
+               (response.args['peso_kg'] as num).toDouble(),
+               (response.args['talla_cm'] as num).toDouble(),
+               response.args['genero'] ?? "m"
+             );
            } else if (response.name == "exportar_base_datos") {
              final csvFile = await _exportDatabaseToCSV();
              setState(() {
@@ -1196,6 +1144,79 @@ class _ChatScreenState extends State<ChatScreen>
         );
       }
     );
+  }
+
+  void _performAnthroCalculation(String nombre, int edad, double peso, double talla, String genero) {
+    final result = AnthroService.calculate(edad, peso, talla, genero);
+    
+    String simplifiedDiag = "";
+    if (result.diagnosis.contains("Normal")) {
+      simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
+    } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+      simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.";
+    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+      simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.";
+    }
+    
+    final speechText = "He registrado a $nombre. $simplifiedDiag";
+    
+    setState(() {
+      _messages.add({
+         "role": "glyph", 
+         "type": "anthro_chart",
+         "data": {
+             "edad": edad, "peso": peso, "genero": genero, 
+             "diag": result.diagnosis, 
+             "text": speechText
+         }
+      });
+    });
+    
+    _flutterTts.speak(speechText);
+    
+    if (result.diagnosis.contains("Normal")) {
+      _audioPlayer.play(AssetSource('wayuu_sano.mp3'));
+    } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+      _audioPlayer.play(AssetSource('wayuu_peligro.mp3'));
+    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+      _audioPlayer.play(AssetSource('wayuu_precaucion.mp3'));
+    }
+    
+    DatabaseHelper.instance.insertPatient({
+      "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
+    }).then((pid) {
+      DatabaseHelper.instance.insertMeasurement({
+        "patient_id": pid, "date": DateTime.now().toIso8601String(),
+        "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
+        "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
+        "diagnosis": result.diagnosis
+      });
+      if (mounted) {
+         setState(() {
+            _messages.add({
+               "role": "glyph",
+               "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
+            });
+         });
+      }
+    });
+  }
+
+  void _tryManualExtraction(String userText) {
+    final ageMatch = RegExp(r"(\d+)\s*meses").firstMatch(userText);
+    final weightMatch = RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos)").firstMatch(userText.toLowerCase());
+    final heightMatch = RegExp(r"(\d+(\.\d+)?)\s*cm").firstMatch(userText.toLowerCase());
+    final nameMatch = RegExp(r"([A-Z][a-z]+)").firstMatch(userText);
+    
+    if (ageMatch != null && weightMatch != null && heightMatch != null) {
+      final nombre = nameMatch?.group(1) ?? "Pedro";
+      final edad = int.parse(ageMatch.group(1)!);
+      final peso = double.parse(weightMatch.group(1)!);
+      final talla = double.parse(heightMatch.group(1)!);
+      final genero = userText.toLowerCase().contains("niña") || userText.toLowerCase().contains("f") ? "f" : "m";
+      
+      _performAnthroCalculation(nombre, edad, peso, talla, genero);
+    }
   }
 }
 
