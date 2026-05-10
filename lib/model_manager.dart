@@ -14,8 +14,11 @@ class ModelManager {
   }
 
   Future<bool> isModelDownloaded() async {
-    bool gemmaInstalled = await FlutterGemma.isModelInstalled(modelFileName);
-    if (gemmaInstalled) return true;
+    try {
+      await FlutterGemma.initialize();
+      bool gemmaInstalled = await FlutterGemma.isModelInstalled(modelFileName);
+      if (gemmaInstalled) return true;
+    } catch (_) {}
     
     final file = await localFile;
     return await file.exists();

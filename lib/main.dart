@@ -614,12 +614,13 @@ class _ChatScreenState extends State<ChatScreen>
         setState(() => _isOfflineMode = true);
         _addMessage({"role": "glyph", "text": "✅ ¡Modelo Gemma 4 cargado! Funcionando 100% offline."});
       } catch (e) {
-        _addMessage({"role": "glyph", "text": "❌ Error al cargar el modelo: $e"});
+        _addMessage({"role": "glyph", "text": "⚠️ El archivo del modelo local no se encontró o está corrupto. Descargando de nuevo..."});
       } finally {
         setState(() => _isThinking = false);
         _scrollToBottom();
       }
-      return;
+      
+      if (_isOfflineMode) return;
     }
 
     // Mostrar diálogo de descarga
