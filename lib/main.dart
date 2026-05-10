@@ -778,6 +778,7 @@ class _ChatScreenState extends State<ChatScreen>
               AnthroChartWidget(
                 ageInMonths: msg["data"]["edad"],
                 weightKg: msg["data"]["peso"],
+                heightCm: (msg["data"]["talla"] as num).toDouble(),
                 genderStr: msg["data"]["genero"],
                 diagnosis: msg["data"]["diag"],
               ),
@@ -1222,7 +1223,7 @@ class _ChatScreenState extends State<ChatScreen>
        "role": "glyph", 
        "type": "anthro_chart",
        "data": {
-           "edad": edad, "peso": peso, "genero": genero, 
+           "edad": edad, "peso": peso, "talla": talla, "genero": genero, 
            "diag": result.diagnosis, 
            "text": speechText
        }
