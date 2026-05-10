@@ -135,8 +135,8 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
     List<FlSpot> line3 = [];
     List<FlSpot> lineMinus3 = [];
 
-    Map<int, LMS>? standardData;
-    Map<int, LMS>? referenceData;
+    Map<int, dynamic>? standardData;
+    Map<int, dynamic>? referenceData;
 
     if (type == "WFA") {
       standardData = WHOGrowthStandardsWeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
@@ -150,7 +150,7 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
     }
 
     for (int i = 0; i <= maxMonths; i++) {
-      LMS? lms;
+      dynamic lms;
       if (i <= 60) {
         lms = standardData?[i];
       } else {

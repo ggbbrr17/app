@@ -18,6 +18,47 @@ class DatabaseHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB,
+    );
+  }
+
+  Future _createDB(Database db, int version) async {
+    const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+    const textType = 'TEXT NOT NULL';
+    const boolType = 'INTEGER NOT NULL';
+    const intType = 'INTEGER NOT NULL';
+    const realType = 'REAL NOT NULL';
+
+    await db.execute('''
+CREATE TABLE patients (
+  id $idType,
+  name $textType,
+  gender TEXT,
+  birthDate TEXT
+)
+''');
+
+    await db.execute('''
+CREATE TABLE measurements (
+  id $idType,
+  patient_id $intType,
+  date $textType,
+  age_months $intType,
+  weight_kg $realType,
+  height_cm $realType,
+  bmi $realType,
+  z_wfa $realType,
+  z_hfa $realType,
+  z_bmi $realType,
+  diagnosis $textType,
+  FOREIGN KEY (patient_id) REFERENCES patients (id)
+)
+''');
+
     await db.execute('''
 CREATE TABLE sessions (
   id $idType,
@@ -29,15 +70,22 @@ CREATE TABLE sessions (
 CREATE TABLE chat_messages (
   id $idType,
   session_id INTEGER,
-  role $textType,
-  text $textType,
+  role TEXT,
+  text TEXT,
   type TEXT,
   data TEXT,
   isThought INTEGER,
-  timestamp $textType,
+  timestamp TEXT,
   FOREIGN KEY (session_id) REFERENCES sessions (id)
 )
 ''');
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add tables if they don't exist
+      await _createDB(db, newVersion);
+    }
   }
 
   Future<int> createSession() async {
