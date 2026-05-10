@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -55,6 +55,7 @@ CREATE TABLE measurements (
   z_hfa $realType,
   z_bmi $realType,
   diagnosis $textType,
+  muac_cm REAL,
   FOREIGN KEY (patient_id) REFERENCES patients (id)
 )
 ''');
@@ -85,6 +86,11 @@ CREATE TABLE chat_messages (
     if (oldVersion < 2) {
       // Add tables if they don't exist
       await _createDB(db, newVersion);
+    }
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE measurements ADD COLUMN muac_cm REAL;');
+      } catch (_) {}
     }
   }
 

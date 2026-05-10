@@ -14,6 +14,9 @@ class ModelManager {
   }
 
   Future<bool> isModelDownloaded() async {
+    bool gemmaInstalled = await FlutterGemma.isModelInstalled(modelFileName);
+    if (gemmaInstalled) return true;
+    
     final file = await localFile;
     return await file.exists();
   }
@@ -24,15 +27,15 @@ class ModelManager {
     required Function(String) onError,
   }) async {
     try {
-      final file = await localFile;
-      Dio dio = Dio();
-      await dio.download(
-        modelUrl,
-        file.path,
-        onReceiveProgress: (received, total) {
-          if (total != -1) onProgress(received / total);
-        },
-      );
+      await FlutterGemma.installModel(
+        modelType: ModelType.gemma4,
+        fileType: ModelFileType.litertlm,
+      )
+          .fromNetwork(modelUrl, foreground: true)
+          .withProgress((progress) {
+            onProgress(progress / 100.0);
+          })
+          .install();
       onCompleted();
     } catch (e) {
       onError(e.toString());
@@ -40,12 +43,21 @@ class ModelManager {
   }
 
   Future<void> initializeGemma() async {
-    if (await isModelDownloaded()) {
-      final file = await localFile;
-      await FlutterGemma.initialize();
-      await FlutterGemma.installModel(modelType: ModelType.gemma4)
-          .fromFile(file.path)
-          .install();
+    await FlutterGemma.initialize();
+    
+    if (await FlutterGemma.isModelInstalled(modelFileName)) {
+       await FlutterGemma.installModel(
+         modelType: ModelType.gemma4,
+         fileType: ModelFileType.litertlm,
+       ).fromNetwork(modelUrl).install(); 
+    } else {
+       final file = await localFile;
+       if (await file.exists()) {
+         await FlutterGemma.installModel(
+           modelType: ModelType.gemma4,
+           fileType: ModelFileType.litertlm,
+         ).fromFile(file.path).install();
+       }
     }
   }
 }

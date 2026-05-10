@@ -6,6 +6,7 @@ class AnthroResult {
   final double zBmiForAge;
   final double zWeightForHeight;
   final String diagnosis;
+  final String muacDiagnosis;
 
   AnthroResult({
     required this.zWeightForAge,
@@ -13,12 +14,13 @@ class AnthroResult {
     required this.zBmiForAge,
     required this.zWeightForHeight,
     required this.diagnosis,
+    required this.muacDiagnosis,
   });
 }
 
 class AnthroService {
   
-  static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr) {
+  static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr, {double? muacCm}) {
     Sex sex = (genderStr.toLowerCase() == 'm' || genderStr.toLowerCase() == 'masculino' || genderStr.toLowerCase() == 'male')
         ? Sex.male
         : Sex.female;
@@ -94,12 +96,24 @@ class AnthroService {
 
     String diagnosis = _diagnose(zWfa, zHfa, zBmi, zWfh, ageInMonths);
 
+    String muacDiagnosis = "";
+    if (muacCm != null && ageInMonths >= 6 && ageInMonths <= 59) {
+      if (muacCm < 11.5) {
+        muacDiagnosis = "🔴 PELIGRO: Desnutrición Aguda Severa (MUAC < 11.5 cm)";
+      } else if (muacCm < 12.5) {
+        muacDiagnosis = "🟡 PRECAUCIÓN: Desnutrición Aguda Moderada (MUAC < 12.5 cm)";
+      } else {
+        muacDiagnosis = "🟢 Normal: Sin riesgo de desnutrición aguda según MUAC";
+      }
+    }
+
     return AnthroResult(
       zWeightForAge: zWfa.isNaN ? 0.0 : zWfa,
       zHeightForAge: zHfa.isNaN ? 0.0 : zHfa,
       zBmiForAge: zBmi.isNaN ? 0.0 : zBmi,
       zWeightForHeight: zWfh.isNaN ? 0.0 : zWfh,
       diagnosis: diagnosis,
+      muacDiagnosis: muacDiagnosis,
     );
   }
 

@@ -138,7 +138,7 @@ class FragmentedTrianglePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     // Triángulo (padding ajustable para el tamaño interno)
-    double padding = size.width * 0.25; // Más pequeño y centrado
+    double padding = size.width * 0.20; // Un poco más grande
     Offset v1 = Offset(size.width / 2, padding);
     Offset v2 = Offset(padding, size.height - padding);
     Offset v3 = Offset(size.width - padding, size.height - padding);
@@ -393,7 +393,7 @@ class _ChatScreenState extends State<ChatScreen>
       _currentSessionId = await DatabaseHelper.instance.createSession();
       final defaultMsg = {
         "role": "glyph",
-        "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica.\n\nPor favor, comparte los siguientes datos para calcular el estado nutricional:\n• Nombre\n• Edad (en meses)\n• Peso (en kg)\n• Talla (en cm)\n• Género (niño o niña)\n\n📏 Instrucción de medición de talla:\n- Niños menores de 24 meses → medir ACOSTADO (longitud).\n- Niños de 24 meses o más → medir DE PIE (talla).\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai.\nPütchajaa tü wayuukalü:\n• Jintüt (nombre)\n• Kachon (edad en meses)\n• Nutuma (peso en kg)\n• Nütüjülü (talla en cm)\n• Tepichi o Jintü (niño o niña)\n\n📏 Süpüla ekirajaa nütüjülü:\n- Tepichi maa akumajünüshi 24 kachon → kataajalaa SÜPÜSHUA (acostado).\n- Tepichi 24 kachon o sümüin → kataajalaa NUKUJULEE (de pie)."
+        "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n\nPuedo ayudarte con lo siguiente:\n1. 📊 Calcular el estado nutricional (Envíame: Nombre, Edad en meses, Peso, Talla, Género y Perímetro Braquial opcional).\n2. 📸 Identificar alimentos: Envíame una foto de comida y te daré su valor nutricional y recomendaciones.\n3. 🌱 Tutor Agrícola: Pregúntame cómo cultivar Frijol Guajirito o Moringa.\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. Eesü süpüla tatüjaain:\n1. 📊 Tayaa tü kaa'uleein: Pütchajaa jintüt, kachon, nutuma, nütüjülü, tepichi o jintü, siia muac.\n2. 📸 Tayaa tü eküülü: Püshajaa wanee ayaakuaa süpüla tatüjaain tü eküülüka.\n3. 🌱 Ekirajüi: Püshajaa taya süpüla tapüla wunu'u (Frijol Guajirito o Moringa)."
       };
       await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
       setState(() {
@@ -559,7 +559,10 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _initGemmaChat(String modelPath) async {
     await FlutterGemma.initialize();
-    await FlutterGemma.installModel(modelType: ModelType.gemma4)
+    await FlutterGemma.installModel(
+      modelType: ModelType.gemma4,
+      fileType: ModelFileType.litertlm,
+    )
         .fromFile(modelPath)
         .install();
 
@@ -578,7 +581,8 @@ class _ChatScreenState extends State<ChatScreen>
               "edad_meses": {"type": "integer", "description": "Edad en meses"},
               "peso_kg": {"type": "number", "description": "Peso en kilogramos"},
               "talla_cm": {"type": "number", "description": "Talla en centímetros"},
-              "genero": {"type": "string", "description": "Género (m o f)"}
+              "genero": {"type": "string", "description": "Género (m o f)"},
+              "muac_cm": {"type": "number", "description": "Perímetro Braquial o MUAC en centímetros (opcional)"}
             },
             "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
           }
@@ -701,11 +705,16 @@ class _ChatScreenState extends State<ChatScreen>
       {String question = "", String? base64Image, String? base64Audio}) async {
     setState(() => _isThinking = true);
 
+    String finalQuestion = question;
+    if (base64Image != null) {
+      finalQuestion = "INSTRUCCIÓN ESPECIAL: Identifica los alimentos en la imagen adjunta (si no la puedes ver, asume que es una imagen de comida relacionada con la pregunta). Da explicaciones nutricionales detalladas en Español y Wayuunaiki del alimento, y brinda recomendaciones. \nPREGUNTA: " + question;
+    }
+
     if (_isOfflineMode && _gemmaChat != null) {
       try {
-        if (base64Image != null || base64Audio != null) {
+        if (base64Audio != null) {
           setState(() {
-            _messages.add({"role": "glyph", "text": "El modo offline local actualmente solo soporta texto. Ignorando imagen/audio."});
+            _messages.add({"role": "glyph", "text": "El modo offline local actualmente no soporta audio. Ignorándolo."});
           });
           _scrollToBottom();
         }
@@ -727,7 +736,11 @@ class _ChatScreenState extends State<ChatScreen>
               "PREGUNTA DEL USUARIO: $question";
         }
         
-        await _gemmaChat!.addQuery(Message(text: finalQuestion, isUser: true));
+        await _gemmaChat!.addQuery(Message(
+          text: finalQuestion, 
+          isUser: true,
+          imageBytes: base64Image != null ? base64Decode(base64Image) : null
+        ));
         
         // Intentar extracción directa SIEMPRE, antes de la respuesta del modelo
         _tryManualExtraction(question);
@@ -747,7 +760,8 @@ class _ChatScreenState extends State<ChatScreen>
                response.args['edad_meses'] ?? 0,
                (response.args['peso_kg'] as num).toDouble(),
                (response.args['talla_cm'] as num).toDouble(),
-               response.args['genero'] ?? "m"
+               response.args['genero'] ?? "m",
+               muacCm: response.args['muac_cm'] != null ? (response.args['muac_cm'] as num).toDouble() : null
              );
            } else if (response.name == "exportar_base_datos") {
              final csvFile = await _exportDatabaseToCSV();
@@ -774,7 +788,7 @@ class _ChatScreenState extends State<ChatScreen>
           .map((m) => "${m['role'].toString().toUpperCase()}: ${m['text']}")
           .join("\n");
       final body = {
-        "question": question,
+        "question": finalQuestion,
         "history": history,
         "base64_image": base64Image,
         "base64_audio": base64Audio
@@ -1160,6 +1174,20 @@ class _ChatScreenState extends State<ChatScreen>
                             onTap: _showGeneratedFiles,
                           ),
                           ListTile(
+                            leading: const Icon(Icons.people_alt_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Control Nutricional",
+                                style: TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showNutritionalControl();
+                            },
+                          ),
+                          ListTile(
                             leading: const Icon(Icons.memory_outlined,
                                 color: Colors.white60, size: 20),
                             title: Text(_isOfflineMode ? "Desactivar Offline" : "Modo Offline (Gemma)",
@@ -1279,6 +1307,120 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  Future<void> _showNutritionalControl() async {
+    final patients = await DatabaseHelper.instance.getAllPatients();
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: const Text("Control Nutricional", style: TextStyle(color: Colors.white)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: patients.isEmpty
+              ? const Text("No hay datos guardados de niños.", style: TextStyle(color: Colors.white70))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: patients.length,
+                  itemBuilder: (ctx, i) {
+                    final p = patients[i];
+                    return ListTile(
+                      title: Text(p['name'], style: const TextStyle(color: Colors.white)),
+                      subtitle: Text("ID: ${p['id']} - ${p['gender']}", style: const TextStyle(color: Colors.white54)),
+                      trailing: const Icon(Icons.download, color: Colors.cyanAccent),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _generatePatientReport(p);
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cerrar", style: TextStyle(color: Colors.cyanAccent)),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<void> _generatePatientReport(Map<String, dynamic> patient) async {
+    final measurements = await DatabaseHelper.instance.getPatientMeasurements(patient['id']);
+    
+    String html = """
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reporte Nutricional - \${patient['name']}</title>
+        <style>
+          body { font-family: sans-serif; padding: 20px; background: #f4f4f9; color: #333; }
+          h1 { color: #0D0D1A; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+          th { background: #0D0D1A; color: white; }
+          .chart { margin-top: 30px; padding: 20px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        </style>
+      </head>
+      <body>
+        <h1>Reporte Nutricional Pediátrico</h1>
+        <h2>Paciente: \${patient['name']}</h2>
+        <p><strong>Género:</strong> \${patient['gender']} | <strong>Fecha de nacimiento:</strong> \${patient['birthDate'].split('T')[0]}</p>
+        
+        <table>
+          <tr>
+            <th>Fecha</th>
+            <th>Edad (m)</th>
+            <th>Peso (kg)</th>
+            <th>Talla (cm)</th>
+            <th>MUAC (cm)</th>
+            <th>Z-WFA</th>
+            <th>Z-HFA</th>
+            <th>Diagnóstico</th>
+          </tr>
+    """;
+    
+    for (var m in measurements) {
+      html += """
+          <tr>
+            <td>\${m['date'].split('T')[0]}</td>
+            <td>\${m['age_months']}</td>
+            <td>\${m['weight_kg']}</td>
+            <td>\${m['height_cm']}</td>
+            <td>\${m['muac_cm'] ?? '-'}</td>
+            <td>\${m['z_wfa'].toStringAsFixed(2)}</td>
+            <td>\${m['z_hfa'].toStringAsFixed(2)}</td>
+            <td>\${m['diagnosis']}</td>
+          </tr>
+      """;
+    }
+    
+    html += """
+        </table>
+        <div class="chart">
+          <h3>Evolución y Gráficas</h3>
+          <p>Para ver gráficas dinámicas de los indicadores Z, exporte la base de datos completa a CSV o utilice las gráficas mostradas en el historial de chat.</p>
+        </div>
+      </body>
+    </html>
+    """;
+
+    final tempDir = await getTemporaryDirectory();
+    final file = File('\${tempDir.path}/reporte_\${patient['name'].toString().replaceAll(' ', '_')}.html');
+    await file.writeAsString(html);
+
+    _addMessage({
+      "role": "glyph",
+      "type": "file_share",
+      "data": {
+        "path": file.path,
+        "name": "reporte_\${patient['name'].toString().replaceAll(' ', '_')}.html",
+        "text": "He generado el reporte nutricional detallado de \${patient['name']}. Toca aquí para descargarlo o compartirlo."
+      }
+    });
+  }
+
   void _toggleMenu() {
     setState(() {
       _isMenuOpen = !_isMenuOpen;
@@ -1366,17 +1508,21 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  void _performAnthroCalculation(String nombre, int edad, double peso, double talla, String genero) {
-    final result = AnthroService.calculate(edad, peso, talla, genero);
+  void _performAnthroCalculation(String nombre, int edad, double peso, double talla, String genero, {double? muacCm}) {
+    final result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
     setState(() => _lastManualDiagnosis = result.diagnosis);
     
     String simplifiedDiag = "";
     if (result.diagnosis.contains("Normal")) {
-      simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
+      simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!\n\n🌵 Wayuunaiki: Waima ni'iruku, katsinshi nia. Anashii pükülin nia sümaa eküülü anasü. ¡Müle'u chia!";
     } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-      simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.";
+      simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.\n\n🌵 Wayuunaiki: Jülüja aa'in. Cho'ujaasü ataralü mma'ana. Püshajaa chi jintükai eemüin tü piichi ataralü eesü kasakai.";
     } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-      simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.";
+      simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü nutuma. Pükülin nia sümaa eküülü anasü siia püshajaa chi eekai atüjain.";
+    }
+
+    if (result.muacDiagnosis.isNotEmpty) {
+      simplifiedDiag += "\\n" + result.muacDiagnosis;
     }
     
     final speechText = "He registrado a $nombre. $simplifiedDiag";
@@ -1412,21 +1558,33 @@ class _ChatScreenState extends State<ChatScreen>
 
     _flutterTts.speak(speechText);
 
-    
-    DatabaseHelper.instance.insertPatient({
-      "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
-    }).then((pid) {
-      DatabaseHelper.instance.insertMeasurement({
-        "patient_id": pid, "date": DateTime.now().toIso8601String(),
-        "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
-        "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
-        "diagnosis": result.diagnosis
-      });
-      if (mounted) {
-         _addMessage({
-            "role": "glyph",
-            "text": 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}'
-         });
+    DatabaseHelper.instance.getAllPatients().then((patients) {
+      final existing = patients.where((p) => p['name'].toString().toLowerCase() == nombre.toLowerCase()).toList();
+      
+      void saveMeasurement(int pid) {
+        DatabaseHelper.instance.insertMeasurement({
+          "patient_id": pid, "date": DateTime.now().toIso8601String(),
+          "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
+          "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
+          "diagnosis": result.diagnosis,
+          "muac_cm": muacCm
+        });
+        if (mounted) {
+           _addMessage({
+              "role": "glyph",
+              "text": 'Z-Scores: WFA: \${result.zWeightForAge.toStringAsFixed(2)}, HFA: \${result.zHeightForAge.toStringAsFixed(2)}, BMI: \${result.zBmiForAge.toStringAsFixed(2)}\\nDiagnóstico: \${result.diagnosis}' + (result.muacDiagnosis.isNotEmpty ? '\\n\${result.muacDiagnosis}' : '')
+           });
+        }
+      }
+
+      if (existing.isNotEmpty) {
+        saveMeasurement(existing.first['id']);
+      } else {
+        DatabaseHelper.instance.insertPatient({
+          "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
+        }).then((pid) {
+          saveMeasurement(pid);
+        });
       }
     });
   }
