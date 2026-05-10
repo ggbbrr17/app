@@ -1288,17 +1288,35 @@ class _ChatScreenState extends State<ChatScreen>
     final lower = userText.toLowerCase();
 
     // ── Edad ─────────────────────────────────────────────────────────────────
-    // Primero intenta número + meses (ej. "12 meses")
     int? edad;
-    final ageDigitMatch = RegExp(r"(\d+)\s*mes").firstMatch(lower);
-    if (ageDigitMatch != null) {
-      edad = int.tryParse(ageDigitMatch.group(1)!);
+    
+    // 1. Buscar Años (ej. "1 año", "un año", "2 años")
+    int years = 0;
+    final yearDigitMatch = RegExp(r"(\d+)\s*año").firstMatch(lower);
+    if (yearDigitMatch != null) {
+      years = int.tryParse(yearDigitMatch.group(1)!) ?? 0;
     } else {
-      // Busca palabra numérica antes de "mes" (ej. "doce meses", "seis meses")
-      final ageWordMatch = RegExp(r"(\w+)\s+mes").firstMatch(lower);
-      if (ageWordMatch != null) {
-        edad = _spanishWordToNumber(ageWordMatch.group(1)!);
+      final yearWordMatch = RegExp(r"(\w+)\s+año").firstMatch(lower);
+      if (yearWordMatch != null) {
+        years = _spanishWordToNumber(yearWordMatch.group(1)!) ?? 0;
       }
+    }
+
+    // 2. Buscar Meses (ej. "12 meses", "doce meses")
+    int months = 0;
+    final monthDigitMatch = RegExp(r"(\d+)\s*mes").firstMatch(lower);
+    if (monthDigitMatch != null) {
+      months = int.tryParse(monthDigitMatch.group(1)!) ?? 0;
+    } else {
+      final monthWordMatch = RegExp(r"(\w+)\s+mes").firstMatch(lower);
+      if (monthWordMatch != null) {
+        months = _spanishWordToNumber(monthWordMatch.group(1)!) ?? 0;
+      }
+    }
+
+    // Calcular edad total en meses
+    if (years > 0 || months > 0) {
+      edad = (years * 12) + months;
     }
 
     // ── Peso ─────────────────────────────────────────────────────────────────
