@@ -7,6 +7,7 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 import 'anthro_service.dart';
 import 'anthro_chart_widget.dart';
 import 'database_helper.dart';
+import 'model_manager.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_tts/flutter_tts.dart';
@@ -352,6 +353,10 @@ class _ChatScreenState extends State<ChatScreen>
   InferenceChat? _gemmaChat;
   bool _isTutorMode = false;
   String? _lastManualDiagnosis;
+  double _downloadProgress = 0.0;
+  bool _isDownloading = false;
+  final StreamController<double> _downloadProgressController = StreamController<double>.broadcast();
+  Stream<double> get _downloadProgressStream => _downloadProgressController.stream;
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl =
@@ -478,6 +483,7 @@ class _ChatScreenState extends State<ChatScreen>
     _audioPlayer.dispose();
     _audioRecorder.dispose();
     _flutterTts.stop();
+    _downloadProgressController.close();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -551,69 +557,144 @@ class _ChatScreenState extends State<ChatScreen>
     return path != null ? base64Encode(await File(path).readAsBytes()) : null;
   }
 
-  Future<void> _loadGemmaModel() async {
-    FilePickerResult? res = await FilePicker.platform.pickFiles(type: FileType.any);
-    if (res != null && res.files.single.path != null) {
-      final path = res.files.single.path!;
-      setState(() {
-        _isMenuOpen = false;
-        _isThinking = true;
-      });
-      _menuAnimationController.reverse();
+  Future<void> _initGemmaChat(String modelPath) async {
+    await FlutterGemma.initialize();
+    await FlutterGemma.installModel(modelType: ModelType.gemma4)
+        .fromFile(modelPath)
+        .install();
 
+    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
+    _gemmaChat = await _gemmaModel!.createChat(
+      supportsFunctionCalls: true,
+      toolChoice: ToolChoice.auto,
+      tools: [
+        Tool(
+          name: "registrar_medicion_pediatrica",
+          description: "IMPORTANT: Use this tool ALWAYS when the user provides pediatric data (name, age, weight, height, gender) to calculate the nutritional diagnosis. Data: Pedro, 12 months, 0kg, 60cm, male.",
+          parameters: {
+            "type": "object",
+            "properties": {
+              "nombre": {"type": "string", "description": "Nombre del niño"},
+              "edad_meses": {"type": "integer", "description": "Edad en meses"},
+              "peso_kg": {"type": "number", "description": "Peso en kilogramos"},
+              "talla_cm": {"type": "number", "description": "Talla en centímetros"},
+              "genero": {"type": "string", "description": "Género (m o f)"}
+            },
+            "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
+          }
+        ),
+        Tool(
+          name: "exportar_base_datos",
+          description: "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
+          parameters: {"type": "object", "properties": {}}
+        )
+      ]
+    );
+
+    await _gemmaChat!.addQuery(Message(
+      text: "Eres un asistente de salud pediátrica. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, DEBES usar la herramienta 'registrar_medicion_pediatrica'. No respondas con texto plano si puedes usar la herramienta.",
+      isUser: false
+    ));
+  }
+
+  Future<void> _loadGemmaModel() async {
+    setState(() {
+      _isMenuOpen = false;
+      _isDownloading = false;
+      _downloadProgress = 0.0;
+    });
+    _menuAnimationController.reverse();
+
+    final manager = ModelManager();
+
+    // Si ya está descargado, inicializar directo
+    if (await manager.isModelDownloaded()) {
+      setState(() => _isThinking = true);
       try {
-        await FlutterGemma.initialize();
-        await FlutterGemma.installModel(modelType: ModelType.gemma4)
-            .fromFile(path)
-            .install();
-            
-        _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
-        _gemmaChat = await _gemmaModel!.createChat(
-          supportsFunctionCalls: true,
-          toolChoice: ToolChoice.auto,
-          tools: [
-            Tool(
-              name: "registrar_medicion_pediatrica",
-              description: "IMPORTANT: Use this tool ALWAYS when the user provides pediatric data (name, age, weight, height, gender) to calculate the nutritional diagnosis. Data: Pedro, 12 months, 0kg, 60cm, male.",
-              parameters: {
-                "type": "object",
-                "properties": {
-                  "nombre": {"type": "string", "description": "Nombre del niño"},
-                  "edad_meses": {"type": "integer", "description": "Edad en meses"},
-                  "peso_kg": {"type": "number", "description": "Peso en kilogramos"},
-                  "talla_cm": {"type": "number", "description": "Talla en centímetros"},
-                  "genero": {"type": "string", "description": "Género (m o f)"}
-                },
-                "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
-              }
-            ),
-            Tool(
-              name: "exportar_base_datos",
-              description: "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
-              parameters: {"type": "object", "properties": {}}
-            )
-          ]
-        );
-        
-        setState(() {
-          _isOfflineMode = true;
-          _addMessage({"role": "glyph", "text": "¡Modelo local cargado exitosamente! Ahora estoy funcionando 100% offline."});
-        });
-        
-        // Inyectar instrucción de sistema para asegurar el uso de herramientas
-        await _gemmaChat!.addQuery(Message(
-          text: "Eres un asistente de salud pediátrica. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, DEBES usar la herramienta 'registrar_medicion_pediatrica'. No respondas con texto plano si puedes usar la herramienta. Ejemplo: Pedro, 12 meses, 0kg, 60cm -> Llama a la función con esos datos.",
-          isUser: false
-        ));
+        final file = await manager.localFile;
+        await _initGemmaChat(file.path);
+        setState(() => _isOfflineMode = true);
+        _addMessage({"role": "glyph", "text": "✅ ¡Modelo Gemma 4 cargado! Funcionando 100% offline."});
       } catch (e) {
-        setState(() {
-          _messages.add({"role": "glyph", "text": "Error al cargar modelo local: $e"});
-        });
+        _addMessage({"role": "glyph", "text": "❌ Error al cargar el modelo: $e"});
       } finally {
         setState(() => _isThinking = false);
         _scrollToBottom();
       }
+      return;
     }
+
+    // Mostrar diálogo de descarga
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0D0D1A),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text("Descargando Gemma 4 E2B",
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: 1)),
+            content: StatefulBuilder(
+              builder: (_, __) => StreamBuilder<double>(
+                stream: _downloadProgressStream,
+                builder: (_, snap) {
+                  final p = snap.data ?? 0.0;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("El modelo pesa ~2 GB.\nAsegúrate de tener buena conexión.",
+                          style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      const SizedBox(height: 20),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: LinearProgressIndicator(
+                          value: p > 0 ? p : null,
+                          backgroundColor: Colors.white10,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                          minHeight: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(p > 0 ? "${(p * 100).toStringAsFixed(1)}%" : "Iniciando...",
+                          style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                    ],
+                  );
+                },
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    await manager.downloadModel(
+      onProgress: (p) {
+        _downloadProgressController.add(p);
+      },
+      onCompleted: () async {
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
+        setState(() => _isThinking = true);
+        try {
+          final file = await manager.localFile;
+          await _initGemmaChat(file.path);
+          setState(() => _isOfflineMode = true);
+          _addMessage({"role": "glyph", "text": "✅ ¡Gemma 4 descargado y listo! Funcionando 100% offline."});
+        } catch (e) {
+          _addMessage({"role": "glyph", "text": "❌ Error al inicializar el modelo: $e"});
+        } finally {
+          setState(() => _isThinking = false);
+          _scrollToBottom();
+        }
+      },
+      onError: (err) {
+        if (mounted) Navigator.of(context, rootNavigator: true).pop();
+        _addMessage({"role": "glyph", "text": "❌ Error al descargar el modelo: $err"});
+        _scrollToBottom();
+      },
+    );
   }
 
   Future<void> _sendMultimodalData(

@@ -33,7 +33,6 @@ class ModelManager {
           if (total != -1) onProgress(received / total);
         },
       );
-      await initializeGemma();
       onCompleted();
     } catch (e) {
       onError(e.toString());
