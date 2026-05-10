@@ -638,8 +638,11 @@ class _ChatScreenState extends State<ChatScreen>
               "PREGUNTA DEL USUARIO: $question";
           _lastManualDiagnosis = null; // Limpiar para el siguiente mensaje
         } else if (_isTutorMode) {
-          finalQuestion = "ROL: Eres un profesor experto en cultivo de Frijol Guajirito (Vigna unguiculata) y Moringa (Moringa oleifera). "
-              "Responde SIEMPRE en idioma Wayuunaiki. Explica que el frijol es resistente a sequía y rico en proteína, y que la moringa es el árbol de la vida con calcio y vitaminas. "
+          finalQuestion = "ROL: Eres un profesor experto en agricultura de La Guajira. "
+              "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki). "
+              "TEMAS: Frijol Guajirito y Moringa. "
+              "Si el usuario elige uno, explica el proceso de cultivo DESDE CERO (preparación, siembra, riego, cosecha). "
+              "Sé paciente y educativo. "
               "PREGUNTA DEL USUARIO: $question";
         }
         
@@ -742,7 +745,7 @@ class _ChatScreenState extends State<ChatScreen>
       setState(() => _isTutorMode = true);
       _addMessage({
         "role": "glyph", 
-        "text": "Modo Tutor activado. Ahora soy tu profesor experto en Frijol Guajirito y Moringa. Te explicaré todo en Wayuunaiki."
+        "text": "¡Hola! He activado el Modo Tutor bilingüe. 🌵 Responderé en Español y Wayuunaiki.\n\nSoy tu profesor de agricultura. ¿Con qué cultivo te gustaría iniciar hoy? ¿Frijol Guajirito o Moringa?"
       });
       return;
     }
