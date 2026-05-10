@@ -352,6 +352,7 @@ class _ChatScreenState extends State<ChatScreen>
   InferenceModel? _gemmaModel;
   InferenceChat? _gemmaChat;
   bool _isTutorMode = false;
+  String _tutorLanguage = "Bilingüe";
   String? _lastManualDiagnosis;
   double _downloadProgress = 0.0;
   bool _isDownloading = false;
@@ -729,8 +730,12 @@ class _ChatScreenState extends State<ChatScreen>
               "PREGUNTA DEL USUARIO: $question";
           _lastManualDiagnosis = null; // Limpiar para el siguiente mensaje
         } else if (_isTutorMode) {
+          String langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en ESPAÑOL.";
+          if (_tutorLanguage == "Wayuunaiki") langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en WAYUUNAIKI.";
+          if (_tutorLanguage == "Bilingüe") langInstruction = "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki).";
+
           finalQuestion = "ROL: Eres un profesor experto en agricultura de La Guajira. "
-              "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki). "
+              "$langInstruction "
               "TEMAS: Frijol Guajirito y Moringa. "
               "Si el usuario elige uno, explica el proceso de cultivo DESDE CERO (preparación, siembra, riego, cosecha). "
               "Sé paciente y educativo. "
@@ -840,13 +845,33 @@ class _ChatScreenState extends State<ChatScreen>
     }
 
     if (text.toLowerCase().contains("modo tutor")) {
-      setState(() => _isTutorMode = true);
+      setState(() {
+        _isTutorMode = true;
+        _tutorLanguage = "Bilingüe";
+      });
       _addMessage({
         "role": "glyph", 
-        "text": "¡Hola! He activado el Modo Tutor bilingüe. 🌵 Responderé en Español y Wayuunaiki.\n\nSoy tu profesor de agricultura. ¿Con qué cultivo te gustaría iniciar hoy? ¿Frijol Guajirito o Moringa?\n\n🌵 Wayuunaiki:\nTaya ekirajüi piamasü anüikika. Tapütüjain piamasü nümüin alijuna siia wayuunaiki.\nKasa püchekaka pütüjaain aa'u joolu'u? ¿Frijol Guajirito o Moringa?"
+        "text": "¡Hola! He activado el Modo Tutor. 🌵\n\n¿En qué idioma prefieres que hablemos?\n1. Español\n2. Wayuunaiki\n3. Bilingüe (Ambos)\n\n🌵 Wayuunaiki: ¿Kasa püküjüinka süpüla pükirajüin? (1. Español, 2. Wayuunaiki, 3. Bilingüe)"
       });
       return;
     }
+
+    if (_isTutorMode && (text == "1" || text.toLowerCase() == "español")) {
+       setState(() => _tutorLanguage = "Español");
+       _addMessage({"role": "glyph", "text": "Entendido, hablaremos en Español. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"});
+       return;
+    }
+    if (_isTutorMode && (text == "2" || text.toLowerCase() == "wayuunaiki")) {
+       setState(() => _tutorLanguage = "Wayuunaiki");
+       _addMessage({"role": "glyph", "text": "Anasü, ekirajawaa süka wayuunaiki. ¿Kasa püchekaka: Frijol Guajirito o Moringa?"});
+       return;
+    }
+    if (_isTutorMode && (text == "3" || text.toLowerCase() == "bilingüe")) {
+       setState(() => _tutorLanguage = "Bilingüe");
+       _addMessage({"role": "glyph", "text": "Perfecto, seré bilingüe. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"});
+       return;
+    }
+
     if (text.toLowerCase().contains("salir tutor") || text.toLowerCase().contains("modo normal")) {
       setState(() => _isTutorMode = false);
       _addMessage({"role": "glyph", "text": "Modo Tutor desactivado."});
