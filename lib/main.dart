@@ -763,7 +763,7 @@ class _ChatScreenState extends State<ChatScreen>
            if (response.name == "registrar_medicion_pediatrica") {
              _performAnthroCalculation(
                response.args['nombre'] ?? "Niño",
-               response.args['edad_meses'] ?? 0,
+               (response.args['edad_meses'] as num?)?.toInt() ?? 0,
                (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
                (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
                response.args['genero'] ?? "m",
