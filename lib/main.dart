@@ -1028,7 +1028,7 @@ class _ChatScreenState extends State<ChatScreen>
                     onLongPressEnd: (_) async {
                       final audio = await _stopRecording();
                       if (audio != null) {
-                        _sendMultimodalData(question: "Analiza este audio.", base64Audio: audio);
+                        _sendMultimodalData(question: "INSTRUCCIÓN ESPECIAL: El audio adjunto es mi mensaje de voz. Escucha lo que digo y RESPONDE DIRECTAMENTE a mi pregunta o comentario. NO describas el audio (no digas 'Se escucha una voz diciendo...'). Trátalo como si fuera un mensaje de texto que te acabo de escribir.", base64Audio: audio);
                       }
                     },
                     child: Center(
