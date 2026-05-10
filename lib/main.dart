@@ -1356,7 +1356,7 @@ class _ChatScreenState extends State<ChatScreen>
     <html>
       <head>
         <meta charset="utf-8">
-        <title>Reporte Nutricional - \${patient['name']}</title>
+        <title>Reporte Nutricional - ${patient['name']}</title>
         <style>
           body { font-family: sans-serif; padding: 20px; background: #f4f4f9; color: #333; }
           h1 { color: #0D0D1A; }
@@ -1368,8 +1368,8 @@ class _ChatScreenState extends State<ChatScreen>
       </head>
       <body>
         <h1>Reporte Nutricional Pediátrico</h1>
-        <h2>Paciente: \${patient['name']}</h2>
-        <p><strong>Género:</strong> \${patient['gender']} | <strong>Fecha de nacimiento:</strong> \${patient['birthDate'].split('T')[0]}</p>
+        <h2>Paciente: ${patient['name']}</h2>
+        <p><strong>Género:</strong> ${patient['gender']} | <strong>Fecha de nacimiento:</strong> ${patient['birthDate'].split('T')[0]}</p>
         
         <table>
           <tr>
@@ -1387,14 +1387,14 @@ class _ChatScreenState extends State<ChatScreen>
     for (var m in measurements) {
       html += """
           <tr>
-            <td>\${m['date'].split('T')[0]}</td>
-            <td>\${m['age_months']}</td>
-            <td>\${m['weight_kg']}</td>
-            <td>\${m['height_cm']}</td>
-            <td>\${m['muac_cm'] ?? '-'}</td>
-            <td>\${m['z_wfa'].toStringAsFixed(2)}</td>
-            <td>\${m['z_hfa'].toStringAsFixed(2)}</td>
-            <td>\${m['diagnosis']}</td>
+            <td>${m['date'].split('T')[0]}</td>
+            <td>${m['age_months']}</td>
+            <td>${m['weight_kg']}</td>
+            <td>${m['height_cm']}</td>
+            <td>${m['muac_cm'] ?? '-'}</td>
+            <td>${m['z_wfa'].toStringAsFixed(2)}</td>
+            <td>${m['z_hfa'].toStringAsFixed(2)}</td>
+            <td>${m['diagnosis']}</td>
           </tr>
       """;
     }
