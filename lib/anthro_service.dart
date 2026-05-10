@@ -59,10 +59,10 @@ class AnthroService {
 
         // Peso para la Talla (WFH) - Disponible para 0-5 años (o hasta 120cm)
         if (ageInMonths < 24) {
-           final wfl = WHOGrowthStandardsWeightForLength(sex: sex, age: age, weight: weight, length: height);
+           final wfl = WHOGrowthStandardsWeightForLength(sex: sex, age: age, weight: weight, length: height, measure: LengthHeightMeasurementPosition.recumbent);
            zWfh = wfl.zScore().toDouble();
         } else {
-           final wfh = WHOGrowthStandardsWeightForHeight(sex: sex, age: age, weight: weight, height: height);
+           final wfh = WHOGrowthStandardsWeightForHeight(sex: sex, age: age, weight: weight, height: height, measure: LengthHeightMeasurementPosition.standing);
            zWfh = wfh.zScore().toDouble();
         }
 
