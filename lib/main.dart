@@ -1178,15 +1178,27 @@ class _ChatScreenState extends State<ChatScreen>
       });
     });
     
-    _flutterTts.speak(speechText);
-    
+    // Primero habla en español; cuando termine, reproduce el audio en Wayuunaiki
+    String? wayuuAudio;
     if (result.diagnosis.contains("Normal")) {
-      _audioPlayer.play(AssetSource('wayuu_sano.mp3'));
+      wayuuAudio = 'wayuu_sano.mp3';
     } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-      _audioPlayer.play(AssetSource('wayuu_peligro.mp3'));
+      wayuuAudio = 'wayuu_peligro.mp3';
     } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-      _audioPlayer.play(AssetSource('wayuu_precaucion.mp3'));
+      wayuuAudio = 'wayuu_precaucion.mp3';
     }
+
+    if (wayuuAudio != null) {
+      final audioFile = wayuuAudio; // captura local para el closure
+      _flutterTts.setCompletionHandler(() {
+        _audioPlayer.play(AssetSource(audioFile));
+        // Limpiar el handler para que no se dispare en futuras reproducciones
+        _flutterTts.setCompletionHandler(() {});
+      });
+    }
+
+    _flutterTts.speak(speechText);
+
     
     DatabaseHelper.instance.insertPatient({
       "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
