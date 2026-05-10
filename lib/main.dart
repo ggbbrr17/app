@@ -1407,7 +1407,8 @@ class _ChatScreenState extends State<ChatScreen>
     """;
 
     final tempDir = await getTemporaryDirectory();
-    final file = File('\${tempDir.path}/reporte_\${patient['name'].toString().replaceAll(' ', '_')}.html');
+    final fileName = "reporte_${patient['name'].toString().replaceAll(' ', '_')}.html";
+    final file = File("${tempDir.path}/$fileName");
     await file.writeAsString(html);
 
     _addMessage({
@@ -1415,8 +1416,8 @@ class _ChatScreenState extends State<ChatScreen>
       "type": "file_share",
       "data": {
         "path": file.path,
-        "name": "reporte_\${patient['name'].toString().replaceAll(' ', '_')}.html",
-        "text": "He generado el reporte nutricional detallado de \${patient['name']}. Toca aquí para descargarlo o compartirlo."
+        "name": fileName,
+        "text": "He generado el reporte nutricional detallado de ${patient['name']}. Toca aquí para descargarlo o compartirlo."
       }
     });
   }
