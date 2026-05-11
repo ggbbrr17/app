@@ -718,12 +718,12 @@ class _ChatScreenState extends State<ChatScreen>
       if (_tutorLanguage == "Wayuunaiki") langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en WAYUUNAIKI.";
       if (_tutorLanguage == "Bilingüe") langInstruction = "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki).";
 
-      finalQuestion = "ROL: Eres un profesor experto en agricultura de La Guajira. "
-          "$langInstruction "
-          "TEMAS: Frijol Guajirito y Moringa. "
-          "Si el usuario elige uno, explica el proceso de cultivo DESDE CERO (preparación, siembra, riego, cosecha). "
-          "Sé paciente y educativo. "
-          "PREGUNTA DEL USUARIO: $finalQuestion";
+      finalQuestion = "ROL: Eres un PROFESOR EXPERTO en agricultura y nutrición de La Guajira. Tu misión es enseñar. "
+          "\n$langInstruction "
+          "\nTEMAS: Frijol Guajirito y Moringa. "
+          "\nINSTRUCCIÓN: Si el usuario menciona uno de estos cultivos, explica TODO el proceso desde cero (preparación de tierra, siembra, riego y cosecha). "
+          "\nREGLA DE ORO: $langInstruction (No uses otros idiomas). "
+          "\nPREGUNTA DEL USUARIO: $finalQuestion";
     }
 
     // Intentar extracción directa SIEMPRE
@@ -862,17 +862,32 @@ class _ChatScreenState extends State<ChatScreen>
 
     if (_isTutorMode && (text == "1" || text.toLowerCase() == "español")) {
        setState(() => _tutorLanguage = "Español");
-       _addMessage({"role": "glyph", "text": "Entendido, hablaremos en Español. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"});
+       final reply = "Entendido, hablaremos en Español. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?";
+       _addMessage({"role": "glyph", "text": reply});
+       if (_isOfflineMode && _gemmaChat != null) {
+         _gemmaChat!.addQuery(Message(text: text, isUser: true));
+         _gemmaChat!.addQuery(Message(text: reply, isUser: false));
+       }
        return;
     }
     if (_isTutorMode && (text == "2" || text.toLowerCase() == "wayuunaiki")) {
        setState(() => _tutorLanguage = "Wayuunaiki");
-       _addMessage({"role": "glyph", "text": "Anasü, ekirajawaa süka wayuunaiki. ¿Kasa püchekaka: Frijol Guajirito o Moringa?"});
+       final reply = "Anasü, ekirajawaa süka wayuunaiki. ¿Kasa püchekaka: Frijol Guajirito o Moringa?";
+       _addMessage({"role": "glyph", "text": reply});
+       if (_isOfflineMode && _gemmaChat != null) {
+         _gemmaChat!.addQuery(Message(text: text, isUser: true));
+         _gemmaChat!.addQuery(Message(text: reply, isUser: false));
+       }
        return;
     }
     if (_isTutorMode && (text == "3" || text.toLowerCase() == "bilingüe")) {
        setState(() => _tutorLanguage = "Bilingüe");
-       _addMessage({"role": "glyph", "text": "Perfecto, seré bilingüe. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"});
+       final reply = "Perfecto, seré bilingüe. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?";
+       _addMessage({"role": "glyph", "text": reply});
+       if (_isOfflineMode && _gemmaChat != null) {
+         _gemmaChat!.addQuery(Message(text: text, isUser: true));
+         _gemmaChat!.addQuery(Message(text: reply, isUser: false));
+       }
        return;
     }
 
