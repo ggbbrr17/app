@@ -1556,9 +1556,12 @@ class _ChatScreenState extends State<ChatScreen>
     
     final speechText = "He registrado a $nombre. $simplifiedDiag";
     
+    final zScoreText = 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+
     _addMessage({
        "role": "glyph", 
        "type": "anthro_chart",
+       "text": zScoreText,
        "data": {
            "edad": edad, "peso": peso, "talla": talla, "genero": genero, 
            "diag": result.diagnosis, 
@@ -1599,10 +1602,7 @@ class _ChatScreenState extends State<ChatScreen>
           "muac_cm": muacCm
         });
         if (mounted) {
-           _addMessage({
-              "role": "glyph",
-              "text": 'Z-Scores: WFA: \${result.zWeightForAge.toStringAsFixed(2)}, HFA: \${result.zHeightForAge.toStringAsFixed(2)}, BMI: \${result.zBmiForAge.toStringAsFixed(2)}\\nDiagnóstico: \${result.diagnosis}' + (result.muacDiagnosis.isNotEmpty ? '\\n\${result.muacDiagnosis}' : '')
-           });
+           // Z-Scores ya enviados en el mensaje principal
         }
       }
 
