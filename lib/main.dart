@@ -1752,15 +1752,13 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
   Future<void> _handleWakeOnLan() async {
-    final mac = await DatabaseHelper.instance.getSetting('pc_mac');
+    String? mac = await DatabaseHelper.instance.getSetting('pc_mac');
     if (mac == null || mac.isEmpty) {
-      _addMessage({
-        "role": "glyph",
-        "text": "Para encender tu computadora necesito conocer su dirección MAC. Por favor, dímela (ej. 'mi mac es 00:1A:2B:3C:4D:5E')."
-      });
-    } else {
-      await _performWakeOnLan(mac);
+      // He pre-configurado tu dirección MAC Acer aquí
+      mac = "48:A4:72:FB:C0:ED";
+      await DatabaseHelper.instance.setSetting('pc_mac', mac);
     }
+    await _performWakeOnLan(mac);
   }
 
   Future<void> _performWakeOnLan(String mac) async {
