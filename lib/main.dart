@@ -1763,8 +1763,8 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _performWakeOnLan(String mac) async {
     try {
-      final ipAddress = IPv4Address.fromIPv4Address('255.255.255.255');
-      final macAddress = MACAddress.fromMACAddress(mac);
+      final ipAddress = IPAddress('255.255.255.255');
+      final macAddress = MACAddress(mac);
       final wol = WakeOnLAN(ipAddress, macAddress);
       await wol.wake();
       _addMessage({
