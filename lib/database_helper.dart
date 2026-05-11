@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -80,18 +80,35 @@ CREATE TABLE chat_messages (
   FOREIGN KEY (session_id) REFERENCES sessions (id)
 )
 ''');
+
+    await db.execute('''
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value TEXT
+)
+''');
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // Add tables if they don't exist
-      await _createDB(db, newVersion);
-    }
-    if (oldVersion < 3) {
+    if (oldVersion < 4) {
       try {
-        await db.execute('ALTER TABLE measurements ADD COLUMN muac_cm REAL;');
+        await db.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);');
       } catch (_) {}
     }
+  }
+
+  Future<void> setSetting(String key, String value) async {
+    final db = await instance.database;
+    await db.insert('settings', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<String?> getSetting(String key) async {
+    final db = await instance.database;
+    final res = await db.query('settings', where: 'key = ?', whereArgs: [key]);
+    if (res.isNotEmpty) {
+      return res.first['value'] as String;
+    }
+    return null;
   }
 
   Future<int> createSession() async {

@@ -20,6 +20,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:wake_on_lan/wake_on_lan.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -821,6 +822,15 @@ class _ChatScreenState extends State<ChatScreen>
           });
         }
         _addMessage({"role": "glyph", "text": data['message'] ?? "..."});
+        
+        // Manejar comandos remotos del Modo B en línea
+        if (data['command'] != null && data['command']['action'] == 'wake_on_lan') {
+           final mac = data['command']['args']['mac'];
+           if (mac != null) {
+              await _performWakeOnLan(mac);
+              await DatabaseHelper.instance.setSetting('pc_mac', mac);
+           }
+        }
       }
     } finally {
       setState(() => _isThinking = false);
@@ -846,6 +856,22 @@ class _ChatScreenState extends State<ChatScreen>
          });
        });
        return;
+    }
+
+    if (text.toLowerCase().contains("enciende la computadora") || text.toLowerCase().contains("prende la computadora")) {
+      _handleWakeOnLan();
+      return;
+    }
+
+    final macRegex = RegExp(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})");
+    if (macRegex.hasMatch(text)) {
+      final mac = macRegex.stringMatch(text)!;
+      DatabaseHelper.instance.setSetting('pc_mac', mac);
+      _addMessage({
+        "role": "glyph",
+        "text": "✅ He guardado la dirección MAC: $mac. Ahora ya puedo encender tu computadora cuando me lo pidas."
+      });
+      return;
     }
 
     if (text.toLowerCase().contains("modo tutor")) {
@@ -1723,6 +1749,33 @@ class _ChatScreenState extends State<ChatScreen>
 
     if (edad != null && peso != null && talla != null) {
       _performAnthroCalculation(nombre, edad, peso, talla, genero);
+    }
+  }
+  Future<void> _handleWakeOnLan() async {
+    final mac = await DatabaseHelper.instance.getSetting('pc_mac');
+    if (mac == null || mac.isEmpty) {
+      _addMessage({
+        "role": "glyph",
+        "text": "Para encender tu computadora necesito conocer su dirección MAC. Por favor, dímela (ej. 'mi mac es 00:1A:2B:3C:4D:5E')."
+      });
+    } else {
+      await _performWakeOnLan(mac);
+    }
+  }
+
+  Future<void> _performWakeOnLan(String mac) async {
+    try {
+      final wol = WakeOnLan.fromMAC(mac);
+      await wol.wake();
+      _addMessage({
+        "role": "glyph",
+        "text": "🚀 Enviando señal de encendido (Magic Packet) a la dirección MAC $mac... Tu computadora debería prenderse en unos segundos."
+      });
+    } catch (e) {
+      _addMessage({
+        "role": "glyph",
+        "text": "❌ Error al intentar encender la computadora: $e"
+      });
     }
   }
 }
