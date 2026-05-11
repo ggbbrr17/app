@@ -705,6 +705,30 @@ class _ChatScreenState extends State<ChatScreen>
       finalQuestion = "INSTRUCCIÓN ESPECIAL: Identifica los alimentos en la imagen adjunta (si no la puedes ver, asume que es una imagen de comida relacionada con la pregunta). Da explicaciones nutricionales detalladas en Español y Wayuunaiki del alimento, y brinda recomendaciones. \nPREGUNTA: " + question;
     }
 
+    // Lógica de Modo Tutor y Diagnóstico compartida para Online y Offline
+    if (_lastManualDiagnosis != null) {
+      finalQuestion = "SISTEMA: Ya se calculó el estado nutricional: $_lastManualDiagnosis. "
+          "INSTRUCCIÓN: No repitas el diagnóstico técnico. "
+          "Si estás en 'Modo Tutor', da recomendaciones sobre Frijol Guajirito o Moringa en Wayuunaiki basándote en este diagnóstico. "
+          "Si no, da un mensaje breve de apoyo. "
+          "PREGUNTA DEL USUARIO: $finalQuestion";
+      _lastManualDiagnosis = null; // Limpiar para el siguiente mensaje
+    } else if (_isTutorMode) {
+      String langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en ESPAÑOL.";
+      if (_tutorLanguage == "Wayuunaiki") langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en WAYUUNAIKI.";
+      if (_tutorLanguage == "Bilingüe") langInstruction = "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki).";
+
+      finalQuestion = "ROL: Eres un profesor experto en agricultura de La Guajira. "
+          "$langInstruction "
+          "TEMAS: Frijol Guajirito y Moringa. "
+          "Si el usuario elige uno, explica el proceso de cultivo DESDE CERO (preparación, siembra, riego, cosecha). "
+          "Sé paciente y educativo. "
+          "PREGUNTA DEL USUARIO: $finalQuestion";
+    }
+
+    // Intentar extracción directa SIEMPRE
+    _tryManualExtraction(question);
+
     if (_isOfflineMode && _gemmaChat != null) {
       try {
         if (base64Audio != null) {
@@ -721,26 +745,7 @@ class _ChatScreenState extends State<ChatScreen>
           _scrollToBottom();
         }
         
-        // No re-declarar finalQuestion aquí, usar la que ya viene de arriba.
-        if (_lastManualDiagnosis != null) {
-          finalQuestion = "SISTEMA: Ya se calculó el estado nutricional: $_lastManualDiagnosis. "
-              "INSTRUCCIÓN: No repitas el diagnóstico técnico. "
-              "Si estás en 'Modo Tutor', da recomendaciones sobre Frijol Guajirito o Moringa en Wayuunaiki basándote en este diagnóstico. "
-              "Si no, da un mensaje breve de apoyo. "
-              "PREGUNTA DEL USUARIO: $question";
-          _lastManualDiagnosis = null; // Limpiar para el siguiente mensaje
-        } else if (_isTutorMode) {
-          String langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en ESPAÑOL.";
-          if (_tutorLanguage == "Wayuunaiki") langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en WAYUUNAIKI.";
-          if (_tutorLanguage == "Bilingüe") langInstruction = "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki).";
-
-          finalQuestion = "ROL: Eres un profesor experto en agricultura de La Guajira. "
-              "$langInstruction "
-              "TEMAS: Frijol Guajirito y Moringa. "
-              "Si el usuario elige uno, explica el proceso de cultivo DESDE CERO (preparación, siembra, riego, cosecha). "
-              "Sé paciente y educativo. "
-              "PREGUNTA DEL USUARIO: $question";
-        }
+        // La construcción de finalQuestion se movió arriba para ser compartida.
         
         await _gemmaChat!.addQuery(Message(
           text: finalQuestion, 
@@ -748,8 +753,7 @@ class _ChatScreenState extends State<ChatScreen>
           imageBytes: base64Image != null ? base64Decode(base64Image) : null
         ));
         
-        // Intentar extracción directa SIEMPRE, antes de la respuesta del modelo
-        _tryManualExtraction(question);
+        // _tryManualExtraction movido arriba para ser compartido.
         
         final response = await _gemmaChat!.generateChatResponse();
         
