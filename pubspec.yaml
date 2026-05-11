@@ -27,7 +27,7 @@ dependencies:
   share_plus: ^12.0.2
   flutter_tts: ^4.2.5
   super_measurement: ^4.0.0
-  wake_on_lan: ^5.1.0
+  wake_on_lan: ^4.1.1
 
 dev_dependencies:
   flutter_test:
