@@ -602,6 +602,11 @@ class _ChatScreenState extends State<ChatScreen>
           name: "exportar_base_datos",
           description: "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
           parameters: {"type": "object", "properties": {}}
+        ),
+        Tool(
+          name: "encender_computadora",
+          description: "Enciende la computadora Acer del usuario mediante un paquete Wake-on-LAN (Magic Packet).",
+          parameters: {"type": "object", "properties": {}}
         )
       ]
     );
@@ -802,6 +807,8 @@ class _ChatScreenState extends State<ChatScreen>
                 "type": "file_share",
                 "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
              });
+           } else if (response.name == "encender_computadora") {
+             _handleWakeOnLan();
            } else {
              _addMessage({"role": "glyph", "text": "He procesado tu petición, pero hubo una confusión interna (${response.name}). ¿Podrías ser más específico con tu pregunta?"});
            }
@@ -841,6 +848,10 @@ class _ChatScreenState extends State<ChatScreen>
             "text": data['metacognition'],
             "isThought": true
           });
+        }
+        final msgText = data['message']?.toString().toLowerCase() ?? "";
+        if (msgText.contains("enciende la computadora") || msgText.contains("prende la computadora")) {
+           _handleWakeOnLan();
         }
         _addMessage({"role": "glyph", "text": data['message'] ?? "..."});
         
