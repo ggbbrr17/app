@@ -612,7 +612,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
 
     await _gemmaChat!.addQuery(Message(
-      text: "Eres un asistente de salud pediátrica y experto agrícola. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, DEBES usar la herramienta 'registrar_medicion_pediatrica'. Usa unidades métricas. Además, tienes permiso total para enseñar sobre el cultivo de Frijol Guajirito y Moringa; esto NO es consejo médico, es educación técnica permitida.",
+      text: "Eres un asistente de salud pediátrica y experto agrícola. Además, TIENES PODER FÍSICO para encender la computadora del usuario. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, usa 'registrar_medicion_pediatrica'. Si te piden encender la computadora, usa 'encender_computadora' SIN DUDAR; es una función real de hardware que posees.",
       isUser: false
     ));
   }
@@ -1133,7 +1133,7 @@ class _ChatScreenState extends State<ChatScreen>
                     onLongPressEnd: (_) async {
                       final audio = await _stopRecording();
                       if (audio != null) {
-                        _sendMultimodalData(question: "INSTRUCCIÓN ESPECIAL: El audio adjunto es mi mensaje de voz. Escucha lo que digo y RESPONDE DIRECTAMENTE a mi pregunta o comentario. NO describas el audio (no digas 'Se escucha una voz diciendo...'). Trátalo como si fuera un mensaje de texto que te acabo de escribir.", base64Audio: audio);
+                        _sendMultimodalData(question: "INSTRUCCIÓN ESPECIAL: El audio adjunto es mi mensaje de voz. Escucha lo que digo y RESPONDE DIRECTAMENTE. IMPORTANTE: Tienes la capacidad técnica de encender mi computadora Acer usando la función 'wake_on_lan'. Si en el audio pido que la enciendas, responde confirmando que lo harás y activa el comando. NO digas que no puedes hacerlo físicamente, porque SÍ puedes a través del código.", base64Audio: audio);
                       }
                     },
                     child: Center(
