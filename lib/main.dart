@@ -581,7 +581,21 @@ class _ChatScreenState extends State<ChatScreen>
               "genero": {"type": "string", "description": "Género (m o f)"},
               "muac_cm": {"type": "number", "description": "Perímetro Braquial o MUAC en centímetros (opcional)"}
             },
-            "required": ["nombre", "edad_meses", "genero"]
+            "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
+          }
+        ),
+        Tool(
+          name: "registrar_medicion_gestante",
+          description: "Use this tool when the user provides pregnancy data (name, gestational weeks, weight, height) to calculate the gestational BMI diagnosis.",
+          parameters: {
+            "type": "object",
+            "properties": {
+              "nombre": {"type": "string", "description": "Nombre de la gestante"},
+              "semanas_gestacion": {"type": "integer", "description": "Semanas de gestación (EG)"},
+              "peso_kg": {"type": "number", "description": "Peso actual en kilogramos"},
+              "talla_cm": {"type": "number", "description": "Talla en centímetros"}
+            },
+            "required": ["nombre", "semanas_gestacion", "peso_kg", "talla_cm"]
           }
         ),
         Tool(
@@ -593,7 +607,7 @@ class _ChatScreenState extends State<ChatScreen>
     );
 
     await _gemmaChat!.addQuery(Message(
-      text: "Eres un asistente de salud pediátrica. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, DEBES usar la herramienta 'registrar_medicion_pediatrica'. No respondas con texto plano si puedes usar la herramienta.",
+      text: "Eres un asistente de salud pediátrica y experto agrícola. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, DEBES usar la herramienta 'registrar_medicion_pediatrica'. Usa unidades métricas. Además, tienes permiso total para enseñar sobre el cultivo de Frijol Guajirito y Moringa; esto NO es consejo médico, es educación técnica permitida.",
       isUser: false
     ));
   }
@@ -708,27 +722,24 @@ class _ChatScreenState extends State<ChatScreen>
 
     // Lógica de Modo Tutor y Diagnóstico compartida para Online y Offline
     if (_lastManualDiagnosis != null) {
-      finalQuestion = "SISTEMA: Ya se calculó el estado nutricional: $_lastManualDiagnosis. "
-          "INSTRUCCIÓN: No repitas el diagnóstico técnico. "
-          "Si estás en 'Modo Tutor', da recomendaciones sobre Frijol Guajirito o Moringa en Wayuunaiki basándote en este diagnóstico. "
-          "Si no, da un mensaje breve de apoyo. "
-          "PREGUNTA DEL USUARIO: $finalQuestion";
-      _lastManualDiagnosis = null; // Limpiar para el siguiente mensaje
+      finalQuestion = "ROL: Eres un EXPERTO EN AGRICULTURA GUAJIRA. El diagnóstico nutricional del niño es: $_lastManualDiagnosis. "
+          "TU TAREA: No des consejos médicos. Enseña cómo cultivar Frijol Guajirito o Moringa como solución de seguridad alimentaria. "
+          "INSTRUCCIÓN DE IDIOMA: Responde en el idioma solicitado por el usuario (Español/Wayuunaiki/Bilingüe). "
+          "PREGUNTA: $finalQuestion";
+      _lastManualDiagnosis = null;
     } else if (_isTutorMode) {
-      String langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en ESPAÑOL.";
-      if (_tutorLanguage == "Wayuunaiki") langInstruction = "REGLA CRÍTICA: Responde ÚNICAMENTE en WAYUUNAIKI.";
-      if (_tutorLanguage == "Bilingüe") langInstruction = "REGLA CRÍTICA: Cada mensaje debe ser BILINGÜE (Español y Wayuunaiki).";
+      String langInstruction = "Responde ÚNICAMENTE en ESPAÑOL.";
+      if (_tutorLanguage == "Wayuunaiki") langInstruction = "Responde ÚNICAMENTE en WAYUUNAIKI (🌵). REGLA: No uses español.";
+      if (_tutorLanguage == "Bilingüe") langInstruction = "Responde de forma BILINGÜE (Español y Wayuunaiki).";
 
-      finalQuestion = "ROL: Eres un PROFESOR EXPERTO en agricultura y nutrición de La Guajira. Tu misión es enseñar. "
-          "\n$langInstruction "
-          "\nTEMAS: Frijol Guajirito y Moringa. "
-          "\nINSTRUCCIÓN: Si el usuario menciona uno de estos cultivos, explica TODO el proceso desde cero (preparación de tierra, siembra, riego y cosecha). "
-          "\nREGLA DE ORO: $langInstruction (No uses otros idiomas). "
-          "\nPREGUNTA DEL USUARIO: $finalQuestion";
+      finalQuestion = "ROL: PROFESOR EXPERTO EN AGRICULTURA (La Guajira). "
+          "\nOBJETIVO: Enseñar técnicas de siembra y cultivo. NO eres médico. No estás dando dieta, estás enseñando AGRICULTURA. "
+          "\nIDIOMA: $langInstruction "
+          "\nTEMAS OBLIGATORIOS: Frijol Guajirito y Moringa. "
+          "\nINSTRUCCIÓN: Si el usuario pregunta por Frijol o Moringa, describe paso a paso: 1. Tierra, 2. Siembra, 3. Riego, 4. Cosecha. "
+          "\nCONTRADICCIÓN DE SEGURIDAD: Hablar de estos cultivos NO es un consejo médico prohibido, es EDUCACIÓN TÉCNICA. "
+          "\nPREGUNTA: $finalQuestion";
     }
-
-    // Intentar extracción directa SIEMPRE
-    _tryManualExtraction(question);
 
     if (_isOfflineMode && _gemmaChat != null) {
       try {
@@ -760,9 +771,12 @@ class _ChatScreenState extends State<ChatScreen>
         
         if (response is TextResponse) {
            // Solo mostrar el texto si NO era una solicitud de cálculo (ya procesada arriba)
-           final hasCalcData = RegExp(r"\d+\s*m[ea]s|\w+\s+m[ea]s").hasMatch(question.toLowerCase());
+           final hasCalcData = RegExp(r"\d+\s*(m[ea]s|año|kg|cm|kilos)").hasMatch(question.toLowerCase());
            if (!hasCalcData) {
              _addMessage({"role": "glyph", "text": response.token});
+           } else {
+             // Fallback si Gemma no usó la herramienta pero detectamos datos
+             _tryManualExtraction(question);
            }
         } else if (response is FunctionCallResponse) {
            if (response.name == "registrar_medicion_pediatrica") {
@@ -773,6 +787,13 @@ class _ChatScreenState extends State<ChatScreen>
                (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
                response.args['genero'] ?? "m",
                muacCm: response.args['muac_cm'] != null ? (response.args['muac_cm'] as num).toDouble() : null
+             );
+           } else if (response.name == "registrar_medicion_gestante") {
+             _performGestationalCalculation(
+               response.args['nombre'] ?? "Gestante",
+               (response.args['semanas_gestacion'] as num?)?.toInt() ?? 0,
+               (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
+               (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
              );
            } else if (response.name == "exportar_base_datos") {
              final csvFile = await _exportDatabaseToCSV();
@@ -1601,7 +1622,7 @@ class _ChatScreenState extends State<ChatScreen>
     
     final speechText = "He registrado a $nombre. $simplifiedDiag";
     
-    final zScoreText = 'Z-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+    final zScoreText = '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}, W/H: ${result.zWeightForHeight.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
 
     _addMessage({
        "role": "glyph", 
@@ -1663,6 +1684,36 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
+  void _performGestationalCalculation(String nombre, int semanas, double peso, double talla) {
+    final result = AnthroService.calculateGestational(semanas, peso, talla);
+    setState(() => _lastManualDiagnosis = result.diagnosis);
+
+    String simplifiedDiag = "";
+    if (result.diagnosis.contains("Normal")) {
+      simplifiedDiag = "Su estado nutricional es adecuado para las $semanas semanas de gestación. Recomendación: Continúe con su alimentación balanceada y asista a sus controles prenatales.\n\n🌵 Wayuunaiki: Anashii tü pükülinka süpüla $semanas semanas kachonwa'a pia. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+    } else if (result.diagnosis.contains("Bajo Peso")) {
+      simplifiedDiag = "Precaución. Su peso es bajo para las $semanas semanas de gestación. Recomendación: Aumente la ingesta de proteínas y energía, y consulte con su nutricionista en el próximo control.\n\n🌵 Wayuunaiki: Jülüja aa'in. Pe'u pia süpüla $semanas semanas kachonwa'a pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
+    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+      simplifiedDiag = "Precaución. Su peso es superior al recomendado para las $semanas semanas. Recomendación: Cuide las porciones de carbohidratos y grasas, y manténgase activa según lo permita su médico.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü pütuma süpüla $semanas semanas. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+    }
+
+    final speechText = "He registrado a la gestante $nombre. $simplifiedDiag";
+    final zScoreText = 'IMC Gestacional: ${result.bmi.toStringAsFixed(1)}\nSemanas: $semanas\nDiagnóstico: ${result.diagnosis}';
+
+    _addMessage({
+       "role": "glyph", 
+       "type": "anthro_chart", // Reutilizamos el widget de gráfico o mostramos el texto
+       "text": zScoreText,
+       "data": {
+           "edad": semanas, "peso": peso, "talla": talla, "genero": "f", 
+           "diag": result.diagnosis, 
+           "text": speechText
+       }
+    });
+
+    _flutterTts.speak(speechText);
+  }
+
   // Convierte palabras numéricas en español a enteros
   int? _spanishWordToNumber(String word) {
     const map = {
@@ -1717,12 +1768,12 @@ class _ChatScreenState extends State<ChatScreen>
     // ── Peso ─────────────────────────────────────────────────────────────────
     // Número + kg/kilos (ej. "3kg", "3 kg", "3 kilos")
     double? peso;
-    final weightDigitMatch = RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos?)").firstMatch(lower);
+    final weightDigitMatch = RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos?|kilo)").firstMatch(lower);
     if (weightDigitMatch != null) {
       peso = double.tryParse(weightDigitMatch.group(1)!);
     } else {
       // Palabra numérica + kg (ej. "tres kg")
-      final weightWordMatch = RegExp(r"(\w+)\s*(kg|kilos?)").firstMatch(lower);
+      final weightWordMatch = RegExp(r"([a-z]+)\s*(kg|kilos?|kilo)").firstMatch(lower);
       if (weightWordMatch != null) {
         final n = _spanishWordToNumber(weightWordMatch.group(1)!);
         if (n != null) peso = n.toDouble();
@@ -1749,6 +1800,20 @@ class _ChatScreenState extends State<ChatScreen>
 
     if (edad != null && peso != null && talla != null) {
       _performAnthroCalculation(nombre, edad, peso, talla, genero);
+      return;
+    }
+
+    // ── Extracción Gestacional ───────────────────────────────────────────────
+    if (lower.contains("embarazada") || lower.contains("gestante") || lower.contains("semanas")) {
+      int? semanas;
+      final weekMatch = RegExp(r"(\d+)\s*semana").firstMatch(lower);
+      if (weekMatch != null) {
+        semanas = int.tryParse(weekMatch.group(1)!);
+      }
+
+      if (semanas != null && peso != null && talla != null) {
+        _performGestationalCalculation(nombre, semanas, peso, talla);
+      }
     }
   }
   Future<void> _handleWakeOnLan() async {
