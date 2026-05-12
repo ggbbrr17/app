@@ -200,26 +200,59 @@ class AnthroService {
   }
 
   static String _diagnose(double zWfa, double zHfa, double zBmi, double zWfh, int ageInMonths) {
-    if (zBmi.isNaN && zWfh.isNaN) return "Datos insuficientes para el diagnóstico.";
+    if (zBmi.isNaN && zWfh.isNaN && zHfa.isNaN) return "Datos insuficientes para el diagnóstico clínico.";
 
-    // Priorizar WFH para desnutrición aguda en <5 años si está disponible
-    double acuteIndicator = (ageInMonths <= 60 && !zWfh.isNaN) ? zWfh : zBmi;
-
-    if (ageInMonths <= 60) {
-      if (acuteIndicator > 3) return "Obesidad";
-      if (acuteIndicator > 2) return "Sobrepeso";
-      if (acuteIndicator > 1) return "Riesgo de sobrepeso";
-      if (acuteIndicator < -3) return "Desnutrición aguda severa";
-      if (acuteIndicator < -2) return "Desnutrición aguda moderada";
-      if (zHfa < -2) return "Desnutrición crónica (Talla baja)";
-      return "Crecimiento Normal";
-    } else {
-      if (zBmi > 2) return "Obesidad";
-      if (zBmi > 1) return "Sobrepeso";
-      if (zBmi < -3) return "Delgadez severa";
-      if (zBmi < -2) return "Delgadez";
-      if (zHfa < -2) return "Retraso en el crecimiento";
-      return "Crecimiento Normal";
+    List<String> findings = [];
+    
+    // 1. ANÁLISIS DE CRECIMIENTO LINEAL (Talla para la Edad - Desnutrición Crónica)
+    if (!zHfa.isNaN) {
+      if (zHfa < -3) {
+        findings.add("⚠️ TALLA BAJA SEVERA (Desnutrición Crónica Grave)");
+      } else if (zHfa < -2) {
+        findings.add("⚠️ TALLA BAJA (Desnutrición Crónica)");
+      } else if (zHfa < -1) {
+        findings.add("Riesgo de Talla Baja");
+      } else {
+        findings.add("Talla adecuada para la edad");
+      }
     }
+
+    // 2. ANÁLISIS DE PESO Y PROPORCIONALIDAD (Peso/Talla o IMC)
+    double acuteIndicator = (ageInMonths <= 60 && !zWfh.isNaN) ? zWfh : zBmi;
+    String acuteLabel = (ageInMonths <= 60 && !zWfh.isNaN) ? "Peso/Talla" : "IMC/Edad";
+
+    if (!acuteIndicator.isNaN) {
+      if (acuteIndicator < -3) {
+        findings.add("🚨 DESNUTRICIÓN AGUDA SEVERA");
+      } else if (acuteIndicator < -2) {
+        findings.add("⚠️ DESNUTRICIÓN AGUDA MODERADA");
+      } else if (acuteIndicator < -1) {
+        findings.add("Riesgo de desnutrición aguda");
+      } else if (acuteIndicator > 3) {
+        // Explicación especial para casos de Talla Baja Extrema (como el caso de Pedro)
+        if (zHfa < -3) {
+          findings.add("❗ IMC ELEVADO debido a Talla Baja Extrema (No necesariamente Obesidad primaria)");
+        } else {
+          findings.add("⚠️ OBESIDAD");
+        }
+      } else if (acuteIndicator > 2) {
+        findings.add("⚠️ SOBREPESO");
+      } else if (acuteIndicator > 1) {
+        findings.add("Riesgo de Sobrepeso");
+      } else {
+        findings.add("Peso adecuado para la talla");
+      }
+    }
+
+    // 3. ANÁLISIS DE PESO PARA LA EDAD (Indicador global)
+    if (!zWfa.isNaN) {
+      if (zWfa < -3) findings.add("Bajo Peso Severo para la edad");
+      else if (zWfa < -2) findings.add("Bajo Peso para la edad");
+    }
+
+    // Generar resumen profesional
+    if (findings.isEmpty) return "Crecimiento Normal";
+    
+    return findings.join("\n• ");
   }
 }
