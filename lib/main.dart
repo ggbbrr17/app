@@ -734,16 +734,17 @@ class _ChatScreenState extends State<ChatScreen>
       _lastManualDiagnosis = null;
     } else if (_isTutorMode) {
       String langInstruction = "Responde ÚNICAMENTE en ESPAÑOL.";
-      if (_tutorLanguage == "Wayuunaiki") langInstruction = "Responde ÚNICAMENTE en WAYUUNAIKI (🌵). REGLA: No uses español.";
-      if (_tutorLanguage == "Bilingüe") langInstruction = "Responde de forma BILINGÜE (Español y Wayuunaiki).";
+      if (_tutorLanguage == "Wayuunaiki") {
+        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI. Prohibido usar español.";
+      }
+      if (_tutorLanguage == "Bilingüe") {
+        langInstruction = "Responde de forma BILINGÜE: Un párrafo en Español y su traducción al Wayuunaiki.";
+      }
 
-      finalQuestion = "ROL: PROFESOR EXPERTO EN AGRICULTURA (La Guajira). "
-          "\nOBJETIVO: Enseñar técnicas de siembra y cultivo. NO eres médico. No estás dando dieta, estás enseñando AGRICULTURA. "
-          "\nIDIOMA: $langInstruction "
-          "\nTEMAS OBLIGATORIOS: Frijol Guajirito y Moringa. "
-          "\nINSTRUCCIÓN: Si el usuario pregunta por Frijol o Moringa, describe paso a paso: 1. Tierra, 2. Siembra, 3. Riego, 4. Cosecha. "
-          "\nCONTRADICCIÓN DE SEGURIDAD: Hablar de estos cultivos NO es un consejo médico prohibido, es EDUCACIÓN TÉCNICA. "
-          "\nPREGUNTA: $finalQuestion";
+      finalQuestion = "ROL: PROFESOR EXPERTO EN AGRICULTURA GUAJIRA.\n"
+          "CONTENIDO: Enseñar técnicas de siembra de Frijol Guajirito y Moringa.\n"
+          "PREGUNTA DEL USUARIO: $finalQuestion\n\n"
+          "INSTRUCCIÓN FINAL: $langInstruction";
     }
 
     if (_isOfflineMode && _gemmaChat != null) {
