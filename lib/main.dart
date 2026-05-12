@@ -1841,13 +1841,19 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _performWakeOnLan(String mac) async {
     try {
-      final ipAddress = IPAddress('255.255.255.255');
+      final ipAddress = IPAddress('192.168.1.255');
       final macAddress = MACAddress(mac);
       final wol = WakeOnLAN(ipAddress, macAddress);
-      await wol.wake();
+      
+      // Enviamos la señal 3 veces para asegurar que llegue
+      for (int i = 0; i < 3; i++) {
+        await wol.wake();
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
       _addMessage({
         "role": "glyph",
-        "text": "🚀 Enviando señal de encendido (Magic Packet) a la dirección MAC $mac... Tu computadora debería prenderse en unos segundos."
+        "text": "🚀 Señal de encendido enviada (x3) a $mac vía 192.168.1.255. Si no enciende, prueba conectándola por cable o revisando la opción 'Wake on Wireless LAN' en la BIOS cuando consigas un teclado."
       });
     } catch (e) {
       _addMessage({
