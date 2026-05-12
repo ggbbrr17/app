@@ -1847,19 +1847,31 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _performWakeOnLan(String mac) async {
     try {
-      final ipAddress = IPAddress('192.168.1.255');
       final macAddress = MACAddress(mac);
-      final wol = WakeOnLAN(ipAddress, macAddress);
       
-      // Enviamos la señal 3 veces para asegurar que llegue
-      for (int i = 0; i < 3; i++) {
-        await wol.wake();
-        await Future.delayed(const Duration(milliseconds: 100));
+      // Lista de configuraciones para probar (Puertos 7 y 9, Difusión Global y Local)
+      final configs = [
+        {'ip': '255.255.255.255', 'port': 9},
+        {'ip': '192.168.1.255', 'port': 9},
+        {'ip': '255.255.255.255', 'port': 7},
+        {'ip': '192.168.1.255', 'port': 7},
+      ];
+
+      for (var config in configs) {
+        final ip = config['ip'] as String;
+        final port = config['port'] as int;
+        final wol = WakeOnLAN(IPAddress(ip), macAddress, port: port);
+        
+        // Enviamos ráfagas por cada configuración
+        for (int i = 0; i < 3; i++) {
+          await wol.wake();
+          await Future.delayed(const Duration(milliseconds: 50));
+        }
       }
 
       _addMessage({
         "role": "glyph",
-        "text": "🚀 Señal de encendido enviada (x3) a $mac vía 192.168.1.255. Si no enciende, prueba conectándola por cable o revisando la opción 'Wake on Wireless LAN' en la BIOS cuando consigas un teclado."
+        "text": "🚀 Ráfaga de encendido enviada (Puertos 7/9, IP Global/Local). Si sigue sin despertar, es posible que el Wi-Fi de tu laptop Acer se desconecte totalmente en modo S0."
       });
     } catch (e) {
       _addMessage({
