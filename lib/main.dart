@@ -775,14 +775,19 @@ class _ChatScreenState extends State<ChatScreen>
         final response = await _gemmaChat!.generateChatResponse();
         
         if (response is TextResponse) {
-           // Solo mostrar el texto si NO era una solicitud de cálculo (ya procesada arriba)
-           final hasCalcData = RegExp(r"\d+\s*(m[ea]s|año|kg|cm|kilos)").hasMatch(question.toLowerCase());
-           if (!hasCalcData) {
-             _addMessage({"role": "glyph", "text": response.token});
-           } else {
-             // Fallback si Gemma no usó la herramienta pero detectamos datos
-             _tryManualExtraction(question);
-           }
+            // Solo intentar extraer datos si NO estamos en Modo Tutor (Agricultura)
+            if (!_isTutorMode) {
+              final hasCalcData = RegExp(r"\d+\s*(m[ea]s|año|kg|cm|kilos)").hasMatch(question.toLowerCase());
+              if (!hasCalcData) {
+                _addMessage({"role": "glyph", "text": response.token});
+              } else {
+                // Fallback si Gemma no usó la herramienta pero detectamos datos
+                _tryManualExtraction(question);
+              }
+            } else {
+              // En Modo Tutor, solo mostramos la enseñanza agrícola
+              _addMessage({"role": "glyph", "text": response.token});
+            }
         } else if (response is FunctionCallResponse) {
            if (response.name == "registrar_medicion_pediatrica") {
              _performAnthroCalculation(
