@@ -99,7 +99,7 @@ class AnthroService {
 
     try {
       // Usar Age(months: ...) para precisión exacta según tablas OMS
-      final age = Age(months: ageInMonths);
+      final age = Age.byMonthsAgo(ageInMonths);
       final weight = Mass$Kilogram(weightKg);
       final height = Length$Centimeter(heightCm);
       

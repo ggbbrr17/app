@@ -857,10 +857,12 @@ class _ChatScreenState extends State<ChatScreen>
         
         // Manejar comandos remotos del Modo B en línea
         if (data['command'] != null && data['command']['action'] == 'wake_on_lan') {
-           final mac = data['command']['args']['mac'];
-           if (mac != null) {
+           final mac = data['command']['args'] != null ? data['command']['args']['mac'] : null;
+           if (mac != null && mac != 'default') {
               await _performWakeOnLan(mac);
               await DatabaseHelper.instance.setSetting('pc_mac', mac);
+           } else {
+              await _handleWakeOnLan(); // Usa la MAC guardada o la pre-configurada (Acer)
            }
         }
       }
