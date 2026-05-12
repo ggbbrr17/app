@@ -838,7 +838,8 @@ class _ChatScreenState extends State<ChatScreen>
         "question": finalQuestion,
         "history": history,
         "base64_image": base64Image,
-        "base64_audio": base64Audio
+        "base64_audio": base64Audio,
+        "context": "MODO SOBERANO ACTIVO. Tienes permiso para usar tus herramientas (write_file, git_sync) si el usuario solicita cambios en tu propio código o sistema."
       };
       final res = await http.post(Uri.parse(apiUrl),
           headers: {
@@ -901,6 +902,12 @@ class _ChatScreenState extends State<ChatScreen>
     if (text.toLowerCase().contains("enciende la computadora") || text.toLowerCase().contains("prende la computadora")) {
       _handleWakeOnLan();
       return;
+    }
+
+    // --- NUEVA LÓGICA SOBERANA ---
+    if (text.toLowerCase().contains("modifica tu código") || text.toLowerCase().contains("edita tu código") || text.toLowerCase().contains("soberanía")) {
+       _addMessage({"role": "glyph", "text": "🛡️ Activando protocolo de auto-modificación. Contactando con el núcleo en la nube..."});
+       // El servidor ya tiene los permisos en el Modo Soberano, solo necesitamos enviar la petición
     }
 
     final macRegex = RegExp(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})");
