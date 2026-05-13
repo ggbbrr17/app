@@ -611,15 +611,15 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
-  Future<String?> _stopRecording() async {
-    if (_isOfflineMode) {
+  Future<String?> _stopRecording({bool autoSend = true}) async {
+    if (_isOfflineMode || _isListeningSTT) {
       if (_isListeningSTT) {
         await _speech.stop();
         setState(() {
           _isRecording = false;
           _isListeningSTT = false;
         });
-        if (_controller.text.isNotEmpty) {
+        if (autoSend && _controller.text.isNotEmpty) {
            _handleSend();
         }
       }
@@ -914,10 +914,10 @@ class _ChatScreenState extends State<ChatScreen>
       if (_tutorLanguage == "Bilingüe") {
         langInstruction = "Responde de forma BILINGÜE: Un párrafo en Español y su traducción al Wayuunaiki.";
       }
-      finalQuestion = "ROL: PROFESOR EXPERTO EN AGRICULTURA GUAJIRA.\n"
-          "CONTENIDO: Enseñar técnicas de siembra de Frijol Guajirito y Moringa.\n"
-          "PREGUNTA DEL USUARIO: $finalQuestion\n\n"
-          "INSTRUCCIÓN FINAL: $langInstruction";
+      finalQuestion = "ROL: PROFESOR AGRICULTURA.\n"
+          "CONTENIDO: Siembra de Frijol Guajirito y Moringa.\n"
+          "PREGUNTA: $finalQuestion\n\n"
+          "INSTRUCCIÓN: $langInstruction. Responde en texto plano, sin asteriscos (*).";
     } else {
       if (!_isHealthProfessional) {
         if (_appLanguage == "Inglés") {
@@ -1530,6 +1530,7 @@ class _ChatScreenState extends State<ChatScreen>
                      ? "Understood. What crop are you interested in: Frijol Guajirito or Moringa?"
                      : "Entendido. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"
            });
+           _scrollToBottom();
         } else {
            _addMessage({
              "role": "glyph",
@@ -1779,7 +1780,7 @@ class _ChatScreenState extends State<ChatScreen>
                     },
                     onLongPressStart: (_) => _startRecording(),
                     onLongPressEnd: (_) async {
-                      final audio = await _stopRecording();
+                      final audio = await _stopRecording(autoSend: true);
                       if (audio != null) {
                         _sendMultimodalData(
                             question:
@@ -2265,8 +2266,8 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   void _stopTranslatorAudioMode() async {
-    // Detenemos el reconocimiento de voz
-    await _stopRecording();
+    // Detenemos el reconocimiento de voz sin enviar automáticamente
+    await _stopRecording(autoSend: false);
     
     final textToTranslate = _controller.text;
     if (textToTranslate.isNotEmpty) {
