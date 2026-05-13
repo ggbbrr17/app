@@ -58,5 +58,7 @@
 		<string>Necesitamos acceso a tu galería para que puedas adjuntar y analizar fotos y videos.</string>
 		<key>NSCameraUsageDescription</key>
 		<string>Necesitamos acceso a la cámara para capturar contenido para analizar.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>Necesitamos permiso para reconocer tu voz y traducirla al Wayuunaiki.</string>
 	</dict>
 </plist>

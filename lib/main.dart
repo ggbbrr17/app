@@ -574,8 +574,9 @@ class _ChatScreenState extends State<ChatScreen>
     }
   }
 
-  Future<void> _startRecording() async {
-    if (_isOfflineMode) {
+  Future<void> _startRecording({bool forceSTT = false}) async {
+    try {
+      if (_isOfflineMode || forceSTT) {
       bool available = await _speech.initialize();
       if (available) {
         setState(() {
@@ -594,11 +595,19 @@ class _ChatScreenState extends State<ChatScreen>
       return;
     }
 
-    if (await _audioRecorder.hasPermission()) {
-      final path = p.join((await getTemporaryDirectory()).path,
-          'audio_${DateTime.now().ms}.m4a');
-      await _audioRecorder.start(const RecordConfig(), path: path);
-      setState(() => _isRecording = true);
+      if (await _audioRecorder.hasPermission()) {
+        final path = p.join((await getTemporaryDirectory()).path,
+            'audio_${DateTime.now().ms}.m4a');
+        await _audioRecorder.start(const RecordConfig(), path: path);
+        setState(() => _isRecording = true);
+      }
+    } catch (e) {
+      _addMessage({"role": "glyph", "text": "Error al iniciar grabación: $e"});
+      setState(() {
+        _isRecording = false;
+        _isListeningSTT = false;
+        _isTranslatorAudioMode = false;
+      });
     }
   }
 
@@ -1868,7 +1877,7 @@ class _ChatScreenState extends State<ChatScreen>
                             painter: FragmentedTrianglePainter(
                               animationValue: _waveController.value,
                               isThinking: false,
-                              isRecording: true,
+                              isRecording: _isRecording,
                             ),
                             size: const Size(100, 100),
                           ),
@@ -2244,8 +2253,8 @@ class _ChatScreenState extends State<ChatScreen>
     setState(() {
       _isTranslatorAudioMode = true;
     });
-    // Activamos el motor de STT que ya configuramos anteriormente
-    _startRecording();
+    // Forzamos modo STT para el traductor para que sea tiempo real
+    _startRecording(forceSTT: true);
   }
 
   void _stopTranslatorAudioMode() async {
