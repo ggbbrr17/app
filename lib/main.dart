@@ -1107,6 +1107,11 @@ class _ChatScreenState extends State<ChatScreen>
     _pendingImageBase64 = null;
     _pendingImageName = null;
     _controller.clear();
+    
+    if (_isRiskAssessmentMode) {
+      _tryManualExtraction(text);
+      if (!_isRiskAssessmentMode) return; // Si ya se procesó el riesgo, terminamos
+    }
 
     if (text.toLowerCase().contains("genera el archivo") ||
         text.toLowerCase().contains("exportar")) {
@@ -3127,10 +3132,22 @@ class _ChatScreenState extends State<ChatScreen>
     final lower = userText.toLowerCase();
 
     if (_isRiskAssessmentMode) {
-      if (lower.contains("sí") || lower.contains("si ") || lower.contains("yes") || lower.contains("aashin") || lower.contains("tiene") || lower.contains("si,")) {
+      bool isYes = lower.trim() == "si" ||
+          lower.contains("si ") ||
+          lower.contains("sí") ||
+          lower.contains("yes") ||
+          lower.contains("aashin") ||
+          lower.contains("tiene") ||
+          lower.contains("si,");
+      bool isNo = lower.trim() == "no" ||
+          lower.contains("no ") ||
+          lower.contains("nnojo") ||
+          lower.contains("no,");
+
+      if (isYes) {
         final nameMatch = RegExp(r"\b([A-Z][a-záéíóúñ]+)\b").firstMatch(userText);
         final nombre = nameMatch?.group(1) ?? "Paciente anónimo";
-        
+
         DatabaseHelper.instance.insertRiskPatient(nombre, userText);
         
         _addMessage({
