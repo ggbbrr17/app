@@ -368,6 +368,7 @@ class _ChatScreenState extends State<ChatScreen>
   String _appLanguage = "";
   bool _isHealthProfessional = true;
   bool _isRiskAssessmentMode = false;
+  String? _pendingRiskName;
   bool _isTranslatorSubMenuOpen = false;
   bool _isTranslatorAudioMode = false;
   final WayuuDictionary _wayuuDict = WayuuDictionary();
@@ -1617,14 +1618,15 @@ class _ChatScreenState extends State<ChatScreen>
            _addMessage({
              "role": "glyph",
              "text": _appLanguage == "Wayuunaiki" 
-                 ? "Anasü. ¿Chi tepichikai nnojotsü anain nukuwa'ipa?\n¿Kachisü nüpüla tüü?\n• Atünasü/kache'esü nüpüla (Cabello seco/se cae)\n• Yutusu no'u (Ojos hundidos, rostro hinchado)\n• Jousü nierü (Abdomen abultado, extremidades delgadas)\n• Alatiraa/Jemeta (Diarrea/Gripa)\n• Nnojoishii ekaain (Inapetencia, desgano, llanto)\n¿Aashin wanee?"
+                 ? "¿Kasa nüpüshi chi tepichikai? (¿Cómo se llama el niño o niña?)"
                  : _appLanguage == "Inglés"
-                     ? "Understood. Does the child have any of these alert signs?\n• Dry/falling hair, pale/swollen face, sunken eyes\n• Dry/flaky skin, very thin/swollen limbs\n• Swollen abdomen\n• Frequent diarrhea/flu\n• Loss of appetite, fatigue, or extreme irritability\nPlease reply YES or NO, and briefly which ones."
-                     : "Entendido. Dime si el niño o niña presenta alguno de estos signos de alerta:\n• Cabello seco, escaso o que cambia de color\n• Rostro hinchado y pálido, u ojos hundidos\n• Piel muy seca, extremidades muy delgadas o inflamadas\n• Abdomen abultado\n• Diarrea o gripa frecuente\n• Desgano, inapetencia o llanto excesivo\n¿Presenta alguno de estos signos?"
+                     ? "What is the patient's name?"
+                     : "¿Cómo se llama el paciente?"
            });
            
            setState(() {
              _isRiskAssessmentMode = true;
+             _pendingRiskName = null; // Reiniciar por si acaso
            });
         }
       },
@@ -3144,26 +3146,46 @@ class _ChatScreenState extends State<ChatScreen>
           lower.contains("nnojo") ||
           lower.contains("no,");
 
-      if (isYes) {
+      if (_pendingRiskName == null) {
+        // Estamos esperando el nombre
         final nameMatch = RegExp(r"\b([A-Z][a-záéíóúñ]+)\b").firstMatch(userText);
-        final nombre = nameMatch?.group(1) ?? "Paciente anónimo";
+        _pendingRiskName = nameMatch?.group(1) ?? userText.split(' ').last;
+        
+        _addMessage({
+          "role": "glyph",
+          "text": _appLanguage == "Wayuunaiki"
+              ? "Anasü. ¿Chi tepichikai $_pendingRiskName nnojotsü anain nukuwa'ipa?\n¿Kachisü nüpüla tüü?\n• Atünasü/kache'esü nüpüla (Cabello seco)\n• Yutusu no'u (Ojos hundidos)\n• Jousü nierü (Abdomen abultado)\n• Alatiraa/Jemeta (Diarrea/Gripa)\n• Nnojoishii ekaain (Inapetencia)\n¿Aashin wanee?"
+              : _appLanguage == "Inglés"
+                  ? "Understood. Does $_pendingRiskName have any of these alert signs?\n• Dry hair/falling face, pale/swollen face, sunken eyes\n• Dry/flaky skin, very thin/swollen limbs\n• Swollen abdomen\n• Frequent diarrhea/flu\n• Loss of appetite, fatigue, or extreme irritability\nPlease reply YES or NO."
+                  : "Entendido. Dime si $_pendingRiskName presenta alguno de estos signos de alerta:\n• Cabello seco, escaso o que cambia de color\n• Rostro hinchado y pálido, u ojos hundidos\n• Piel muy seca, extremidades muy delgadas o inflamadas\n• Abdomen abultado\n• Diarrea o gripa frecuente\n• Desgano, inapetencia o llanto excesivo\n¿Presenta alguno de estos signos?"
+        });
+        return;
+      }
 
+      if (isYes) {
+        final nombre = _pendingRiskName ?? "Paciente";
         DatabaseHelper.instance.insertRiskPatient(nombre, userText);
         
         _addMessage({
            "role": "glyph",
-           "text": _appLanguage == "Inglés" ? "ALERT: Severe malnutrition signs detected. The case for $nombre has been saved in the Risk Database for medical intervention. Please go to a health center immediately."
-           : "ALERTA: Se han detectado signos graves de desnutrición. El caso de $nombre ha sido guardado en la Base de Datos de Riesgo para intervención médica. Por favor, acuda a un centro de salud inmediatamente."
+           "text": _appLanguage == "Inglés" ? "ALERT: Severe malnutrition signs detected for $nombre. Saved in the Risk Database. Please go to a health center immediately."
+           : "ALERTA: Se han detectado signos graves de desnutrición en $nombre. Caso guardado en la Base de Datos de Riesgo. Por favor, acuda a un centro de salud inmediatamente."
         });
-        setState(() => _isRiskAssessmentMode = false);
+        setState(() {
+          _isRiskAssessmentMode = false;
+          _pendingRiskName = null;
+        });
         return;
-      } else if (lower.contains("no") || lower.contains("nnojo")) {
+      } else if (isNo) {
         _addMessage({
            "role": "glyph",
-           "text": _appLanguage == "Inglés" ? "That's good. Since there are no severe alert signs, ensure a balanced diet and attend regular growth checkups."
-           : "Excelente. Al no presentar estos signos de alerta graves, asegúrese de mantener una alimentación balanceada y asista a los controles de crecimiento regulares en su comunidad."
+           "text": _appLanguage == "Inglés" ? "That's good. Since there are no severe alert signs for $_pendingRiskName, ensure a balanced diet."
+           : "Excelente. Al no presentar $_pendingRiskName estos signos de alerta graves, asegúrese de mantener una alimentación balanceada."
         });
-        setState(() => _isRiskAssessmentMode = false);
+        setState(() {
+          _isRiskAssessmentMode = false;
+          _pendingRiskName = null;
+        });
         return;
       }
     }
