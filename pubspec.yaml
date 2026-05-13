@@ -28,6 +28,7 @@ dependencies:
   flutter_tts: ^4.2.5
   super_measurement: ^4.0.0
   wake_on_lan: ^4.1.1
+  qr_flutter: ^4.1.0
 
 dev_dependencies:
   flutter_test:

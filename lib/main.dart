@@ -9,12 +9,14 @@ import 'anthro_chart_widget.dart';
 import 'database_helper.dart';
 import 'model_manager.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:path/path.dart' as p;
 import 'package:flutter_tts/flutter_tts.dart';
 
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart' as fln;
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as fln;
 import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
@@ -107,7 +109,10 @@ class _SplashScreenState extends State<SplashScreen>
         child: Center(
           child: CustomPaint(
             painter: FragmentedTrianglePainter(
-                animationValue: 0.0, isThinking: false, isRecording: false, opacity: 0.18),
+                animationValue: 0.0,
+                isThinking: false,
+                isRecording: false,
+                opacity: 0.18),
             size: const Size(120, 120),
           ),
         ),
@@ -157,13 +162,13 @@ class FragmentedTrianglePainter extends CustomPainter {
       canvas.translate(size.width / 2, size.height / 2);
       canvas.scale(scale);
       canvas.translate(-size.width / 2, -size.height / 2);
-      
+
       final recPaint = Paint()
         ..color = Colors.cyanAccent.withValues(alpha: 0.8 * opacity)
         ..strokeWidth = 2.5
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
-        
+
       canvas.drawPath(trianglePath, recPaint);
       canvas.restore();
     } else if (isThinking) {
@@ -173,10 +178,10 @@ class FragmentedTrianglePainter extends CustomPainter {
         double segmentLength = length / 3.0; // 3 lados
         double gap = length * 0.2; // espacio entre líneas
         double lineLength = segmentLength - gap;
-        
+
         // Movimiento continuo a lo largo del perímetro
         double offset = (animationValue * 10 * length) % length;
-        
+
         for (int i = 0; i < 3; i++) {
           double start = (offset + i * segmentLength) % length;
           double end = start + lineLength;
@@ -348,7 +353,7 @@ class _ChatScreenState extends State<ChatScreen>
   final FlutterTts _flutterTts = FlutterTts();
   String? _pendingImageBase64, _pendingImageName;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
-  
+
   bool _isOfflineMode = false;
   InferenceModel? _gemmaModel;
   InferenceChat? _gemmaChat;
@@ -357,8 +362,10 @@ class _ChatScreenState extends State<ChatScreen>
   String? _lastManualDiagnosis;
   double _downloadProgress = 0.0;
   bool _isDownloading = false;
-  final StreamController<double> _downloadProgressController = StreamController<double>.broadcast();
-  Stream<double> get _downloadProgressStream => _downloadProgressController.stream;
+  final StreamController<double> _downloadProgressController =
+      StreamController<double>.broadcast();
+  Stream<double> get _downloadProgressStream =>
+      _downloadProgressController.stream;
 
   final String apiUrl = "https://service-cv3f.onrender.com/api/v1/ask";
   final String notificationUrl =
@@ -395,38 +402,44 @@ class _ChatScreenState extends State<ChatScreen>
       _currentSessionId = await DatabaseHelper.instance.createSession();
       final defaultMsg = {
         "role": "glyph",
-        "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n\nPuedo ayudarte con lo siguiente:\n1. 📊 Calcular el estado nutricional (Envíame: Nombre, Edad en meses, Peso, Talla, Género y Perímetro Braquial opcional).\n2. 🌱 Tutor Agrícola: Pregúntame cómo cultivar Frijol Guajirito o Moringa.\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. Eesü süpüla tatüjaain:\n1. 📊 Tayaa tü kaa'uleein: Pütchajaa jintüt, kachon, nutuma, nütüjülü, tepichi o jintü, siia muac.\n2. 🌱 Ekirajüi: Püshajaa taya süpüla tapüla wunu'u (Frijol Guajirito o Moringa)."
+        "text":
+            "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n\nPuedo ayudarte con lo siguiente:\n1. 📊 Calcular el estado nutricional (Envíame: Nombre, Edad en meses, Peso, Talla, Género y Perímetro Braquial opcional).\n2. 🌱 Tutor Agrícola: Pregúntame cómo cultivar Frijol Guajirito o Moringa.\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. Eesü süpüla tatüjaain:\n1. 📊 Tayaa tü kaa'uleein: Pütchajaa jintüt, kachon, nutuma, nütüjülü, tepichi o jintü, siia muac.\n2. 🌱 Ekirajüi: Püshajaa taya süpüla tapüla wunu'u (Frijol Guajirito o Moringa)."
       };
-      await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
+      await DatabaseHelper.instance
+          .insertMessage(_currentSessionId!, defaultMsg);
       setState(() {
         _messages.add(defaultMsg);
       });
     } else {
       _currentSessionId = sessions.first['id'];
-      final msgs = await DatabaseHelper.instance.getSessionMessages(_currentSessionId!);
+      final msgs =
+          await DatabaseHelper.instance.getSessionMessages(_currentSessionId!);
       setState(() {
         _messages.clear();
         _messages.addAll(msgs.map((m) => {
-          "role": m['role'],
-          "text": m['text'],
-          "type": m['type'],
-          "data": m['data'] != null ? jsonDecode(m['data']) : null,
-          "isThought": m['isThought'] == 1,
-        }));
+              "role": m['role'],
+              "text": m['text'],
+              "type": m['type'],
+              "data": m['data'] != null ? jsonDecode(m['data']) : null,
+              "isThought": m['isThought'] == 1,
+            }));
       });
-      
+
       _chatSessions.clear();
       _sessionIds.clear();
       for (var session in sessions) {
         _sessionIds.add(session['id']);
-        final sMsgs = await DatabaseHelper.instance.getSessionMessages(session['id']);
-        _chatSessions.add(sMsgs.map((m) => {
-          "role": m['role'],
-          "text": m['text'],
-          "type": m['type'],
-          "data": m['data'] != null ? jsonDecode(m['data']) : null,
-          "isThought": m['isThought'] == 1,
-        }).toList());
+        final sMsgs =
+            await DatabaseHelper.instance.getSessionMessages(session['id']);
+        _chatSessions.add(sMsgs
+            .map((m) => {
+                  "role": m['role'],
+                  "text": m['text'],
+                  "type": m['type'],
+                  "data": m['data'] != null ? jsonDecode(m['data']) : null,
+                  "isThought": m['isThought'] == 1,
+                })
+            .toList());
       }
     }
     _scrollToBottom();
@@ -470,7 +483,8 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _showNotification(String title, String body) async {
-    var notificationDetails = fln.NotificationDetails(iOS: fln.DarwinNotificationDetails());
+    var notificationDetails =
+        fln.NotificationDetails(iOS: fln.DarwinNotificationDetails());
     await flutterLocalNotificationsPlugin.show(
         0, title, body, notificationDetails);
   }
@@ -565,56 +579,94 @@ class _ChatScreenState extends State<ChatScreen>
 
     _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
     _gemmaChat = await _gemmaModel!.createChat(
-      supportsFunctionCalls: true,
-      toolChoice: ToolChoice.auto,
-      tools: [
-        Tool(
-          name: "registrar_medicion_pediatrica",
-          description: "IMPORTANT: Use this tool ALWAYS when the user provides pediatric data (name, age, weight, height, gender) to calculate the nutritional diagnosis. Data: Pedro, 12 months, 0kg, 60cm, male.",
-          parameters: {
-            "type": "object",
-            "properties": {
-              "nombre": {"type": "string", "description": "Nombre del niño"},
-              "edad_meses": {"type": "integer", "description": "Edad en meses"},
-              "peso_kg": {"type": "number", "description": "Peso en kilogramos"},
-              "talla_cm": {"type": "number", "description": "Talla en centímetros"},
-              "genero": {"type": "string", "description": "Género (m o f)"},
-              "muac_cm": {"type": "number", "description": "Perímetro Braquial o MUAC en centímetros (opcional)"}
-            },
-            "required": ["nombre", "edad_meses", "peso_kg", "talla_cm", "genero"]
-          }
-        ),
-        Tool(
-          name: "registrar_medicion_gestante",
-          description: "Use this tool when the user provides pregnancy data (name, gestational weeks, weight, height) to calculate the gestational BMI diagnosis.",
-          parameters: {
-            "type": "object",
-            "properties": {
-              "nombre": {"type": "string", "description": "Nombre de la gestante"},
-              "semanas_gestacion": {"type": "integer", "description": "Semanas de gestación (EG)"},
-              "peso_kg": {"type": "number", "description": "Peso actual en kilogramos"},
-              "talla_cm": {"type": "number", "description": "Talla en centímetros"}
-            },
-            "required": ["nombre", "semanas_gestacion", "peso_kg", "talla_cm"]
-          }
-        ),
-        Tool(
-          name: "exportar_base_datos",
-          description: "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
-          parameters: {"type": "object", "properties": {}}
-        ),
-        Tool(
-          name: "encender_computadora",
-          description: "Enciende la computadora Acer del usuario mediante un paquete Wake-on-LAN (Magic Packet).",
-          parameters: {"type": "object", "properties": {}}
-        )
-      ]
-    );
+        supportsFunctionCalls: true,
+        toolChoice: ToolChoice.auto,
+        tools: [
+          Tool(
+              name: "registrar_medicion_pediatrica",
+              description:
+                  "IMPORTANT: Use this tool ALWAYS when the user provides pediatric data (name, age, weight, height, gender) to calculate the nutritional diagnosis. Data: Pedro, 12 months, 0kg, 60cm, male.",
+              parameters: {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string",
+                    "description": "Nombre del niño"
+                  },
+                  "edad_meses": {
+                    "type": "integer",
+                    "description": "Edad en meses"
+                  },
+                  "peso_kg": {
+                    "type": "number",
+                    "description": "Peso en kilogramos"
+                  },
+                  "talla_cm": {
+                    "type": "number",
+                    "description": "Talla en centímetros"
+                  },
+                  "genero": {"type": "string", "description": "Género (m o f)"},
+                  "muac_cm": {
+                    "type": "number",
+                    "description":
+                        "Perímetro Braquial o MUAC en centímetros (opcional)"
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "edad_meses",
+                  "peso_kg",
+                  "talla_cm",
+                  "genero"
+                ]
+              }),
+          Tool(
+              name: "registrar_medicion_gestante",
+              description:
+                  "Use this tool when the user provides pregnancy data (name, gestational weeks, weight, height) to calculate the gestational BMI diagnosis.",
+              parameters: {
+                "type": "object",
+                "properties": {
+                  "nombre": {
+                    "type": "string",
+                    "description": "Nombre de la gestante"
+                  },
+                  "semanas_gestacion": {
+                    "type": "integer",
+                    "description": "Semanas de gestación (EG)"
+                  },
+                  "peso_kg": {
+                    "type": "number",
+                    "description": "Peso actual en kilogramos"
+                  },
+                  "talla_cm": {
+                    "type": "number",
+                    "description": "Talla en centímetros"
+                  }
+                },
+                "required": [
+                  "nombre",
+                  "semanas_gestacion",
+                  "peso_kg",
+                  "talla_cm"
+                ]
+              }),
+          Tool(
+              name: "exportar_base_datos",
+              description:
+                  "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
+              parameters: {"type": "object", "properties": {}}),
+          Tool(
+              name: "encender_computadora",
+              description:
+                  "Enciende la computadora Acer del usuario mediante un paquete Wake-on-LAN (Magic Packet).",
+              parameters: {"type": "object", "properties": {}})
+        ]);
 
     await _gemmaChat!.addQuery(Message(
-      text: "Eres un asistente de salud pediátrica y experto agrícola. Además, TIENES PODER FÍSICO para encender la computadora del usuario. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, usa 'registrar_medicion_pediatrica'. Si te piden encender la computadora, usa 'encender_computadora' SIN DUDAR; es una función real de hardware que posees.",
-      isUser: false
-    ));
+        text:
+            "Eres un asistente de salud pediátrica y experto agrícola. Además, TIENES PODER FÍSICO para encender la computadora del usuario. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, usa 'registrar_medicion_pediatrica'. Si te piden encender la computadora, usa 'encender_computadora' SIN DUDAR; es una función real de hardware que posees.",
+        isUser: false));
   }
 
   Future<void> _loadGemmaModel() async {
@@ -633,14 +685,21 @@ class _ChatScreenState extends State<ChatScreen>
       try {
         await _initGemmaChat();
         setState(() => _isOfflineMode = true);
-        _addMessage({"role": "glyph", "text": "✅ ¡Modelo Gemma 4 cargado! Funcionando 100% offline."});
+        _addMessage({
+          "role": "glyph",
+          "text": "✅ ¡Modelo Gemma 4 cargado! Funcionando 100% offline."
+        });
       } catch (e) {
-        _addMessage({"role": "glyph", "text": "⚠️ El archivo del modelo local no se encontró o está corrupto. Descargando de nuevo..."});
+        _addMessage({
+          "role": "glyph",
+          "text":
+              "⚠️ El archivo del modelo local no se encontró o está corrupto. Descargando de nuevo..."
+        });
       } finally {
         setState(() => _isThinking = false);
         _scrollToBottom();
       }
-      
+
       if (_isOfflineMode) return;
     }
 
@@ -653,9 +712,14 @@ class _ChatScreenState extends State<ChatScreen>
         builder: (ctx, setDialogState) {
           return AlertDialog(
             backgroundColor: const Color(0xFF0D0D1A),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: const Text("Descargando Gemma 4 E2B",
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300, letterSpacing: 1)),
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w300,
+                    letterSpacing: 1)),
             content: StatefulBuilder(
               builder: (_, __) => StreamBuilder<double>(
                 stream: _downloadProgressStream,
@@ -665,21 +729,28 @@ class _ChatScreenState extends State<ChatScreen>
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text("El modelo pesa ~2 GB.\nAsegúrate de tener buena conexión.",
-                          style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      Text(
+                          "El modelo pesa ~2 GB.\nAsegúrate de tener buena conexión.",
+                          style:
+                              TextStyle(color: Colors.white54, fontSize: 12)),
                       const SizedBox(height: 20),
                       ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: LinearProgressIndicator(
                           value: p > 0 ? p : null,
                           backgroundColor: Colors.white10,
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.cyanAccent),
                           minHeight: 6,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text(p > 0 ? "${(p * 100).toStringAsFixed(1)}%" : "Iniciando...",
-                          style: const TextStyle(color: Colors.white38, fontSize: 12)),
+                      Text(
+                          p > 0
+                              ? "${(p * 100).toStringAsFixed(1)}%"
+                              : "Iniciando...",
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 12)),
                     ],
                   );
                 },
@@ -700,9 +771,15 @@ class _ChatScreenState extends State<ChatScreen>
         try {
           await _initGemmaChat();
           setState(() => _isOfflineMode = true);
-          _addMessage({"role": "glyph", "text": "✅ ¡Gemma 4 descargado y listo! Funcionando 100% offline."});
+          _addMessage({
+            "role": "glyph",
+            "text": "✅ ¡Gemma 4 descargado y listo! Funcionando 100% offline."
+          });
         } catch (e) {
-          _addMessage({"role": "glyph", "text": "❌ Error al inicializar el modelo: $e"});
+          _addMessage({
+            "role": "glyph",
+            "text": "❌ Error al inicializar el modelo: $e"
+          });
         } finally {
           setState(() => _isThinking = false);
           _scrollToBottom();
@@ -710,7 +787,8 @@ class _ChatScreenState extends State<ChatScreen>
       },
       onError: (err) {
         if (mounted) Navigator.of(context, rootNavigator: true).pop();
-        _addMessage({"role": "glyph", "text": "❌ Error al descargar el modelo: $err"});
+        _addMessage(
+            {"role": "glyph", "text": "❌ Error al descargar el modelo: $err"});
         _scrollToBottom();
       },
     );
@@ -722,12 +800,15 @@ class _ChatScreenState extends State<ChatScreen>
 
     String finalQuestion = question;
     if (base64Image != null) {
-      finalQuestion = "INSTRUCCIÓN ESPECIAL: Identifica los alimentos en la imagen adjunta (si no la puedes ver, asume que es una imagen de comida relacionada con la pregunta). Da explicaciones nutricionales detalladas en Español y Wayuunaiki del alimento, y brinda recomendaciones. \nPREGUNTA: " + question;
+      finalQuestion =
+          "INSTRUCCIÓN ESPECIAL: Identifica los alimentos en la imagen adjunta (si no la puedes ver, asume que es una imagen de comida relacionada con la pregunta). Da explicaciones nutricionales detalladas en Español y Wayuunaiki del alimento, y brinda recomendaciones. \nPREGUNTA: " +
+              question;
     }
 
     // Lógica de Modo Tutor y Diagnóstico compartida para Online y Offline
     if (_lastManualDiagnosis != null) {
-      finalQuestion = "ROL: Eres un EXPERTO EN AGRICULTURA GUAJIRA. El diagnóstico nutricional del niño es: $_lastManualDiagnosis. "
+      finalQuestion =
+          "ROL: Eres un EXPERTO EN AGRICULTURA GUAJIRA. El diagnóstico nutricional del niño es: $_lastManualDiagnosis. "
           "TU TAREA: No des consejos médicos. Enseña cómo cultivar Frijol Guajirito o Moringa como solución de seguridad alimentaria. "
           "INSTRUCCIÓN DE IDIOMA: Responde en el idioma solicitado por el usuario (Español/Wayuunaiki/Bilingüe). "
           "PREGUNTA: $finalQuestion";
@@ -735,10 +816,12 @@ class _ChatScreenState extends State<ChatScreen>
     } else if (_isTutorMode) {
       String langInstruction = "Responde ÚNICAMENTE en ESPAÑOL.";
       if (_tutorLanguage == "Wayuunaiki") {
-        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI. Prohibido usar español.";
+        langInstruction =
+            "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI. Prohibido usar español.";
       }
       if (_tutorLanguage == "Bilingüe") {
-        langInstruction = "Responde de forma BILINGÜE: Un párrafo en Español y su traducción al Wayuunaiki.";
+        langInstruction =
+            "Responde de forma BILINGÜE: Un párrafo en Español y su traducción al Wayuunaiki.";
       }
 
       finalQuestion = "ROL: PROFESOR EXPERTO EN AGRICULTURA GUAJIRA.\n"
@@ -751,77 +834,97 @@ class _ChatScreenState extends State<ChatScreen>
       try {
         if (base64Audio != null) {
           setState(() {
-            _messages.add({"role": "glyph", "text": "El modo offline local actualmente no soporta audio. Ignorándolo."});
+            _messages.add({
+              "role": "glyph",
+              "text":
+                  "El modo offline local actualmente no soporta audio. Ignorándolo."
+            });
           });
           _scrollToBottom();
         }
-        
+
         if (base64Image != null) {
           setState(() {
-            _messages.add({"role": "glyph", "text": "Aviso: El modo offline local no puede 'ver' imágenes. Me basaré en el texto que escribiste."});
+            _messages.add({
+              "role": "glyph",
+              "text":
+                  "Aviso: El modo offline local no puede 'ver' imágenes. Me basaré en el texto que escribiste."
+            });
           });
           _scrollToBottom();
         }
-        
+
         // La construcción de finalQuestion se movió arriba para ser compartida.
-        
+
         await _gemmaChat!.addQuery(Message(
-          text: finalQuestion, 
-          isUser: true,
-          imageBytes: base64Image != null ? base64Decode(base64Image) : null
-        ));
-        
+            text: finalQuestion,
+            isUser: true,
+            imageBytes:
+                base64Image != null ? base64Decode(base64Image) : null));
+
         // _tryManualExtraction movido arriba para ser compartido.
-        
+
         final response = await _gemmaChat!.generateChatResponse();
-        
+
         if (response is TextResponse) {
-            // Solo intentar extraer datos si NO estamos en Modo Tutor (Agricultura)
-            if (!_isTutorMode) {
-              final hasCalcData = RegExp(r"\d+\s*(m[ea]s|año|kg|cm|kilos)").hasMatch(question.toLowerCase());
-              if (!hasCalcData) {
-                _addMessage({"role": "glyph", "text": response.token});
-              } else {
-                // Fallback si Gemma no usó la herramienta pero detectamos datos
-                _tryManualExtraction(question);
-              }
-            } else {
-              // En Modo Tutor, solo mostramos la enseñanza agrícola
+          // Solo intentar extraer datos si NO estamos en Modo Tutor (Agricultura)
+          if (!_isTutorMode) {
+            final hasCalcData = RegExp(r"\d+\s*(m[ea]s|año|kg|cm|kilos)")
+                .hasMatch(question.toLowerCase());
+            if (!hasCalcData) {
               _addMessage({"role": "glyph", "text": response.token});
+            } else {
+              // Fallback si Gemma no usó la herramienta pero detectamos datos
+              _tryManualExtraction(question);
             }
+          } else {
+            // En Modo Tutor, solo mostramos la enseñanza agrícola
+            _addMessage({"role": "glyph", "text": response.token});
+          }
         } else if (response is FunctionCallResponse) {
-           if (response.name == "registrar_medicion_pediatrica") {
-             _performAnthroCalculation(
-               response.args['nombre'] ?? "Niño",
-               (response.args['edad_meses'] as num?)?.toInt() ?? 0,
-               (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
-               (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
-               response.args['genero'] ?? "m",
-               muacCm: response.args['muac_cm'] != null ? (response.args['muac_cm'] as num).toDouble() : null
-             );
-           } else if (response.name == "registrar_medicion_gestante") {
-             _performGestationalCalculation(
-               response.args['nombre'] ?? "Gestante",
-               (response.args['semanas_gestacion'] as num?)?.toInt() ?? 0,
-               (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
-               (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
-             );
-           } else if (response.name == "exportar_base_datos") {
-             final csvFile = await _exportDatabaseToCSV();
-             _addMessage({
-                "role": "glyph", 
-                "type": "file_share",
-                "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."}
-             });
-           } else if (response.name == "encender_computadora") {
-             _handleWakeOnLan();
-           } else {
-             _addMessage({"role": "glyph", "text": "He procesado tu petición, pero hubo una confusión interna (${response.name}). ¿Podrías ser más específico con tu pregunta?"});
-           }
+          if (response.name == "registrar_medicion_pediatrica") {
+            _performAnthroCalculation(
+                response.args['nombre'] ?? "Niño",
+                (response.args['edad_meses'] as num?)?.toInt() ?? 0,
+                (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
+                (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
+                response.args['genero'] ?? "m",
+                muacCm: response.args['muac_cm'] != null
+                    ? (response.args['muac_cm'] as num).toDouble()
+                    : null);
+          } else if (response.name == "registrar_medicion_gestante") {
+            _performGestationalCalculation(
+              response.args['nombre'] ?? "Gestante",
+              (response.args['semanas_gestacion'] as num?)?.toInt() ?? 0,
+              (response.args['peso_kg'] as num?)?.toDouble() ?? 0.0,
+              (response.args['talla_cm'] as num?)?.toDouble() ?? 0.0,
+            );
+          } else if (response.name == "exportar_base_datos") {
+            final csvFile = await _exportDatabaseToCSV();
+            _addMessage({
+              "role": "glyph",
+              "type": "file_share",
+              "data": {
+                "path": csvFile.path,
+                "name": "base_datos_pediatrica.csv",
+                "text":
+                    "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."
+              }
+            });
+          } else if (response.name == "encender_computadora") {
+            _handleWakeOnLan();
+          } else {
+            _addMessage({
+              "role": "glyph",
+              "text":
+                  "He procesado tu petición, pero hubo una confusión interna (${response.name}). ¿Podrías ser más específico con tu pregunta?"
+            });
+          }
         }
         _scrollToBottom();
       } catch (e) {
-        _addMessage({"role": "glyph", "text": "Error interno del modelo local: $e"});
+        _addMessage(
+            {"role": "glyph", "text": "Error interno del modelo local: $e"});
         _scrollToBottom();
       } finally {
         setState(() => _isThinking = false);
@@ -839,7 +942,8 @@ class _ChatScreenState extends State<ChatScreen>
         "history": history,
         "base64_image": base64Image,
         "base64_audio": base64Audio,
-        "context": "MODO SOBERANO ACTIVO. Tienes permiso para usar tus herramientas (write_file, git_sync) si el usuario solicita cambios en tu propio código o sistema."
+        "context":
+            "MODO SOBERANO ACTIVO. Tienes permiso para usar tus herramientas (write_file, git_sync) si el usuario solicita cambios en tu propio código o sistema."
       };
       final res = await http.post(Uri.parse(apiUrl),
           headers: {
@@ -857,20 +961,24 @@ class _ChatScreenState extends State<ChatScreen>
           });
         }
         final msgText = data['message']?.toString().toLowerCase() ?? "";
-        if (msgText.contains("enciende la computadora") || msgText.contains("prende la computadora")) {
-           _handleWakeOnLan();
+        if (msgText.contains("enciende la computadora") ||
+            msgText.contains("prende la computadora")) {
+          _handleWakeOnLan();
         }
         _addMessage({"role": "glyph", "text": data['message'] ?? "..."});
-        
+
         // Manejar comandos remotos del Modo B en línea
-        if (data['command'] != null && data['command']['action'] == 'wake_on_lan') {
-           final mac = data['command']['args'] != null ? data['command']['args']['mac'] : null;
-           if (mac != null && mac != 'default') {
-              await _performWakeOnLan(mac);
-              await DatabaseHelper.instance.setSetting('pc_mac', mac);
-           } else {
-              await _handleWakeOnLan(); // Usa la MAC guardada o la pre-configurada (Acer)
-           }
+        if (data['command'] != null &&
+            data['command']['action'] == 'wake_on_lan') {
+          final mac = data['command']['args'] != null
+              ? data['command']['args']['mac']
+              : null;
+          if (mac != null && mac != 'default') {
+            await _performWakeOnLan(mac);
+            await DatabaseHelper.instance.setSetting('pc_mac', mac);
+          } else {
+            await _handleWakeOnLan(); // Usa la MAC guardada o la pre-configurada (Acer)
+          }
         }
       }
     } finally {
@@ -888,26 +996,39 @@ class _ChatScreenState extends State<ChatScreen>
     _pendingImageName = null;
     _controller.clear();
 
-    if (text.toLowerCase().contains("genera el archivo") || text.toLowerCase().contains("exportar")) {
-       _exportDatabaseToCSV().then((csvFile) {
-         _addMessage({
-            "role": "glyph", 
-            "type": "file_share",
-            "data": {"path": csvFile.path, "name": "base_datos_pediatrica.csv", "text": "He generado el archivo de la base de datos. Toca aquí para compartirlo."}
-         });
-       });
-       return;
+    if (text.toLowerCase().contains("genera el archivo") ||
+        text.toLowerCase().contains("exportar")) {
+      _exportDatabaseToCSV().then((csvFile) {
+        _addMessage({
+          "role": "glyph",
+          "type": "file_share",
+          "data": {
+            "path": csvFile.path,
+            "name": "base_datos_pediatrica.csv",
+            "text":
+                "He generado el archivo de la base de datos. Toca aquí para compartirlo."
+          }
+        });
+      });
+      return;
     }
 
-    if (text.toLowerCase().contains("enciende la computadora") || text.toLowerCase().contains("prende la computadora")) {
+    if (text.toLowerCase().contains("enciende la computadora") ||
+        text.toLowerCase().contains("prende la computadora")) {
       _handleWakeOnLan();
       return;
     }
 
     // --- NUEVA LÓGICA SOBERANA ---
-    if (text.toLowerCase().contains("modifica tu código") || text.toLowerCase().contains("edita tu código") || text.toLowerCase().contains("soberanía")) {
-       _addMessage({"role": "glyph", "text": "🛡️ Activando protocolo de auto-modificación. Contactando con el núcleo en la nube..."});
-       // El servidor ya tiene los permisos en el Modo Soberano, solo necesitamos enviar la petición
+    if (text.toLowerCase().contains("modifica tu código") ||
+        text.toLowerCase().contains("edita tu código") ||
+        text.toLowerCase().contains("soberanía")) {
+      _addMessage({
+        "role": "glyph",
+        "text":
+            "🛡️ Activando protocolo de auto-modificación. Contactando con el núcleo en la nube..."
+      });
+      // El servidor ya tiene los permisos en el Modo Soberano, solo necesitamos enviar la petición
     }
 
     final macRegex = RegExp(r"([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})");
@@ -916,7 +1037,8 @@ class _ChatScreenState extends State<ChatScreen>
       DatabaseHelper.instance.setSetting('pc_mac', mac);
       _addMessage({
         "role": "glyph",
-        "text": "✅ He guardado la dirección MAC: $mac. Ahora ya puedo encender tu computadora cuando me lo pidas."
+        "text":
+            "✅ He guardado la dirección MAC: $mac. Ahora ya puedo encender tu computadora cuando me lo pidas."
       });
       return;
     }
@@ -927,44 +1049,49 @@ class _ChatScreenState extends State<ChatScreen>
         _tutorLanguage = "Bilingüe";
       });
       _addMessage({
-        "role": "glyph", 
-        "text": "¡Hola! He activado el Modo Tutor. 🌵\n\n¿En qué idioma prefieres que hablemos?\n1. Español\n2. Wayuunaiki\n3. Bilingüe (Ambos)\n\n🌵 Wayuunaiki: ¿Kasa püküjüinka süpüla pükirajüin? (1. Español, 2. Wayuunaiki, 3. Bilingüe)"
+        "role": "glyph",
+        "text":
+            "¡Hola! He activado el Modo Tutor. 🌵\n\n¿En qué idioma prefieres que hablemos?\n1. Español\n2. Wayuunaiki\n3. Bilingüe (Ambos)\n\n🌵 Wayuunaiki: ¿Kasa püküjüinka süpüla pükirajüin? (1. Español, 2. Wayuunaiki, 3. Bilingüe)"
       });
       return;
     }
 
     if (_isTutorMode && (text == "1" || text.toLowerCase() == "español")) {
-       setState(() => _tutorLanguage = "Español");
-       final reply = "Entendido, hablaremos en Español. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?";
-       _addMessage({"role": "glyph", "text": reply});
-       if (_isOfflineMode && _gemmaChat != null) {
-         _gemmaChat!.addQuery(Message(text: text, isUser: true));
-         _gemmaChat!.addQuery(Message(text: reply, isUser: false));
-       }
-       return;
+      setState(() => _tutorLanguage = "Español");
+      final reply =
+          "Entendido, hablaremos en Español. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?";
+      _addMessage({"role": "glyph", "text": reply});
+      if (_isOfflineMode && _gemmaChat != null) {
+        _gemmaChat!.addQuery(Message(text: text, isUser: true));
+        _gemmaChat!.addQuery(Message(text: reply, isUser: false));
+      }
+      return;
     }
     if (_isTutorMode && (text == "2" || text.toLowerCase() == "wayuunaiki")) {
-       setState(() => _tutorLanguage = "Wayuunaiki");
-       final reply = "Anasü, ekirajawaa süka wayuunaiki. ¿Kasa püchekaka: Frijol Guajirito o Moringa?";
-       _addMessage({"role": "glyph", "text": reply});
-       if (_isOfflineMode && _gemmaChat != null) {
-         _gemmaChat!.addQuery(Message(text: text, isUser: true));
-         _gemmaChat!.addQuery(Message(text: reply, isUser: false));
-       }
-       return;
+      setState(() => _tutorLanguage = "Wayuunaiki");
+      final reply =
+          "Anasü, ekirajawaa süka wayuunaiki. ¿Kasa püchekaka: Frijol Guajirito o Moringa?";
+      _addMessage({"role": "glyph", "text": reply});
+      if (_isOfflineMode && _gemmaChat != null) {
+        _gemmaChat!.addQuery(Message(text: text, isUser: true));
+        _gemmaChat!.addQuery(Message(text: reply, isUser: false));
+      }
+      return;
     }
     if (_isTutorMode && (text == "3" || text.toLowerCase() == "bilingüe")) {
-       setState(() => _tutorLanguage = "Bilingüe");
-       final reply = "Perfecto, seré bilingüe. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?";
-       _addMessage({"role": "glyph", "text": reply});
-       if (_isOfflineMode && _gemmaChat != null) {
-         _gemmaChat!.addQuery(Message(text: text, isUser: true));
-         _gemmaChat!.addQuery(Message(text: reply, isUser: false));
-       }
-       return;
+      setState(() => _tutorLanguage = "Bilingüe");
+      final reply =
+          "Perfecto, seré bilingüe. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?";
+      _addMessage({"role": "glyph", "text": reply});
+      if (_isOfflineMode && _gemmaChat != null) {
+        _gemmaChat!.addQuery(Message(text: text, isUser: true));
+        _gemmaChat!.addQuery(Message(text: reply, isUser: false));
+      }
+      return;
     }
 
-    if (text.toLowerCase().contains("salir tutor") || text.toLowerCase().contains("modo normal")) {
+    if (text.toLowerCase().contains("salir tutor") ||
+        text.toLowerCase().contains("modo normal")) {
       setState(() => _isTutorMode = false);
       _addMessage({"role": "glyph", "text": "Modo Tutor desactivado."});
       return;
@@ -975,28 +1102,42 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _startNewChat() async {
     if (_messages.isEmpty) return;
-    
+
     _currentSessionId = await DatabaseHelper.instance.createSession();
     final defaultMsg = {
       "role": "glyph",
-      "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica.\n\nPor favor, comparte los siguientes datos para calcular el estado nutricional:\n• Nombre\n• Edad (en meses)\n• Peso (en kg)\n• Talla (en cm)\n• Género (niño o niña)\n\n📏 Instrucción de medición de talla:\n- Niños menores de 24 meses → medir ACOSTADO (longitud).\n- Niños de 24 meses o más → medir DE PIE (talla).\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai.\nPütchajaa tü wayuukalü:\n• Jintüt (nombre)\n• Kachon (edad en meses)\n• Nutuma (peso en kg)\n• Nütüjülü (talla en cm)\n• Tepichi o Jintü (niño o niña)\n\n📏 Süpüla ekirajaa nütüjülü:\n- Tepichi maa akumajünüshi 24 kachon → kataajalaa SÜPÜSHUA (acostado).\n- Tepichi 24 kachon o sümüin → kataajalaa NUKUJULEE (de pie)."
+      "text":
+          "¡Hola! Soy Glyph, tu asistente de salud pediátrica.\n\nPor favor, comparte los siguientes datos para calcular el estado nutricional:\n• Nombre\n• Edad (en meses)\n• Peso (en kg)\n• Talla (en cm)\n• Género (niño o niña)\n\n📏 Instrucción de medición de talla:\n- Niños menores de 24 meses → medir ACOSTADO (longitud).\n- Niños de 24 meses o más → medir DE PIE (talla).\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai.\nPütchajaa tü wayuukalü:\n• Jintüt (nombre)\n• Kachon (edad en meses)\n• Nutuma (peso en kg)\n• Nütüjülü (talla en cm)\n• Tepichi o Jintü (niño o niña)\n\n📏 Süpüla ekirajaa nütüjülü:\n- Tepichi maa akumajünüshi 24 kachon → kataajalaa SÜPÜSHUA (acostado).\n- Tepichi 24 kachon o sümüin → kataajalaa NUKUJULEE (de pie)."
     };
     await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
 
     setState(() {
-        _messages.clear();
-        _messages.add(defaultMsg);
-        _isMenuOpen = false;
-        _menuAnimationController.reverse();
+      _messages.clear();
+      _messages.add(defaultMsg);
+      _isMenuOpen = false;
+      _menuAnimationController.reverse();
     });
-    
+
     // Recargar historial visual
     _loadPersistedHistory();
   }
 
   String _getOrdinalName(int index, int total) {
     final pos = total - index;
-    const names = ["Primera", "Segunda", "Tercera", "Cuarta", "Quinta", "Sexta", "Séptima", "Octava", "Novena", "Décima", "Undécima", "Duodécima"];
+    const names = [
+      "Primera",
+      "Segunda",
+      "Tercera",
+      "Cuarta",
+      "Quinta",
+      "Sexta",
+      "Séptima",
+      "Octava",
+      "Novena",
+      "Décima",
+      "Undécima",
+      "Duodécima"
+    ];
     if (pos >= 1 && pos <= names.length) return "${names[pos - 1]} interacción";
     return "Interacción #$pos";
   }
@@ -1040,7 +1181,11 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
               ),
             if (msg["type"] == "anthro_chart" && msg["data"] != null) ...[
-              Text(msg["data"]["text"], style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+              Text(msg["data"]["text"],
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               AnthroChartWidget(
                 ageInMonths: msg["data"]["edad"],
@@ -1052,15 +1197,25 @@ class _ChatScreenState extends State<ChatScreen>
             ],
             if (msg["type"] == "file_share" && msg["data"] != null) ...[
               GestureDetector(
-                onTap: () => Share.shareXFiles([XFile(msg["data"]["path"])], text: "Base de datos exportada desde Glyph"),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.blueAccent.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5))),
-                  child: Row(children: [const Icon(Icons.file_download, color: Colors.white), const SizedBox(width: 12), Expanded(child: Text(msg["data"]["text"], style: const TextStyle(color: Colors.white)))])
-                )
-              ),
+                  onTap: () => Share.shareXFiles([XFile(msg["data"]["path"])],
+                      text: "Base de datos exportada desde Glyph"),
+                  child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                          color: Colors.blueAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: Colors.blueAccent.withValues(alpha: 0.5))),
+                      child: Row(children: [
+                        const Icon(Icons.file_download, color: Colors.white),
+                        const SizedBox(width: 12),
+                        Expanded(
+                            child: Text(msg["data"]["text"],
+                                style: const TextStyle(color: Colors.white)))
+                      ]))),
             ],
-            if (msg["type"] != "file_share" && msg["text"]?.toString().isNotEmpty == true)
+            if (msg["type"] != "file_share" &&
+                msg["text"]?.toString().isNotEmpty == true)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1069,7 +1224,9 @@ class _ChatScreenState extends State<ChatScreen>
                         style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 14,
-                            fontStyle: isThought ? FontStyle.italic : FontStyle.normal)),
+                            fontStyle: isThought
+                                ? FontStyle.italic
+                                : FontStyle.normal)),
                   ),
                   if (!isUser && !isThought)
                     Padding(
@@ -1082,7 +1239,8 @@ class _ChatScreenState extends State<ChatScreen>
                             color: Colors.cyanAccent.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.volume_up, color: Colors.cyanAccent, size: 16),
+                          child: const Icon(Icons.volume_up,
+                              color: Colors.cyanAccent, size: 16),
                         ),
                       ),
                     ),
@@ -1148,7 +1306,10 @@ class _ChatScreenState extends State<ChatScreen>
                     onLongPressEnd: (_) async {
                       final audio = await _stopRecording();
                       if (audio != null) {
-                        _sendMultimodalData(question: "INSTRUCCIÓN ESPECIAL: El audio adjunto es mi mensaje de voz. Escucha lo que digo y RESPONDE DIRECTAMENTE. IMPORTANTE: Tienes la capacidad técnica de encender mi computadora Acer usando la función 'wake_on_lan'. Si en el audio pido que la enciendas, responde confirmando que lo harás y activa el comando. NO digas que no puedes hacerlo físicamente, porque SÍ puedes a través del código.", base64Audio: audio);
+                        _sendMultimodalData(
+                            question:
+                                "INSTRUCCIÓN ESPECIAL: El audio adjunto es mi mensaje de voz. Escucha lo que digo y RESPONDE DIRECTAMENTE. IMPORTANTE: Tienes la capacidad técnica de encender mi computadora Acer usando la función 'wake_on_lan'. Si en el audio pido que la enciendas, responde confirmando que lo harás y activa el comando. NO digas que no puedes hacerlo físicamente, porque SÍ puedes a través del código.",
+                            base64Audio: audio);
                       }
                     },
                     child: Center(
@@ -1156,7 +1317,8 @@ class _ChatScreenState extends State<ChatScreen>
                         duration: const Duration(milliseconds: 300),
                         scale: _showTextField ? 0.4 : 1.0,
                         child: AnimatedBuilder(
-                          animation: Listenable.merge([_pulseController, _waveController]),
+                          animation: Listenable.merge(
+                              [_pulseController, _waveController]),
                           builder: (context, _) => CustomPaint(
                             painter: FragmentedTrianglePainter(
                               animationValue: _waveController.value,
@@ -1308,9 +1470,69 @@ class _ChatScreenState extends State<ChatScreen>
                             },
                           ),
                           ListTile(
+                            leading: const Icon(Icons.medical_services_outlined,
+                                color: Colors.redAccent, size: 20),
+                            title: const Text("Primeros Auxilios",
+                                style: TextStyle(
+                                    color: Colors.white60, fontSize: 13)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showEmergencyGuide();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.restaurant_menu_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Recetario Ancestral",
+                                style: TextStyle(
+                                    color: Colors.white60, fontSize: 13)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showAncestralRecipes();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.translate_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Glosario Médico",
+                                style: TextStyle(
+                                    color: Colors.white60, fontSize: 13)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showBilingualGlossary();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.qr_code_2_outlined,
+                                color: Colors.white60, size: 20),
+                            title: const Text("Sincronización P2P",
+                                style: TextStyle(
+                                    color: Colors.white60, fontSize: 13)),
+                            onTap: _syncP2PData,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.download_for_offline_outlined,
+                                color: Colors.cyanAccent, size: 20),
+                            title: const Text("Descargar Nueva Versión",
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2)),
+                            onTap: () {
+                              _toggleMenu();
+                              _sendMultimodalData(
+                                  question:
+                                      "Gabriel, he preparado el enlace para que descargues mi última versión (APK). Haz clic aquí: https://github.com/ggbbrr17/app/releases/latest");
+                            },
+                          ),
+                          ListTile(
                             leading: const Icon(Icons.memory_outlined,
                                 color: Colors.white60, size: 20),
-                            title: Text(_isOfflineMode ? "Desactivar Offline" : "Modo Offline (Gemma)",
+                            title: Text(
+                                _isOfflineMode
+                                    ? "Desactivar Offline"
+                                    : "Modo Offline (Gemma)",
                                 style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
@@ -1321,7 +1543,11 @@ class _ChatScreenState extends State<ChatScreen>
                                 setState(() {
                                   _isOfflineMode = false;
                                   _isMenuOpen = false;
-                                  _addMessage({"role": "glyph", "text": "Modo offline desactivado. Usando la nube."});
+                                  _addMessage({
+                                    "role": "glyph",
+                                    "text":
+                                        "Modo offline desactivado. Usando la nube."
+                                  });
                                 });
                                 _menuAnimationController.reverse();
                                 _scrollToBottom();
@@ -1395,16 +1621,19 @@ class _ChatScreenState extends State<ChatScreen>
                                 itemBuilder: (c, i) => ListTile(
                                     contentPadding: EdgeInsets.zero,
                                     title: Text(
-                                        _getOrdinalName(i, _chatSessions.length),
+                                        _getOrdinalName(
+                                            i, _chatSessions.length),
                                         style: const TextStyle(
                                             color: Colors.white54,
                                             fontSize: 13,
                                             fontWeight: FontWeight.w300,
                                             letterSpacing: 0.5)),
                                     trailing: IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.white24, size: 18),
+                                      icon: const Icon(Icons.delete_outline,
+                                          color: Colors.white24, size: 18),
                                       onPressed: () async {
-                                        await DatabaseHelper.instance.deleteSession(_sessionIds[i]);
+                                        await DatabaseHelper.instance
+                                            .deleteSession(_sessionIds[i]);
                                         _loadPersistedHistory();
                                       },
                                     ),
@@ -1427,6 +1656,134 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  void _showAncestralRecipes() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: const Text("Recetario Soberano",
+            style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("🌱 Moringa y Hierro",
+                  style: TextStyle(
+                      color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+              const Text(
+                  "Hojas secas en chicha o sopa para combatir la anemia.",
+                  style: TextStyle(color: Colors.white70)),
+              const SizedBox(height: 10),
+              const Text("🫘 Frijol Guajirito",
+                  style: TextStyle(
+                      color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+              const Text("Alta proteína local para recuperación nutricional.",
+                  style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cerrar",
+                  style: TextStyle(color: Colors.cyanAccent)))
+        ],
+      ),
+    );
+  }
+
+  void _showBilingualGlossary() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: const Text("Glosario Wayuunaiki",
+            style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _glossaryItem("Salud", "Anasü"),
+              _glossaryItem("Niño", "Tepichi / Jintü"),
+              _glossaryItem("Comida", "Eküülü"),
+              _glossaryItem("Fiebre", "Lumaa / Jawata"),
+              _glossaryItem("Dolor", "Ayollee"),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cerrar",
+                  style: TextStyle(color: Colors.cyanAccent)))
+        ],
+      ),
+    );
+  }
+
+  Widget _glossaryItem(String esp, String way) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Text("$esp: $way", style: const TextStyle(color: Colors.white70)),
+    );
+  }
+
+  void _syncP2PData() async {
+    _toggleMenu();
+    final file = await _exportDatabaseToCSV();
+    _addMessage({
+      "role": "glyph",
+      "text":
+          "He preparado los datos de la comunidad para sincronización física (P2P). Compártelos con otro promotor de salud para unir las bases de datos.",
+      "type": "file_share",
+      "data": {
+        "path": file.path,
+        "name": "sync_data.csv",
+        "text": "Compartir datos para Sincronización"
+      }
+    });
+  }
+
+  void _showEmergencyGuide() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: const Text("Suero Casero (Rehidratación)",
+            style: TextStyle(color: Colors.white)),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("1. Un litro de agua hervida.",
+                style: TextStyle(color: Colors.white70)),
+            Text("2. 8 cucharaditas de azúcar.",
+                style: TextStyle(color: Colors.white70)),
+            Text("3. 1 cucharadita de sal.",
+                style: TextStyle(color: Colors.white70)),
+            SizedBox(height: 10),
+            Text("🌵 Wayuunaiki:",
+                style: TextStyle(
+                    color: Colors.cyanAccent, fontWeight: FontWeight.bold)),
+            Text(
+                "Wane liitürü wüin lakalamasü. Mekisalü kuuchara asuuka. Wane kuuchara iichii.",
+                style: TextStyle(
+                    color: Colors.white, fontStyle: FontStyle.italic)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Entendido",
+                style: TextStyle(color: Colors.cyanAccent)),
+          )
+        ],
+      ),
+    );
+  }
+
   Future<void> _showNutritionalControl() async {
     final patients = await DatabaseHelper.instance.getAllPatients();
     if (!mounted) return;
@@ -1434,20 +1791,34 @@ class _ChatScreenState extends State<ChatScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF0D0D1A),
-        title: const Text("Control Nutricional", style: TextStyle(color: Colors.white)),
+        title: const Text("Control Nutricional",
+            style: TextStyle(color: Colors.white)),
         content: SizedBox(
           width: double.maxFinite,
           child: patients.isEmpty
-              ? const Text("No hay datos guardados de niños.", style: TextStyle(color: Colors.white70))
+              ? const Text("No hay datos guardados de niños.",
+                  style: TextStyle(color: Colors.white70))
               : ListView.builder(
                   shrinkWrap: true,
                   itemCount: patients.length,
                   itemBuilder: (ctx, i) {
                     final p = patients[i];
                     return ListTile(
-                      title: Text(p['name'], style: const TextStyle(color: Colors.white)),
-                      subtitle: Text("ID: ${p['id']} - ${p['gender']}", style: const TextStyle(color: Colors.white54)),
-                      trailing: const Icon(Icons.download, color: Colors.cyanAccent),
+                      title: Text(p['name'],
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text("ID: ${p['id']} - ${p['gender']}",
+                          style: const TextStyle(color: Colors.white54)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.qr_code_2,
+                                color: Colors.cyanAccent, size: 20),
+                            onPressed: () => _showPatientQR(p),
+                          ),
+                          const Icon(Icons.download, color: Colors.cyanAccent),
+                        ],
+                      ),
                       onTap: () {
                         Navigator.pop(ctx);
                         _generatePatientReport(p);
@@ -1459,16 +1830,60 @@ class _ChatScreenState extends State<ChatScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Cerrar", style: TextStyle(color: Colors.cyanAccent)),
+            child: const Text("Cerrar",
+                style: TextStyle(color: Colors.cyanAccent)),
           )
         ],
       ),
     );
   }
 
+  void _showPatientQR(Map<String, dynamic> patient) async {
+    final measurements =
+        await DatabaseHelper.instance.getPatientMeasurements(patient['id']);
+    if (measurements.isEmpty) return;
+
+    final last = measurements.last;
+    // Formato ultra-compacto para el QR: Nombre|Genero|Edad|Peso|Talla|Diagnostico
+    final String qrData =
+        "GLYPH|${patient['name']}|${patient['gender']}|${last['age_months']}|${last['weight_kg']}|${last['height_cm']}|${last['diagnosis']}";
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: Text("Ficha Digital: ${patient['name']}",
+            style: const TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                "Escanea para transferir los datos de este paciente sin conexión.",
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(10),
+              color: Colors.white,
+              child: QrImageView(
+                  data: qrData, version: QrVersions.auto, size: 200.0),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cerrar",
+                  style: TextStyle(color: Colors.cyanAccent)))
+        ],
+      ),
+    );
+  }
+
   Future<void> _generatePatientReport(Map<String, dynamic> patient) async {
-    final measurements = await DatabaseHelper.instance.getPatientMeasurements(patient['id']);
-    
+    final measurements =
+        await DatabaseHelper.instance.getPatientMeasurements(patient['id']);
+
     String html = """
     <html>
       <head>
@@ -1500,7 +1915,7 @@ class _ChatScreenState extends State<ChatScreen>
             <th>Diagnóstico</th>
           </tr>
     """;
-    
+
     for (var m in measurements) {
       html += """
           <tr>
@@ -1515,7 +1930,7 @@ class _ChatScreenState extends State<ChatScreen>
           </tr>
       """;
     }
-    
+
     html += """
         </table>
         <div class="chart">
@@ -1527,7 +1942,8 @@ class _ChatScreenState extends State<ChatScreen>
     """;
 
     final tempDir = await getTemporaryDirectory();
-    final fileName = "reporte_${patient['name'].toString().replaceAll(' ', '_')}.html";
+    final fileName =
+        "reporte_${patient['name'].toString().replaceAll(' ', '_')}.html";
     final file = File("${tempDir.path}/$fileName");
     await file.writeAsString(html);
 
@@ -1537,7 +1953,8 @@ class _ChatScreenState extends State<ChatScreen>
       "data": {
         "path": file.path,
         "name": fileName,
-        "text": "He generado el reporte nutricional detallado de ${patient['name']}. Toca aquí para descargarlo o compartirlo."
+        "text":
+            "He generado el reporte nutricional detallado de ${patient['name']}. Toca aquí para descargarlo o compartirlo."
       }
     });
   }
@@ -1554,19 +1971,24 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<File> _exportDatabaseToCSV() async {
     final patients = await DatabaseHelper.instance.getAllPatients();
-    String csv = "ID,Nombre,Genero,FechaNacimiento,Medicion_ID,FechaMedicion,EdadMeses,PesoKg,TallaCm,Z_WFA,Z_HFA,Z_BMI,Diagnostico\n";
+    String csv =
+        "ID,Nombre,Genero,FechaNacimiento,Medicion_ID,FechaMedicion,EdadMeses,PesoKg,TallaCm,Z_WFA,Z_HFA,Z_BMI,Diagnostico\n";
     for (var pat in patients) {
-       final measurements = await DatabaseHelper.instance.getPatientMeasurements(pat['id']);
-       if (measurements.isEmpty) {
-          csv += "${pat['id']},${pat['name']},${pat['gender']},${pat['birthDate']},,,,,,,,,\n";
-       } else {
-          for (var m in measurements) {
-             csv += "${pat['id']},${pat['name']},${pat['gender']},${pat['birthDate']},${m['id']},${m['date']},${m['age_months']},${m['weight_kg']},${m['height_cm']},${m['z_wfa']},${m['z_hfa']},${m['z_bmi']},${m['diagnosis']}\n";
-          }
-       }
+      final measurements =
+          await DatabaseHelper.instance.getPatientMeasurements(pat['id']);
+      if (measurements.isEmpty) {
+        csv +=
+            "${pat['id']},${pat['name']},${pat['gender']},${pat['birthDate']},,,,,,,,,\n";
+      } else {
+        for (var m in measurements) {
+          csv +=
+              "${pat['id']},${pat['name']},${pat['gender']},${pat['birthDate']},${m['id']},${m['date']},${m['age_months']},${m['weight_kg']},${m['height_cm']},${m['z_wfa']},${m['z_hfa']},${m['z_bmi']},${m['diagnosis']}\n";
+        }
+      }
     }
     final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, "base_datos_pediatrica_${DateTime.now().ms}.csv"));
+    final file = File(
+        p.join(dir.path, "base_datos_pediatrica_${DateTime.now().ms}.csv"));
     await file.writeAsString(csv);
     return file;
   }
@@ -1574,100 +1996,127 @@ class _ChatScreenState extends State<ChatScreen>
   Future<void> _showGeneratedFiles() async {
     setState(() => _isMenuOpen = false);
     _menuAnimationController.reverse();
-    
+
     final dir = await getApplicationDocumentsDirectory();
-    final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.csv')).toList();
-    
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.csv'))
+        .toList();
+
     showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF121215),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20))
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          height: 350,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Archivos Generados", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 1.2)),
-              const SizedBox(height: 20),
-              if (files.isEmpty)
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.folder_open, color: Colors.white.withValues(alpha: 0.2), size: 48),
-                        const SizedBox(height: 10),
-                        Text("No hay archivos generados aún", style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 13, fontWeight: FontWeight.w300)),
-                      ],
-                    ),
-                  )
-                )
-              else
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: files.length,
-                    itemBuilder: (ctx, i) {
-                      return ListTile(
-                        leading: const Icon(Icons.table_chart, color: Colors.greenAccent),
-                        title: Text(p.basename(files[i].path), style: const TextStyle(color: Colors.white)),
-                        trailing: const Icon(Icons.share, color: Colors.white54),
-                        onTap: () {
-                          Share.shareXFiles([XFile(files[i].path)]);
-                        },
-                      );
-                    }
-                  )
-                )
-            ],
-          )
-        );
-      }
-    );
+        context: context,
+        backgroundColor: const Color(0xFF121215),
+        shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (context) {
+          return Container(
+              padding: const EdgeInsets.all(20),
+              height: 350,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Archivos Generados",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w400,
+                          letterSpacing: 1.2)),
+                  const SizedBox(height: 20),
+                  if (files.isEmpty)
+                    Expanded(
+                        child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.folder_open,
+                              color: Colors.white.withValues(alpha: 0.2),
+                              size: 48),
+                          const SizedBox(height: 10),
+                          Text("No hay archivos generados aún",
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w300)),
+                        ],
+                      ),
+                    ))
+                  else
+                    Expanded(
+                        child: ListView.builder(
+                            itemCount: files.length,
+                            itemBuilder: (ctx, i) {
+                              return ListTile(
+                                leading: const Icon(Icons.table_chart,
+                                    color: Colors.greenAccent),
+                                title: Text(p.basename(files[i].path),
+                                    style:
+                                        const TextStyle(color: Colors.white)),
+                                trailing: const Icon(Icons.share,
+                                    color: Colors.white54),
+                                onTap: () {
+                                  Share.shareXFiles([XFile(files[i].path)]);
+                                },
+                              );
+                            }))
+                ],
+              ));
+        });
   }
 
-  void _performAnthroCalculation(String nombre, int edad, double peso, double talla, String genero, {double? muacCm}) {
-    final result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
+  void _performAnthroCalculation(
+      String nombre, int edad, double peso, double talla, String genero,
+      {double? muacCm}) {
+    final result =
+        AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
     setState(() => _lastManualDiagnosis = result.diagnosis);
-    
+
     String simplifiedDiag = "";
     if (result.diagnosis.contains("Normal")) {
-      simplifiedDiag = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!\n\n🌵 Wayuunaiki: Waima ni'iruku, katsinshi nia. Anashii pükülin nia sümaa eküülü anasü. ¡Müle'u chia!";
-    } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
-      simplifiedDiag = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.\n\n🌵 Wayuunaiki: Jülüja aa'in. Cho'ujaasü ataralü mma'ana. Püshajaa chi jintükai eemüin tü piichi ataralü eesü kasakai.";
-    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-      simplifiedDiag = "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü nutuma. Pükülin nia sümaa eküülü anasü siia püshajaa chi eekai atüjain.";
+      simplifiedDiag =
+          "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!\n\n🌵 Wayuunaiki: Waima ni'iruku, katsinshi nia. Anashii pükülin nia sümaa eküülü anasü. ¡Müle'u chia!";
+    } else if (result.diagnosis.contains("Desnutrición") ||
+        result.diagnosis.contains("Delgadez")) {
+      simplifiedDiag =
+          "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.\n\n🌵 Wayuunaiki: Jülüja aa'in. Cho'ujaasü ataralü mma'ana. Püshajaa chi jintükai eemüin tü piichi ataralü eesü kasakai.";
+    } else if (result.diagnosis.contains("Sobrepeso") ||
+        result.diagnosis.contains("Obesidad")) {
+      simplifiedDiag =
+          "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü nutuma. Pükülin nia sümaa eküülü anasü siia püshajaa chi eekai atüjain.";
     }
 
     if (result.muacDiagnosis.isNotEmpty) {
       simplifiedDiag += "\n\nMUAC: " + result.muacDiagnosis;
     }
-    
+
     final speechText = "He registrado a $nombre. $simplifiedDiag";
-    
-    final zScoreText = '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}, W/H: ${result.zWeightForHeight.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+
+    final zScoreText =
+        '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}, W/H: ${result.zWeightForHeight.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
 
     _addMessage({
-       "role": "glyph", 
-       "type": "anthro_chart",
-       "text": zScoreText,
-       "data": {
-           "edad": edad, "peso": peso, "talla": talla, "genero": genero, 
-           "diag": result.diagnosis, 
-           "text": speechText
-       }
+      "role": "glyph",
+      "type": "anthro_chart",
+      "text": zScoreText,
+      "data": {
+        "edad": edad,
+        "peso": peso,
+        "talla": talla,
+        "genero": genero,
+        "diag": result.diagnosis,
+        "text": speechText
+      }
     });
-    
+
     // Primero habla en español; cuando termine, reproduce el audio en Wayuunaiki
     String? wayuuAudio;
     if (result.diagnosis.contains("Normal")) {
       wayuuAudio = 'wayuu_sano.mp3';
-    } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+    } else if (result.diagnosis.contains("Desnutrición") ||
+        result.diagnosis.contains("Delgadez")) {
       wayuuAudio = 'wayuu_peligro.mp3';
-    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+    } else if (result.diagnosis.contains("Sobrepeso") ||
+        result.diagnosis.contains("Obesidad")) {
       wayuuAudio = 'wayuu_precaucion.mp3';
     }
 
@@ -1683,18 +2132,27 @@ class _ChatScreenState extends State<ChatScreen>
     _flutterTts.speak(speechText);
 
     DatabaseHelper.instance.getAllPatients().then((patients) {
-      final existing = patients.where((p) => p['name'].toString().toLowerCase() == nombre.toLowerCase()).toList();
-      
+      final existing = patients
+          .where(
+              (p) => p['name'].toString().toLowerCase() == nombre.toLowerCase())
+          .toList();
+
       void saveMeasurement(int pid) {
         DatabaseHelper.instance.insertMeasurement({
-          "patient_id": pid, "date": DateTime.now().toIso8601String(),
-          "age_months": edad, "weight_kg": peso, "height_cm": talla, "bmi": 0.0,
-          "z_wfa": result.zWeightForAge, "z_hfa": result.zHeightForAge, "z_bmi": result.zBmiForAge,
+          "patient_id": pid,
+          "date": DateTime.now().toIso8601String(),
+          "age_months": edad,
+          "weight_kg": peso,
+          "height_cm": talla,
+          "bmi": 0.0,
+          "z_wfa": result.zWeightForAge,
+          "z_hfa": result.zHeightForAge,
+          "z_bmi": result.zBmiForAge,
           "diagnosis": result.diagnosis,
           "muac_cm": muacCm
         });
         if (mounted) {
-           // Z-Scores ya enviados en el mensaje principal
+          // Z-Scores ya enviados en el mensaje principal
         }
       }
 
@@ -1702,7 +2160,11 @@ class _ChatScreenState extends State<ChatScreen>
         saveMeasurement(existing.first['id']);
       } else {
         DatabaseHelper.instance.insertPatient({
-          "name": nombre, "gender": genero, "birthDate": DateTime.now().subtract(Duration(days: edad * 30)).toIso8601String()
+          "name": nombre,
+          "gender": genero,
+          "birthDate": DateTime.now()
+              .subtract(Duration(days: edad * 30))
+              .toIso8601String()
         }).then((pid) {
           saveMeasurement(pid);
         });
@@ -1710,31 +2172,41 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
-  void _performGestationalCalculation(String nombre, int semanas, double peso, double talla) {
+  void _performGestationalCalculation(
+      String nombre, int semanas, double peso, double talla) {
     final result = AnthroService.calculateGestational(semanas, peso, talla);
     setState(() => _lastManualDiagnosis = result.diagnosis);
 
     String simplifiedDiag = "";
     if (result.diagnosis.contains("Normal")) {
-      simplifiedDiag = "Su estado nutricional es adecuado para las $semanas semanas de gestación. Recomendación: Continúe con su alimentación balanceada y asista a sus controles prenatales.\n\n🌵 Wayuunaiki: Anashii tü pükülinka süpüla $semanas semanas kachonwa'a pia. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+      simplifiedDiag =
+          "Su estado nutricional es adecuado para las $semanas semanas de gestación. Recomendación: Continúe con su alimentación balanceada y asista a sus controles prenatales.\n\n🌵 Wayuunaiki: Anashii tü pükülinka süpüla $semanas semanas kachonwa'a pia. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
     } else if (result.diagnosis.contains("Bajo Peso")) {
-      simplifiedDiag = "Precaución. Su peso es bajo para las $semanas semanas de gestación. Recomendación: Aumente la ingesta de proteínas y energía, y consulte con su nutricionista en el próximo control.\n\n🌵 Wayuunaiki: Jülüja aa'in. Pe'u pia süpüla $semanas semanas kachonwa'a pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
-    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
-      simplifiedDiag = "Precaución. Su peso es superior al recomendado para las $semanas semanas. Recomendación: Cuide las porciones de carbohidratos y grasas, y manténgase activa según lo permita su médico.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü pütuma süpüla $semanas semanas. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+      simplifiedDiag =
+          "Precaución. Su peso es bajo para las $semanas semanas de gestación. Recomendación: Aumente la ingesta de proteínas y energía, y consulte con su nutricionista en el próximo control.\n\n🌵 Wayuunaiki: Jülüja aa'in. Pe'u pia süpüla $semanas semanas kachonwa'a pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
+    } else if (result.diagnosis.contains("Sobrepeso") ||
+        result.diagnosis.contains("Obesidad")) {
+      simplifiedDiag =
+          "Precaución. Su peso es superior al recomendado para las $semanas semanas. Recomendación: Cuide las porciones de carbohidratos y grasas, y manténgase activa según lo permita su médico.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü pütuma süpüla $semanas semanas. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
     }
 
     final speechText = "He registrado a la gestante $nombre. $simplifiedDiag";
-    final zScoreText = 'IMC Gestacional: ${result.bmi.toStringAsFixed(1)}\nSemanas: $semanas\nDiagnóstico: ${result.diagnosis}';
+    final zScoreText =
+        'IMC Gestacional: ${result.bmi.toStringAsFixed(1)}\nSemanas: $semanas\nDiagnóstico: ${result.diagnosis}';
 
     _addMessage({
-       "role": "glyph", 
-       "type": "anthro_chart", // Reutilizamos el widget de gráfico o mostramos el texto
-       "text": zScoreText,
-       "data": {
-           "edad": semanas, "peso": peso, "talla": talla, "genero": "f", 
-           "diag": result.diagnosis, 
-           "text": speechText
-       }
+      "role": "glyph",
+      "type":
+          "anthro_chart", // Reutilizamos el widget de gráfico o mostramos el texto
+      "text": zScoreText,
+      "data": {
+        "edad": semanas,
+        "peso": peso,
+        "talla": talla,
+        "genero": "f",
+        "diag": result.diagnosis,
+        "text": speechText
+      }
     });
 
     _flutterTts.speak(speechText);
@@ -1743,14 +2215,39 @@ class _ChatScreenState extends State<ChatScreen>
   // Convierte palabras numéricas en español a enteros
   int? _spanishWordToNumber(String word) {
     const map = {
-      "cero": 0, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4,
-      "cinco": 5, "seis": 6, "siete": 7, "ocho": 8, "nueve": 9,
-      "diez": 10, "once": 11, "doce": 12, "trece": 13, "catorce": 14,
-      "quince": 15, "dieciséis": 16, "diecisiete": 17, "dieciocho": 18,
-      "diecinueve": 19, "veinte": 20, "veintiuno": 21, "veintidós": 22,
-      "veintitrés": 23, "veinticuatro": 24, "veinticinco": 25,
-      "veintiséis": 26, "veintisiete": 27, "veintiocho": 28,
-      "veintinueve": 29, "treinta": 30, "cuarenta": 40, "cincuenta": 50,
+      "cero": 0,
+      "uno": 1,
+      "dos": 2,
+      "tres": 3,
+      "cuatro": 4,
+      "cinco": 5,
+      "seis": 6,
+      "siete": 7,
+      "ocho": 8,
+      "nueve": 9,
+      "diez": 10,
+      "once": 11,
+      "doce": 12,
+      "trece": 13,
+      "catorce": 14,
+      "quince": 15,
+      "dieciséis": 16,
+      "diecisiete": 17,
+      "dieciocho": 18,
+      "diecinueve": 19,
+      "veinte": 20,
+      "veintiuno": 21,
+      "veintidós": 22,
+      "veintitrés": 23,
+      "veinticuatro": 24,
+      "veinticinco": 25,
+      "veintiséis": 26,
+      "veintisiete": 27,
+      "veintiocho": 28,
+      "veintinueve": 29,
+      "treinta": 30,
+      "cuarenta": 40,
+      "cincuenta": 50,
       "sesenta": 60,
     };
     return map[word.toLowerCase().trim()];
@@ -1761,7 +2258,7 @@ class _ChatScreenState extends State<ChatScreen>
 
     // ── Edad ─────────────────────────────────────────────────────────────────
     int? edad;
-    
+
     // 1. Buscar Años (ej. "1 año", "un año", "2 años")
     int years = 0;
     final yearDigitMatch = RegExp(r"(\d+)\s*año").firstMatch(lower);
@@ -1794,12 +2291,14 @@ class _ChatScreenState extends State<ChatScreen>
     // ── Peso ─────────────────────────────────────────────────────────────────
     // Número + kg/kilos (ej. "3kg", "3 kg", "3 kilos")
     double? peso;
-    final weightDigitMatch = RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos?|kilo)").firstMatch(lower);
+    final weightDigitMatch =
+        RegExp(r"(\d+(\.\d+)?)\s*(kg|kilos?|kilo)").firstMatch(lower);
     if (weightDigitMatch != null) {
       peso = double.tryParse(weightDigitMatch.group(1)!);
     } else {
       // Palabra numérica + kg (ej. "tres kg")
-      final weightWordMatch = RegExp(r"([a-z]+)\s*(kg|kilos?|kilo)").firstMatch(lower);
+      final weightWordMatch =
+          RegExp(r"([a-z]+)\s*(kg|kilos?|kilo)").firstMatch(lower);
       if (weightWordMatch != null) {
         final n = _spanishWordToNumber(weightWordMatch.group(1)!);
         if (n != null) peso = n.toDouble();
@@ -1822,7 +2321,8 @@ class _ChatScreenState extends State<ChatScreen>
     // ── Nombre y género ───────────────────────────────────────────────────────
     final nameMatch = RegExp(r"\b([A-Z][a-záéíóúñ]+)\b").firstMatch(userText);
     final nombre = nameMatch?.group(1) ?? "Niño";
-    final genero = lower.contains("niña") || lower.contains("femenino") ? "f" : "m";
+    final genero =
+        lower.contains("niña") || lower.contains("femenino") ? "f" : "m";
 
     if (edad != null && peso != null && talla != null) {
       _performAnthroCalculation(nombre, edad, peso, talla, genero);
@@ -1830,7 +2330,9 @@ class _ChatScreenState extends State<ChatScreen>
     }
 
     // ── Extracción Gestacional ───────────────────────────────────────────────
-    if (lower.contains("embarazada") || lower.contains("gestante") || lower.contains("semanas")) {
+    if (lower.contains("embarazada") ||
+        lower.contains("gestante") ||
+        lower.contains("semanas")) {
       int? semanas;
       final weekMatch = RegExp(r"(\d+)\s*semana").firstMatch(lower);
       if (weekMatch != null) {
@@ -1842,6 +2344,7 @@ class _ChatScreenState extends State<ChatScreen>
       }
     }
   }
+
   Future<void> _handleWakeOnLan() async {
     String? mac = await DatabaseHelper.instance.getSetting('pc_mac');
     if (mac == null || mac.isEmpty) {
@@ -1855,7 +2358,7 @@ class _ChatScreenState extends State<ChatScreen>
   Future<void> _performWakeOnLan(String mac) async {
     try {
       final macAddress = MACAddress(mac);
-      
+
       // Lista de configuraciones para probar (Puertos 7 y 9, Difusión Global y Local)
       final configs = [
         {'ip': '255.255.255.255', 'port': 9},
@@ -1868,7 +2371,7 @@ class _ChatScreenState extends State<ChatScreen>
         final ip = config['ip'] as String;
         final port = config['port'] as int;
         final wol = WakeOnLAN(IPAddress(ip), macAddress, port: port);
-        
+
         // Enviamos ráfagas por cada configuración
         for (int i = 0; i < 3; i++) {
           await wol.wake();
@@ -1878,7 +2381,8 @@ class _ChatScreenState extends State<ChatScreen>
 
       _addMessage({
         "role": "glyph",
-        "text": "🚀 Ráfaga de encendido enviada (Puertos 7/9, IP Global/Local). Si sigue sin despertar, es posible que el Wi-Fi de tu laptop Acer se desconecte totalmente en modo S0."
+        "text":
+            "🚀 Ráfaga de encendido enviada (Puertos 7/9, IP Global/Local). Si sigue sin despertar, es posible que el Wi-Fi de tu laptop Acer se desconecte totalmente en modo S0."
       });
     } catch (e) {
       _addMessage({
