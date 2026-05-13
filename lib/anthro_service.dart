@@ -115,7 +115,11 @@ class AnthroService {
   }
 
   static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr, {double? muacCm}) {
-    Sex sex = (genderStr.toLowerCase() == 'm' || genderStr.toLowerCase() == 'masculino' || genderStr.toLowerCase() == 'male')
+    if (ageInMonths < 0 || ageInMonths > 228) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Edad fuera de rango (0-19 años)", muacDiagnosis: "");
+    if (weightKg < 0.5 || weightKg > 200) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Peso fuera de rango realista (0.5-200kg)", muacDiagnosis: "");
+    if (heightCm < 30 || heightCm > 250) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Talla fuera de rango realista (30-250cm)", muacDiagnosis: "");
+
+    Sex sex = (genderStr.toLowerCase().contains('m') || genderStr.toLowerCase().contains('masculino') || genderStr.toLowerCase().contains('niño'))
         ? Sex.male
         : Sex.female;
 

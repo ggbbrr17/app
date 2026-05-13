@@ -2858,8 +2858,13 @@ class _ChatScreenState extends State<ChatScreen>
   void _performAnthroCalculation(
       String nombre, int edad, double peso, double talla, String genero,
       {double? muacCm}) {
-    final result =
-        AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
+    AnthroResult result;
+    try {
+       result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
+    } catch (e) {
+       _addMessage({"role": "glyph", "text": "Error en el cálculo: Los datos ingresados son extremos o inválidos."});
+       return;
+    }
     setState(() => _lastManualDiagnosis = result.diagnosis);
 
     String simplifiedDiag = "";
@@ -3256,7 +3261,7 @@ class _ChatScreenState extends State<ChatScreen>
     final nameMatch = RegExp(r"\b([A-Z][a-záéíóúñ]+)\b").firstMatch(userText);
     final nombre = nameMatch?.group(1) ?? "Niño";
     final genero =
-        lower.contains("niña") || lower.contains("femenino") ? "f" : "m";
+        (lower.contains("niña") || lower.contains("femenino") || lower.contains("mujer") || lower.contains("jintü")) ? "f" : "m";
 
     // ── Extracción Gestacional ───────────────────────────────────────────────
     if (lower.contains("embarazada") || lower.contains("gestante") || lower.contains("semanas")) {
