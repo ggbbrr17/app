@@ -1318,8 +1318,10 @@ class _ChatScreenState extends State<ChatScreen>
                         fontWeight: FontWeight.bold)),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
                   _buildLangBubble("Español"),
                   _buildLangBubble("Wayuunaiki"),
@@ -1333,8 +1335,10 @@ class _ChatScreenState extends State<ChatScreen>
                       color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 14)),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
                   _buildTopicBubble("Salud"),
                   _buildTopicBubble("Agricultura"),
@@ -1347,8 +1351,10 @@ class _ChatScreenState extends State<ChatScreen>
                       color: Colors.white.withValues(alpha: 0.9),
                       fontSize: 14)),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
                 children: [
                   _buildRoleBubble("Profesional"),
                   _buildRoleBubble("Persona"),
@@ -1508,13 +1514,16 @@ class _ChatScreenState extends State<ChatScreen>
 
     return GestureDetector(
       onTap: () {
+        // Limpiamos selectores previos y activamos modo tutor si aplica
         setState(() {
           _messages.removeWhere((m) => m["type"] == "topic_selector");
           _isTutorMode = (topic == "Agricultura");
         });
         
+        // Añadimos los mensajes de confirmación
+        _addMessage({"role": "user", "text": "$emoji $display"});
+        
         if (topic == "Agricultura") {
-           _addMessage({"role": "user", "text": "$emoji $display"});
            _addMessage({
              "role": "glyph",
              "text": _appLanguage == "Wayuunaiki" 
@@ -1524,7 +1533,6 @@ class _ChatScreenState extends State<ChatScreen>
                      : "Entendido. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"
            });
         } else {
-           _addMessage({"role": "user", "text": "$emoji $display"});
            _addMessage({
              "role": "glyph",
              "type": "role_selector",
@@ -1535,6 +1543,7 @@ class _ChatScreenState extends State<ChatScreen>
                      : "¿Eres personal de salud o un usuario particular?"
            });
         }
+        _scrollToBottom();
       },
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.5, end: 1.0),
