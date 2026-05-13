@@ -751,7 +751,7 @@ class _ChatScreenState extends State<ChatScreen>
 
     await _gemmaChat!.addQuery(Message(
         text:
-            "Eres un asistente de salud pediátrica, experto agrícola y HABLANTE de Wayuunaiki. Tienes un diccionario offline con más de 200 palabras Wayuunaiki-Español. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, usa 'registrar_medicion_pediatrica'. Si te piden TRADUCIR, usa 'traducir_wayuunaiki'. Si te piden BUSCAR una palabra, usa 'buscar_diccionario_wayuu'. Si te piden encender la computadora, usa 'encender_computadora'. OBLIGATORIO: Tu idioma principal de respuesta para toda la conversación será $_appLanguage.",
+            "Eres experto en salud pediátrica, agricultura y Wayuunaiki. Usa herramientas para mediciones, traducción y búsqueda. Responde siempre en $_appLanguage. IMPORTANTE: No uses asteriscos (*) en tus respuestas, usa texto plano.",
         isUser: false));
   }
 
@@ -895,13 +895,11 @@ class _ChatScreenState extends State<ChatScreen>
     String langInstruction = "";
     if (_appLanguage.isNotEmpty) {
       if (_appLanguage == "Wayuunaiki") {
-        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI pura. Prohibido usar español. USA ESTE DICCIONARIO PARA TUS PALABRAS:\n${( _wayuuDict.stats['total_wayuunaiki'] ?? 0 ) > 0 ? _wayuuDict.translateToWayuunaiki('salud') : ''} ... (Usa el diccionario integrado)";
-        // Para que sea más efectivo, podemos inyectar un fragmento del glosario médico
-        langInstruction += "\nGLOSARIO CLAVE:\nanasü: salud, ayuulii: enfermedad, tepichi: niño, eküülü: comida, wüin: agua.";
+        langInstruction = "OBLIGATORIO: Responde solo en WAYUUNAIKI. Prohibido español. Glosario: anasü (salud), ayuulii (enfermo), tepichi (niño), eküülü (comida).";
       } else if (_appLanguage == "Español") {
         langInstruction = "Responde en Español.";
       } else if (_appLanguage == "Inglés") {
-        langInstruction = "MANDATORY: Respond strictly in English.";
+        langInstruction = "STRICT: Respond only in English.";
       }
     }
 
@@ -923,12 +921,12 @@ class _ChatScreenState extends State<ChatScreen>
     } else {
       if (!_isHealthProfessional) {
         if (_appLanguage == "Inglés") {
-          langInstruction += " IMPORTANT: The user is NOT a healthcare professional. Give very direct, simple explanations without complex medical terms or statistical charts. Focus on easy-to-follow home recommendations and basic warning signs based on simple data.";
+          langInstruction += " User is NOT a medic. Talk simple, no technical terms. Give home tips and warning signs.";
         } else {
-          langInstruction += " IMPORTANTE: El usuario NO es personal de salud. Da explicaciones muy directas, sencillas, sin usar términos médicos complejos ni gráficas estadísticas. Céntrate en recomendaciones fáciles de seguir en casa y signos de alarma básicos basándote en los síntomas o datos simples que den.";
+          langInstruction += " Usuario NO es médico. Habla simple, sin términos técnicos. Da consejos de casa y signos de alarma básicos.";
         }
       }
-      finalQuestion = "$finalQuestion\n\nINSTRUCCIÓN FINAL: $langInstruction";
+      finalQuestion = "$finalQuestion\n\nINSTRUCCIÓN FINAL: $langInstruction. IMPORTANTE: Responde en texto plano, sin usar asteriscos (*).";
     }
 
     if (_isOfflineMode && _gemmaChat != null) {
