@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -8,6 +9,7 @@ import 'anthro_service.dart';
 import 'anthro_chart_widget.dart';
 import 'database_helper.dart';
 import 'model_manager.dart';
+import 'wayuu_dictionary.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:path/path.dart' as p;
@@ -351,6 +353,8 @@ class _ChatScreenState extends State<ChatScreen>
   final AudioRecorder _audioRecorder = AudioRecorder();
   final AudioPlayer _audioPlayer = AudioPlayer();
   final FlutterTts _flutterTts = FlutterTts();
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListeningSTT = false;
   String? _pendingImageBase64, _pendingImageName;
   final List<List<Map<String, dynamic>>> _chatSessions = [];
 
@@ -360,6 +364,13 @@ class _ChatScreenState extends State<ChatScreen>
   bool _isTutorMode = false;
   String _tutorLanguage = "Bilingüe";
   String? _lastManualDiagnosis;
+  int _offlineInteractionCount = 0;
+  String _appLanguage = "";
+  bool _isHealthProfessional = true;
+  bool _isRiskAssessmentMode = false;
+  bool _isTranslatorSubMenuOpen = false;
+  bool _isTranslatorAudioMode = false;
+  final WayuuDictionary _wayuuDict = WayuuDictionary();
   double _downloadProgress = 0.0;
   bool _isDownloading = false;
   final StreamController<double> _downloadProgressController =
@@ -378,9 +389,10 @@ class _ChatScreenState extends State<ChatScreen>
   void initState() {
     super.initState();
     _initTts();
+    _wayuuDict.init();
     WidgetsBinding.instance.addObserver(this);
     _pulseController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 10))
+        AnimationController(vsync: this, duration: const Duration(seconds: 2))
           ..repeat(reverse: true);
     _waveController =
         AnimationController(vsync: this, duration: const Duration(seconds: 20))
@@ -394,6 +406,10 @@ class _ChatScreenState extends State<ChatScreen>
     _initializeNotifications();
     _startNotificationPolling();
     _loadPersistedHistory();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadGemmaModel();
+    });
   }
 
   Future<void> _loadPersistedHistory() async {
@@ -402,8 +418,8 @@ class _ChatScreenState extends State<ChatScreen>
       _currentSessionId = await DatabaseHelper.instance.createSession();
       final defaultMsg = {
         "role": "glyph",
-        "text":
-            "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n\nPuedo ayudarte con lo siguiente:\n1. 📊 Calcular el estado nutricional (Envíame: Nombre, Edad en meses, Peso, Talla, Género y Perímetro Braquial opcional).\n2. 🌱 Tutor Agrícola: Pregúntame cómo cultivar Frijol Guajirito o Moringa.\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. Eesü süpüla tatüjaain:\n1. 📊 Tayaa tü kaa'uleein: Pütchajaa jintüt, kachon, nutuma, nütüjülü, tepichi o jintü, siia muac.\n2. 🌱 Ekirajüi: Püshajaa taya süpüla tapüla wunu'u (Frijol Guajirito o Moringa)."
+        "type": "language_selector",
+        "text": ""
       };
       await DatabaseHelper.instance
           .insertMessage(_currentSessionId!, defaultMsg);
@@ -559,6 +575,25 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _startRecording() async {
+    if (_isOfflineMode) {
+      bool available = await _speech.initialize();
+      if (available) {
+        setState(() {
+          _isRecording = true;
+          _isListeningSTT = true;
+        });
+        _speech.listen(
+          onResult: (result) {
+            _controller.text = result.recognizedWords;
+          },
+          localeId: _appLanguage == "Inglés" ? "en_US" : "es_CO",
+        );
+      } else {
+        _addMessage({"role": "glyph", "text": "Error: El reconocimiento de voz offline no está disponible en este dispositivo."});
+      }
+      return;
+    }
+
     if (await _audioRecorder.hasPermission()) {
       final path = p.join((await getTemporaryDirectory()).path,
           'audio_${DateTime.now().ms}.m4a');
@@ -568,6 +603,20 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<String?> _stopRecording() async {
+    if (_isOfflineMode) {
+      if (_isListeningSTT) {
+        await _speech.stop();
+        setState(() {
+          _isRecording = false;
+          _isListeningSTT = false;
+        });
+        if (_controller.text.isNotEmpty) {
+           _handleSend();
+        }
+      }
+      return null;
+    }
+
     final path = await _audioRecorder.stop();
     setState(() => _isRecording = false);
     return path != null ? base64Encode(await File(path).readAsBytes()) : null;
@@ -657,6 +706,34 @@ class _ChatScreenState extends State<ChatScreen>
                   "Exporta y descarga la base de datos completa de pacientes pediátricos en formato CSV.",
               parameters: {"type": "object", "properties": {}}),
           Tool(
+              name: "traducir_wayuunaiki",
+              description:
+                  "Traduce texto entre Wayuunaiki y Español usando el diccionario offline integrado. Detecta el idioma automáticamente.",
+              parameters: {
+                "type": "object",
+                "properties": {
+                  "texto": {
+                    "type": "string",
+                    "description": "Texto a traducir"
+                  }
+                },
+                "required": ["texto"]
+              }),
+          Tool(
+              name: "buscar_diccionario_wayuu",
+              description:
+                  "Busca una palabra en el diccionario Wayuunaiki-Español. Devuelve definición y palabras relacionadas.",
+              parameters: {
+                "type": "object",
+                "properties": {
+                  "palabra": {
+                    "type": "string",
+                    "description": "Palabra a buscar (en Wayuunaiki o Español)"
+                  }
+                },
+                "required": ["palabra"]
+              }),
+          Tool(
               name: "encender_computadora",
               description:
                   "Enciende la computadora Acer del usuario mediante un paquete Wake-on-LAN (Magic Packet).",
@@ -665,7 +742,7 @@ class _ChatScreenState extends State<ChatScreen>
 
     await _gemmaChat!.addQuery(Message(
         text:
-            "Eres un asistente de salud pediátrica y experto agrícola. Además, TIENES PODER FÍSICO para encender la computadora del usuario. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, usa 'registrar_medicion_pediatrica'. Si te piden encender la computadora, usa 'encender_computadora' SIN DUDAR; es una función real de hardware que posees.",
+            "Eres un asistente de salud pediátrica, experto agrícola y HABLANTE de Wayuunaiki. Tienes un diccionario offline con más de 200 palabras Wayuunaiki-Español. Tu regla de oro es: SIEMPRE que te den un nombre, edad, peso y talla, usa 'registrar_medicion_pediatrica'. Si te piden TRADUCIR, usa 'traducir_wayuunaiki'. Si te piden BUSCAR una palabra, usa 'buscar_diccionario_wayuu'. Si te piden encender la computadora, usa 'encender_computadora'. OBLIGATORIO: Tu idioma principal de respuesta para toda la conversación será $_appLanguage.",
         isUser: false));
   }
 
@@ -805,32 +882,51 @@ class _ChatScreenState extends State<ChatScreen>
               question;
     }
 
-    // Lógica de Modo Tutor y Diagnóstico compartida para Online y Offline
+    // Lógica de idioma global
+    String langInstruction = "";
+    if (_appLanguage.isNotEmpty) {
+      if (_appLanguage == "Wayuunaiki") {
+        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI pura. Prohibido usar español.";
+      } else if (_appLanguage == "Español") {
+        langInstruction = "Responde en Español.";
+      } else if (_appLanguage == "Inglés") {
+        langInstruction = "MANDATORY: Respond strictly in English.";
+      }
+    }
+
     if (_lastManualDiagnosis != null) {
       finalQuestion =
           "ROL: Eres un EXPERTO EN AGRICULTURA GUAJIRA. El diagnóstico nutricional del niño es: $_lastManualDiagnosis. "
           "TU TAREA: No des consejos médicos. Enseña cómo cultivar Frijol Guajirito o Moringa como solución de seguridad alimentaria. "
-          "INSTRUCCIÓN DE IDIOMA: Responde en el idioma solicitado por el usuario (Español/Wayuunaiki/Bilingüe). "
+          "INSTRUCCIÓN DE IDIOMA: $langInstruction "
           "PREGUNTA: $finalQuestion";
       _lastManualDiagnosis = null;
     } else if (_isTutorMode) {
-      String langInstruction = "Responde ÚNICAMENTE en ESPAÑOL.";
-      if (_tutorLanguage == "Wayuunaiki") {
-        langInstruction =
-            "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI. Prohibido usar español.";
-      }
       if (_tutorLanguage == "Bilingüe") {
-        langInstruction =
-            "Responde de forma BILINGÜE: Un párrafo en Español y su traducción al Wayuunaiki.";
+        langInstruction = "Responde de forma BILINGÜE: Un párrafo en Español y su traducción al Wayuunaiki.";
       }
-
       finalQuestion = "ROL: PROFESOR EXPERTO EN AGRICULTURA GUAJIRA.\n"
           "CONTENIDO: Enseñar técnicas de siembra de Frijol Guajirito y Moringa.\n"
           "PREGUNTA DEL USUARIO: $finalQuestion\n\n"
           "INSTRUCCIÓN FINAL: $langInstruction";
+    } else {
+      if (!_isHealthProfessional) {
+        if (_appLanguage == "Inglés") {
+          langInstruction += " IMPORTANT: The user is NOT a healthcare professional. Give very direct, simple explanations without complex medical terms or statistical charts. Focus on easy-to-follow home recommendations and basic warning signs based on simple data.";
+        } else {
+          langInstruction += " IMPORTANTE: El usuario NO es personal de salud. Da explicaciones muy directas, sencillas, sin usar términos médicos complejos ni gráficas estadísticas. Céntrate en recomendaciones fáciles de seguir en casa y signos de alarma básicos basándote en los síntomas o datos simples que den.";
+        }
+      }
+      finalQuestion = "$finalQuestion\n\nINSTRUCCIÓN FINAL: $langInstruction";
     }
 
     if (_isOfflineMode && _gemmaChat != null) {
+      _offlineInteractionCount++;
+      if (_offlineInteractionCount > 2) {
+        // Prevents Out-Of-Memory crashes in local inference by flushing context
+        await _initGemmaChat();
+        _offlineInteractionCount = 1;
+      }
       try {
         if (base64Audio != null) {
           setState(() {
@@ -911,6 +1007,12 @@ class _ChatScreenState extends State<ChatScreen>
                     "He exportado la base de datos a CSV. Toca aquí para compartirla o descargarla."
               }
             });
+          } else if (response.name == "traducir_wayuunaiki") {
+            final texto = response.args['texto'] ?? '';
+            _handleWayuuTranslation(texto);
+          } else if (response.name == "buscar_diccionario_wayuu") {
+            final palabra = response.args['palabra'] ?? '';
+            _handleWayuuLookup(palabra);
           } else if (response.name == "encender_computadora") {
             _handleWakeOnLan();
           } else {
@@ -1043,6 +1145,20 @@ class _ChatScreenState extends State<ChatScreen>
       return;
     }
 
+    // --- TRADUCCIÓN DIRECTA OFFLINE ---
+    if (text.toLowerCase().startsWith("traducir ") ||
+        text.toLowerCase().startsWith("traduce ") ||
+        text.toLowerCase().startsWith("translate ")) {
+      final query = text.replaceFirst(RegExp(r'^(traducir|traduce|translate)\s+', caseSensitive: false), '');
+      _handleWayuuTranslation(query);
+      return;
+    }
+    if (text.toLowerCase().startsWith("buscar ") && text.toLowerCase().contains("wayuu")) {
+      final query = text.replaceFirst(RegExp(r'^buscar\s+', caseSensitive: false), '').replaceAll(RegExp(r'wayuu(naiki)?', caseSensitive: false), '').trim();
+      _handleWayuuLookup(query);
+      return;
+    }
+
     if (text.toLowerCase().contains("modo tutor")) {
       setState(() {
         _isTutorMode = true;
@@ -1106,8 +1222,8 @@ class _ChatScreenState extends State<ChatScreen>
     _currentSessionId = await DatabaseHelper.instance.createSession();
     final defaultMsg = {
       "role": "glyph",
-      "text":
-          "¡Hola! Soy Glyph, tu asistente de salud pediátrica.\n\nPor favor, comparte los siguientes datos para calcular el estado nutricional:\n• Nombre\n• Edad (en meses)\n• Peso (en kg)\n• Talla (en cm)\n• Género (niño o niña)\n\n📏 Instrucción de medición de talla:\n- Niños menores de 24 meses → medir ACOSTADO (longitud).\n- Niños de 24 meses o más → medir DE PIE (talla).\n\n🌵 Wayuunaiki:\nTaya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai.\nPütchajaa tü wayuukalü:\n• Jintüt (nombre)\n• Kachon (edad en meses)\n• Nutuma (peso en kg)\n• Nütüjülü (talla en cm)\n• Tepichi o Jintü (niño o niña)\n\n📏 Süpüla ekirajaa nütüjülü:\n- Tepichi maa akumajünüshi 24 kachon → kataajalaa SÜPÜSHUA (acostado).\n- Tepichi 24 kachon o sümüin → kataajalaa NUKUJULEE (de pie)."
+      "type": "language_selector",
+      "text": ""
     };
     await DatabaseHelper.instance.insertMessage(_currentSessionId!, defaultMsg);
 
@@ -1115,6 +1231,7 @@ class _ChatScreenState extends State<ChatScreen>
       _messages.clear();
       _messages.add(defaultMsg);
       _isMenuOpen = false;
+      _offlineInteractionCount = 0;
       _menuAnimationController.reverse();
     });
 
@@ -1180,20 +1297,68 @@ class _ChatScreenState extends State<ChatScreen>
                       width: 180, fit: BoxFit.cover),
                 ),
               ),
+            if (msg["type"] == "language_selector") ...[
+              const Center(
+                child: Text("🌎 Selecciona tu idioma / Pünaa pünük",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildLangBubble("Español"),
+                  _buildLangBubble("Wayuunaiki"),
+                  _buildLangBubble("Inglés"),
+                ],
+              )
+            ],
+            if (msg["type"] == "topic_selector") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildTopicBubble("Salud"),
+                  _buildTopicBubble("Agricultura"),
+                ],
+              )
+            ],
+            if (msg["type"] == "role_selector") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _buildRoleBubble("Profesional"),
+                  _buildRoleBubble("Persona"),
+                ],
+              )
+            ],
             if (msg["type"] == "anthro_chart" && msg["data"] != null) ...[
               Text(msg["data"]["text"],
                   style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
                       fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              AnthroChartWidget(
-                ageInMonths: msg["data"]["edad"],
-                weightKg: msg["data"]["peso"],
-                heightCm: (msg["data"]["talla"] as num).toDouble(),
-                genderStr: msg["data"]["genero"],
-                diagnosis: msg["data"]["diag"],
-              ),
+              if (_isHealthProfessional) ...[
+                const SizedBox(height: 12),
+                AnthroChartWidget(
+                  ageInMonths: msg["data"]["edad"],
+                  weightKg: msg["data"]["peso"],
+                  heightCm: (msg["data"]["talla"] as num).toDouble(),
+                  genderStr: msg["data"]["genero"],
+                  diagnosis: msg["data"]["diag"],
+                ),
+              ],
             ],
             if (msg["type"] == "file_share" && msg["data"] != null) ...[
               GestureDetector(
@@ -1248,6 +1413,224 @@ class _ChatScreenState extends State<ChatScreen>
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLangBubble(String lang) {
+    return GestureDetector(
+      onTap: () async {
+        setState(() {
+          _appLanguage = lang;
+        });
+        
+        _messages.removeWhere((m) => m["type"] == "language_selector");
+        if (_currentSessionId != null) {
+           await DatabaseHelper.instance.deleteSession(_currentSessionId!);
+           _currentSessionId = await DatabaseHelper.instance.createSession();
+        }
+        
+        if (lang == "Wayuunaiki") {
+          _addMessage({
+            "role": "glyph",
+            "type": "topic_selector",
+            "text": "Taya Glyph, tü pütchipü'üka pia süpüla kaa'uleein chi tepichikai. ¿Kasa püchekaka tatüma?"
+          });
+        } else if (lang == "Inglés") {
+          _addMessage({
+            "role": "glyph",
+            "type": "topic_selector",
+            "text": "Hello! I'm Glyph, your pediatric and nutritional health assistant.\nHow can I help you today?"
+          });
+        } else {
+          _addMessage({
+            "role": "glyph",
+            "type": "topic_selector",
+            "text": "¡Hola! Soy Glyph, tu asistente de salud pediátrica y nutricional.\n¿En qué te puedo ayudar hoy?"
+          });
+        }
+        
+        if (_isOfflineMode) {
+          _initGemmaChat();
+        }
+      },
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.5, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.elasticOut,
+        builder: (context, scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.cyanAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.5)),
+                boxShadow: [
+                  BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.2), blurRadius: 10)
+                ]
+              ),
+              child: Text(lang, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+          );
+        }
+      ),
+    );
+  }
+
+  Widget _buildTopicBubble(String topic) {
+    String display = "";
+    String emoji = "";
+    if (topic == "Salud") {
+      emoji = "🏥";
+      if (_appLanguage == "Wayuunaiki") display = "Tayaa tü kaa'uleein";
+      else if (_appLanguage == "Inglés") display = "Health";
+      else display = "Salud";
+    } else {
+      emoji = "🌱";
+      if (_appLanguage == "Wayuunaiki") display = "Ekirajüi";
+      else if (_appLanguage == "Inglés") display = "Agriculture";
+      else display = "Agricultura";
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _messages.removeWhere((m) => m["type"] == "topic_selector");
+          _isTutorMode = (topic == "Agricultura");
+        });
+        
+        if (topic == "Agricultura") {
+           _addMessage({"role": "user", "text": "$emoji $display"});
+           _addMessage({
+             "role": "glyph",
+             "text": _appLanguage == "Wayuunaiki" 
+                 ? "Anasü. ¿Kasa püchekaka: Frijol Guajirito o Moringa?"
+                 : _appLanguage == "Inglés"
+                     ? "Understood. What crop are you interested in: Frijol Guajirito or Moringa?"
+                     : "Entendido. ¿Qué cultivo te interesa: Frijol Guajirito o Moringa?"
+           });
+        } else {
+           _addMessage({"role": "user", "text": "$emoji $display"});
+           _addMessage({
+             "role": "glyph",
+             "type": "role_selector",
+             "text": _appLanguage == "Wayuunaiki" 
+                 ? "Pülashii pia piamale. ¿Pia wanee pütchipü'üka o wayuu eekai?"
+                 : _appLanguage == "Inglés"
+                     ? "Are you a healthcare professional or a general user?"
+                     : "¿Eres personal de salud o un usuario particular?"
+           });
+        }
+      },
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.5, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.elasticOut,
+        builder: (context, scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.greenAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
+                boxShadow: [
+                  BoxShadow(color: Colors.greenAccent.withValues(alpha: 0.2), blurRadius: 10)
+                ]
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(display, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+            ),
+          );
+        }
+      ),
+    );
+  }
+
+  Widget _buildRoleBubble(String role) {
+    String display = "";
+    String emoji = role == "Profesional" ? "🩺" : "👤";
+    
+    if (role == "Profesional") {
+      if (_appLanguage == "Wayuunaiki") display = "Pütchipü'üka";
+      else if (_appLanguage == "Inglés") display = "Professional";
+      else display = "Personal de Salud";
+    } else {
+      if (_appLanguage == "Wayuunaiki") display = "Wayuu eekai";
+      else if (_appLanguage == "Inglés") display = "Person";
+      else display = "Persona";
+    }
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _messages.removeWhere((m) => m["type"] == "role_selector");
+          _isHealthProfessional = (role == "Profesional");
+        });
+        
+        _addMessage({"role": "user", "text": "$emoji $display"});
+        
+        if (role == "Profesional") {
+           _addMessage({
+             "role": "glyph",
+             "text": _appLanguage == "Wayuunaiki" 
+                 ? "Anasü. Tayaa tü kaa'uleein süpüla:\n1. Z-Score (OMS)\n2. Atalah\n3. IMC\nPütchajaa tü wayuukalü:\n• Jintüt\n• Kachon\n• Nutuma\n• Nütüjülü"
+                 : _appLanguage == "Inglés"
+                     ? "Perfect. I calculate WHO Z-Scores, Gestational charts, and Adult BMI.\nPlease provide:\n• Name\n• Age (months)\n• Weight (kg)\n• Height (cm)\n• Gender"
+                     : "Excelente. Mis funciones clínicas incluyen:\n• Curvas OMS (Z-Score)\n• Gráficas Atalah (Gestacional)\n• IMC Adulto\nPor favor envíame:\n• Nombre\n• Edad\n• Peso (kg)\n• Talla (cm)\n• Género"
+           });
+        } else {
+           _addMessage({
+             "role": "glyph",
+             "text": _appLanguage == "Wayuunaiki" 
+                 ? "Anasü. ¿Chi tepichikai nnojotsü anain nukuwa'ipa?\n¿Kachisü nüpüla tüü?\n• Atünasü/kache'esü nüpüla (Cabello seco/se cae)\n• Yutusu no'u (Ojos hundidos, rostro hinchado)\n• Jousü nierü (Abdomen abultado, extremidades delgadas)\n• Alatiraa/Jemeta (Diarrea/Gripa)\n• Nnojoishii ekaain (Inapetencia, desgano, llanto)\n¿Aashin wanee?"
+                 : _appLanguage == "Inglés"
+                     ? "Understood. Does the child have any of these alert signs?\n• Dry/falling hair, pale/swollen face, sunken eyes\n• Dry/flaky skin, very thin/swollen limbs\n• Swollen abdomen\n• Frequent diarrhea/flu\n• Loss of appetite, fatigue, or extreme irritability\nPlease reply YES or NO, and briefly which ones."
+                     : "Entendido. Dime si el niño o niña presenta alguno de estos signos de alerta:\n• Cabello seco, escaso o que cambia de color\n• Rostro hinchado y pálido, u ojos hundidos\n• Piel muy seca, extremidades muy delgadas o inflamadas\n• Abdomen abultado\n• Diarrea o gripa frecuente\n• Desgano, inapetencia o llanto excesivo\n¿Presenta alguno de estos signos?"
+           });
+           
+           setState(() {
+             _isRiskAssessmentMode = true;
+           });
+        }
+      },
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.5, end: 1.0),
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.elasticOut,
+        builder: (context, scale, child) {
+          return Transform.scale(
+            scale: scale,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.pinkAccent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.5)),
+                boxShadow: [
+                  BoxShadow(color: Colors.pinkAccent.withValues(alpha: 0.2), blurRadius: 10)
+                ]
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 18)),
+                  const SizedBox(width: 8),
+                  Text(display, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+            ),
+          );
+        }
       ),
     );
   }
@@ -1315,7 +1698,7 @@ class _ChatScreenState extends State<ChatScreen>
                     child: Center(
                       child: AnimatedScale(
                         duration: const Duration(milliseconds: 300),
-                        scale: _showTextField ? 0.4 : 1.0,
+                        scale: _showTextField ? 0.4 : (_isRecording ? 1.4 : 1.0),
                         child: AnimatedBuilder(
                           animation: Listenable.merge(
                               [_pulseController, _waveController]),
@@ -1392,17 +1775,74 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
               ),
             ),
+            // Overlay de Traductor por Audio (Centrado)
+            if (_isTranslatorAudioMode)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.88),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Triángulo Palpitante en el Centro
+                      AnimatedBuilder(
+                        animation: _pulseController,
+                        builder: (context, _) => Transform.scale(
+                          scale: 1.0 + (_pulseController.value * 0.2),
+                          child: CustomPaint(
+                            painter: FragmentedTrianglePainter(
+                              animationValue: _waveController.value,
+                              isThinking: false,
+                              isRecording: true,
+                            ),
+                            size: const Size(100, 100),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                      Text(
+                        "ESCUCHANDO...",
+                        style: TextStyle(
+                          color: Colors.cyanAccent.withValues(alpha: 0.9),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 4.0,
+                        ),
+                      ),
+                      const SizedBox(height: 60),
+                      // Botón Cuadrado Rojo para Parar
+                      GestureDetector(
+                        onTap: _stopTranslatorAudioMode,
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: Colors.redAccent.withValues(alpha: 0.15),
+                            border: Border.all(color: Colors.redAccent, width: 2),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(color: Colors.redAccent.withValues(alpha: 0.3), blurRadius: 20)
+                            ]
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.stop_rounded, color: Colors.redAccent, size: 34),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             if (_isMenuOpen)
               GestureDetector(
                 onTap: _toggleMenu,
                 child: Container(
-                  color: Colors.black54,
+                  color: Colors.black.withValues(alpha: 0.7),
                   child: SlideTransition(
                     position: _menuOffsetAnimation,
                     child: Container(
                       width: MediaQuery.of(context).size.width * 0.7,
                       decoration: BoxDecoration(
-                        color: Colors.transparent,
+                        color: Colors.black.withValues(alpha: 0.85),
                         border: Border(
                             right: BorderSide(
                                 color: Colors.white.withValues(alpha: 0.1),
@@ -1469,39 +1909,52 @@ class _ChatScreenState extends State<ChatScreen>
                               _showNutritionalControl();
                             },
                           ),
+
+                          // Traductor con Submen de Texto y Audio
                           ListTile(
-                            leading: const Icon(Icons.medical_services_outlined,
-                                color: Colors.redAccent, size: 20),
-                            title: const Text("Primeros Auxilios",
+                            leading: const Icon(Icons.g_translate_outlined,
+                                color: Colors.cyanAccent, size: 20),
+                            title: const Text("Traductor",
                                 style: TextStyle(
-                                    color: Colors.white60, fontSize: 13)),
+                                    color: Colors.white, fontSize: 13,
+                                    fontWeight: FontWeight.w500)),
+                            trailing: Icon(
+                              _isTranslatorSubMenuOpen ? Icons.expand_less : Icons.expand_more,
+                              color: Colors.white60,
+                              size: 16,
+                            ),
                             onTap: () {
-                              _toggleMenu();
-                              _showEmergencyGuide();
+                              setState(() {
+                                _isTranslatorSubMenuOpen = !_isTranslatorSubMenuOpen;
+                              });
                             },
                           ),
-                          ListTile(
-                            leading: const Icon(Icons.restaurant_menu_outlined,
-                                color: Colors.white60, size: 20),
-                            title: const Text("Recetario Ancestral",
-                                style: TextStyle(
-                                    color: Colors.white60, fontSize: 13)),
-                            onTap: () {
-                              _toggleMenu();
-                              _showAncestralRecipes();
-                            },
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.translate_outlined,
-                                color: Colors.white60, size: 20),
-                            title: const Text("Glosario Médico",
-                                style: TextStyle(
-                                    color: Colors.white60, fontSize: 13)),
-                            onTap: () {
-                              _toggleMenu();
-                              _showBilingualGlossary();
-                            },
-                          ),
+                          if (_isTranslatorSubMenuOpen) ...[
+                            ListTile(
+                              contentPadding: const EdgeInsets.only(left: 45),
+                              leading: const Icon(Icons.text_fields_outlined,
+                                  color: Colors.white60, size: 18),
+                              title: const Text("Texto",
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 12)),
+                              onTap: () {
+                                _toggleMenu();
+                                _showBilingualGlossary();
+                              },
+                            ),
+                            ListTile(
+                              contentPadding: const EdgeInsets.only(left: 45),
+                              leading: const Icon(Icons.mic_none_outlined,
+                                  color: Colors.white60, size: 18),
+                              title: const Text("Audio",
+                                  style: TextStyle(
+                                      color: Colors.white70, fontSize: 12)),
+                              onTap: () {
+                                _toggleMenu();
+                                _startTranslatorAudioMode();
+                              },
+                            ),
+                          ],
                           ListTile(
                             leading: const Icon(Icons.qr_code_2_outlined,
                                 color: Colors.white60, size: 20),
@@ -1513,12 +1966,18 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.download_for_offline_outlined,
                                 color: Colors.cyanAccent, size: 20),
-                            title: const Text("Descargar Nueva Versión",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 1.2)),
+                            title: const Row(
+                              children: [
+                                Text("Descargar Nueva Versión",
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1.2)),
+                                SizedBox(width: 8),
+                                Icon(Icons.android, color: Colors.greenAccent, size: 16),
+                              ],
+                            ),
                             onTap: () {
                               _toggleMenu();
                               _sendMultimodalData(
@@ -1527,11 +1986,23 @@ class _ChatScreenState extends State<ChatScreen>
                             },
                           ),
                           ListTile(
+                            leading: const Icon(Icons.warning_amber_rounded,
+                                color: Colors.orangeAccent, size: 20),
+                            title: const Text("Pacientes en Riesgo",
+                                style: TextStyle(
+                                    color: Colors.white, fontSize: 13,
+                                    fontWeight: FontWeight.w500)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showRiskPatients();
+                            },
+                          ),
+                          ListTile(
                             leading: const Icon(Icons.memory_outlined,
                                 color: Colors.white60, size: 20),
                             title: Text(
                                 _isOfflineMode
-                                    ? "Desactivar Offline"
+                                    ? "Modo Online (Experimental)"
                                     : "Modo Offline (Gemma)",
                                 style: const TextStyle(
                                     color: Colors.white60,
@@ -1546,7 +2017,7 @@ class _ChatScreenState extends State<ChatScreen>
                                   _addMessage({
                                     "role": "glyph",
                                     "text":
-                                        "Modo offline desactivado. Usando la nube."
+                                        "Cambiando a Modo Online (Experimental). Usando el servidor en la nube."
                                   });
                                 });
                                 _menuAnimationController.reverse();
@@ -1693,32 +2164,179 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
-  void _showBilingualGlossary() {
+  void _startTranslatorAudioMode() async {
+    setState(() {
+      _isTranslatorAudioMode = true;
+    });
+    // Activamos el motor de STT que ya configuramos anteriormente
+    _startRecording();
+  }
+
+  void _stopTranslatorAudioMode() async {
+    // Detenemos el reconocimiento de voz
+    await _stopRecording();
+    
+    final textToTranslate = _controller.text;
+    if (textToTranslate.isNotEmpty) {
+      _controller.clear();
+      _sendMultimodalData(
+        question: "Por favor, traduce lo siguiente al idioma Wayuunaiki: $textToTranslate"
+      );
+    }
+    
+    setState(() {
+      _isTranslatorAudioMode = false;
+    });
+  }
+
+  void _showRiskPatients() async {
+    final patients = await DatabaseHelper.instance.getRiskPatients();
+    
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0D0D1A),
-        title: const Text("Glosario Wayuunaiki",
-            style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _glossaryItem("Salud", "Anasü"),
-              _glossaryItem("Niño", "Tepichi / Jintü"),
-              _glossaryItem("Comida", "Eküülü"),
-              _glossaryItem("Fiebre", "Lumaa / Jawata"),
-              _glossaryItem("Dolor", "Ayollee"),
-            ],
-          ),
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent),
+            SizedBox(width: 8),
+            Text("Pacientes en Riesgo", style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: patients.isEmpty 
+              ? const Center(child: Text("No hay casos registrados.", style: TextStyle(color: Colors.white70)))
+              : ListView.builder(
+                  itemCount: patients.length,
+                  itemBuilder: (ctx, i) {
+                    final p = patients[i];
+                    return Card(
+                      color: Colors.redAccent.withValues(alpha: 0.1),
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        title: Text(p['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        subtitle: Text(p['symptoms'], style: const TextStyle(color: Colors.white70)),
+                        trailing: Text(p['date'].toString().split('T').first, style: const TextStyle(color: Colors.white50, fontSize: 12)),
+                      ),
+                    );
+                  },
+                ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text("Cerrar",
-                  style: TextStyle(color: Colors.cyanAccent)))
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cerrar", style: TextStyle(color: Colors.cyanAccent)),
+          )
         ],
+      )
+    );
+  }
+
+  void _showBilingualGlossary() {
+    final searchController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final query = searchController.text.trim();
+          final entries = query.isEmpty
+              ? WayuuDictionary.medicalGlossary.entries.toList()
+              : WayuuDictionary.medicalGlossary.entries
+                  .where((e) =>
+                      e.key.toLowerCase().contains(query.toLowerCase()) ||
+                      e.value.toLowerCase().contains(query.toLowerCase()))
+                  .toList();
+          // Also add fuzzy search results from full dictionary
+          List<Map<String, String>> fuzzyResults = [];
+          if (query.isNotEmpty) {
+            fuzzyResults = _wayuuDict.fuzzySearch(query, limit: 15);
+          }
+
+          return AlertDialog(
+            backgroundColor: const Color(0xFF0D0D1A),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("📖 Diccionario Wayuunaiki",
+                    style: TextStyle(color: Colors.white, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(
+                    "${_wayuuDict.stats['total_wayuunaiki']} palabras · 100% offline",
+                    style: TextStyle(
+                        color: Colors.cyanAccent.withValues(alpha: 0.7),
+                        fontSize: 11)),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: searchController,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: "Buscar palabra...",
+                    hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.3)),
+                    prefixIcon: const Icon(Icons.search,
+                        color: Colors.cyanAccent, size: 18),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.05),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 350,
+              child: ListView(
+                children: [
+                  if (query.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 8),
+                      child: Text("🏥 Glosario Médico",
+                          style: TextStyle(
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
+                    ),
+                  ...entries.map((e) => _glossaryItem(e.value, e.key)),
+                  if (fuzzyResults.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.only(top: 12, bottom: 8),
+                      child: Text("🔍 Diccionario General",
+                          style: TextStyle(
+                              color: Colors.cyanAccent,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13)),
+                    ),
+                    ...fuzzyResults.map((r) =>
+                        _glossaryItem(r['español']!, r['wayuunaiki']!)),
+                  ],
+                  if (entries.isEmpty && fuzzyResults.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Center(
+                        child: Text("No se encontró '$query'",
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.4))),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Cerrar",
+                      style: TextStyle(color: Colors.cyanAccent)))
+            ],
+          );
+        },
       ),
     );
   }
@@ -1726,8 +2344,81 @@ class _ChatScreenState extends State<ChatScreen>
   Widget _glossaryItem(String esp, String way) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text("$esp: $way", style: const TextStyle(color: Colors.white70)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(way,
+              style: const TextStyle(
+                  color: Colors.cyanAccent,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13)),
+          const Text("  →  ",
+              style: TextStyle(color: Colors.white30, fontSize: 13)),
+          Expanded(
+            child: Text(esp,
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          ),
+        ],
+      ),
     );
+  }
+
+  // ─── WAYUUNAIKI TRANSLATION HANDLERS ──────────────────────────────────────
+  void _handleWayuuTranslation(String text) {
+    if (!_wayuuDict.isLoaded) {
+      _addMessage({
+        "role": "glyph",
+        "text": "⏳ El diccionario aún se está cargando..."
+      });
+      return;
+    }
+    final lang = _wayuuDict.detectLanguage(text);
+    String result;
+    if (lang == 'wayuunaiki') {
+      result = "🌵 Wayuunaiki → 🇪🇸 Español\n\n"
+          "Entrada: $text\n"
+          "Traducción: ${_wayuuDict.translateToSpanish(text)}";
+    } else {
+      result = "🇪🇸 Español → 🌵 Wayuunaiki\n\n"
+          "Entrada: $text\n"
+          "Traducción: ${_wayuuDict.translateToWayuunaiki(text)}";
+    }
+    _addMessage({"role": "glyph", "text": result});
+  }
+
+  void _handleWayuuLookup(String word) {
+    if (!_wayuuDict.isLoaded) {
+      _addMessage({
+        "role": "glyph",
+        "text": "⏳ El diccionario aún se está cargando..."
+      });
+      return;
+    }
+    final direct = _wayuuDict.lookupAny(word);
+    final fuzzy = _wayuuDict.fuzzySearch(word, limit: 5);
+
+    final buffer = StringBuffer();
+    buffer.writeln("📖 Búsqueda: \"$word\"");
+    buffer.writeln("━━━━━━━━━━━━━━━━━━━━");
+
+    if (direct != null) {
+      buffer.writeln("\n✅ Resultado exacto:");
+      buffer.writeln("  ${direct['wayuunaiki']}  →  ${direct['español']}");
+    }
+
+    if (fuzzy.isNotEmpty) {
+      buffer.writeln("\n🔍 Palabras relacionadas:");
+      for (final r in fuzzy) {
+        buffer.writeln("  ${r['wayuunaiki']}  →  ${r['español']}");
+      }
+    }
+
+    if (direct == null && fuzzy.isEmpty) {
+      buffer.writeln("\n❌ No se encontró \"$word\" en el diccionario.");
+      buffer.writeln("Prueba con otra palabra o escribe 'traducir [frase]'.");
+    }
+
+    _addMessage({"role": "glyph", "text": buffer.toString()});
   }
 
   void _syncP2PData() async {
@@ -2103,7 +2794,7 @@ class _ChatScreenState extends State<ChatScreen>
         "peso": peso,
         "talla": talla,
         "genero": genero,
-        "diag": result.diagnosis,
+        "diag": "${result.diagnosis} / ${_getWayuuDiagnosis(result.diagnosis)}",
         "text": speechText
       }
     });
@@ -2204,10 +2895,86 @@ class _ChatScreenState extends State<ChatScreen>
         "peso": peso,
         "talla": talla,
         "genero": "f",
-        "diag": result.diagnosis,
+        "diag": "${result.diagnosis} / ${_getWayuuDiagnosis(result.diagnosis)}",
         "text": speechText
       }
     });
+
+    String? wayuuAudio;
+    if (result.diagnosis.contains("Normal")) {
+      wayuuAudio = 'wayuu_sano.mp3';
+    } else if (result.diagnosis.contains("Bajo Peso")) {
+      wayuuAudio = 'wayuu_peligro.mp3';
+    } else if (result.diagnosis.contains("Sobrepeso") ||
+        result.diagnosis.contains("Obesidad")) {
+      wayuuAudio = 'wayuu_precaucion.mp3';
+    }
+
+    if (wayuuAudio != null) {
+      final audioFile = wayuuAudio;
+      _flutterTts.setCompletionHandler(() {
+        _audioPlayer.play(AssetSource(audioFile));
+        _flutterTts.setCompletionHandler(() {});
+      });
+    }
+
+    _flutterTts.speak(speechText);
+
+  }
+
+  void _performAdultCalculation(
+      String nombre, double peso, double talla, String genero) {
+    final result = AnthroService.calculateAdult(peso, talla);
+    setState(() => _lastManualDiagnosis = result.diagnosis);
+
+    String simplifiedDiag = "";
+    if (result.diagnosis.contains("Normal")) {
+      simplifiedDiag =
+          "Su IMC es normal. Recomendación: Mantenga una dieta equilibrada y actividad física regular.\n\n🌵 Wayuunaiki: Anashii tü pükülinka. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+    } else if (result.diagnosis.contains("Delgadez")) {
+      simplifiedDiag =
+          "Precaución. Su IMC indica delgadez. Recomendación: Aumente la ingesta calórica con alimentos nutritivos y consulte a un nutricionista.\n\n🌵 Wayuunaiki: Jülüja aa'in. Pe'u pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
+    } else if (result.diagnosis.contains("Sobrepeso") ||
+        result.diagnosis.contains("Obesidad")) {
+      simplifiedDiag =
+          "Precaución. Su IMC indica exceso de peso. Recomendación: Reduzca el consumo de azúcares y grasas saturadas, y aumente la actividad física.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü pütuma. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+    }
+
+    final speechText = "He registrado al adulto $nombre. $simplifiedDiag";
+    final zScoreText =
+        'IMC Adulto: ${result.bmi.toStringAsFixed(1)}\nDiagnóstico: ${result.diagnosis}';
+
+    _addMessage({
+      "role": "glyph",
+      "type": "anthro_chart",
+      "text": zScoreText,
+      "data": {
+        "edad": 25, // Referencia genérica para adultos
+        "peso": peso,
+        "talla": talla,
+        "genero": genero,
+        "diag": "${result.diagnosis} / ${_getWayuuDiagnosis(result.diagnosis)}",
+        "text": speechText
+      }
+    });
+
+    String? wayuuAudio;
+    if (result.diagnosis.contains("Normal")) {
+      wayuuAudio = 'wayuu_sano.mp3';
+    } else if (result.diagnosis.contains("Delgadez")) {
+      wayuuAudio = 'wayuu_peligro.mp3';
+    } else if (result.diagnosis.contains("Sobrepeso") ||
+        result.diagnosis.contains("Obesidad")) {
+      wayuuAudio = 'wayuu_precaucion.mp3';
+    }
+
+    if (wayuuAudio != null) {
+      final audioFile = wayuuAudio;
+      _flutterTts.setCompletionHandler(() {
+        _audioPlayer.play(AssetSource(audioFile));
+        _flutterTts.setCompletionHandler(() {});
+      });
+    }
 
     _flutterTts.speak(speechText);
   }
@@ -2253,8 +3020,43 @@ class _ChatScreenState extends State<ChatScreen>
     return map[word.toLowerCase().trim()];
   }
 
+  String _getWayuuDiagnosis(String diag) {
+    if (diag.contains("Normal")) return "Anasü (Normal)";
+    if (diag.contains("Desnutrición") ||
+        diag.contains("Delgadez") ||
+        diag.contains("Bajo Peso")) return "Mootshishi / Pe'u (Bajo Peso)";
+    if (diag.contains("Sobrepeso") || diag.contains("Obesidad"))
+      return "Pootshishii / Alatusü (Exceso)";
+    return diag;
+  }
+
   void _tryManualExtraction(String userText) {
     final lower = userText.toLowerCase();
+
+    if (_isRiskAssessmentMode) {
+      if (lower.contains("sí") || lower.contains("si ") || lower.contains("yes") || lower.contains("aashin") || lower.contains("tiene") || lower.contains("si,")) {
+        final nameMatch = RegExp(r"\b([A-Z][a-záéíóúñ]+)\b").firstMatch(userText);
+        final nombre = nameMatch?.group(1) ?? "Paciente anónimo";
+        
+        DatabaseHelper.instance.insertRiskPatient(nombre, userText);
+        
+        _addMessage({
+           "role": "glyph",
+           "text": _appLanguage == "Inglés" ? "ALERT: Severe malnutrition signs detected. The case for $nombre has been saved in the Risk Database for medical intervention. Please go to a health center immediately."
+           : "ALERTA: Se han detectado signos graves de desnutrición. El caso de $nombre ha sido guardado en la Base de Datos de Riesgo para intervención médica. Por favor, acuda a un centro de salud inmediatamente."
+        });
+        setState(() => _isRiskAssessmentMode = false);
+        return;
+      } else if (lower.contains("no") || lower.contains("nnojo")) {
+        _addMessage({
+           "role": "glyph",
+           "text": _appLanguage == "Inglés" ? "That's good. Since there are no severe alert signs, ensure a balanced diet and attend regular growth checkups."
+           : "Excelente. Al no presentar estos signos de alerta graves, asegúrese de mantener una alimentación balanceada y asista a los controles de crecimiento regulares en su comunidad."
+        });
+        setState(() => _isRiskAssessmentMode = false);
+        return;
+      }
+    }
 
     // ── Edad ─────────────────────────────────────────────────────────────────
     int? edad;
@@ -2324,23 +3126,61 @@ class _ChatScreenState extends State<ChatScreen>
     final genero =
         lower.contains("niña") || lower.contains("femenino") ? "f" : "m";
 
-    if (edad != null && peso != null && talla != null) {
-      _performAnthroCalculation(nombre, edad, peso, talla, genero);
-      return;
-    }
-
     // ── Extracción Gestacional ───────────────────────────────────────────────
-    if (lower.contains("embarazada") ||
-        lower.contains("gestante") ||
-        lower.contains("semanas")) {
+    if (lower.contains("embarazada") || lower.contains("gestante") || lower.contains("semanas")) {
       int? semanas;
       final weekMatch = RegExp(r"(\d+)\s*semana").firstMatch(lower);
-      if (weekMatch != null) {
-        semanas = int.tryParse(weekMatch.group(1)!);
+      if (weekMatch != null) semanas = int.tryParse(weekMatch.group(1)!);
+      
+      if (semanas != null || peso != null || talla != null) {
+        if (semanas == null || peso == null || talla == null) {
+          List<String> missing = [];
+          if (semanas == null) missing.add("Semanas de gestación");
+          if (peso == null) missing.add("Peso (kg)");
+          if (talla == null) missing.add("Talla (cm)");
+          _addMessage({"role": "glyph", "text": "Para completar el diagnóstico gestacional de $nombre, necesito los datos faltantes que son: ${missing.join(', ')}."});
+          return;
+        } else {
+          _performGestationalCalculation(nombre, semanas, peso, talla);
+          return;
+        }
       }
+    }
 
-      if (semanas != null && peso != null && talla != null) {
-        _performGestationalCalculation(nombre, semanas, peso, talla);
+    // ── Extracción Adulto explícito ──────────────────────────────────────────
+    bool isAdultMode = lower.contains("adulto") || lower.contains("señor") || lower.contains("señora") || lower.contains("persona mayor") || (edad != null && edad > 228);
+    if (isAdultMode) {
+      if (peso != null || talla != null || (edad != null && edad > 228)) {
+        if (peso == null || talla == null) {
+          List<String> missing = [];
+          if (peso == null) missing.add("Peso (kg)");
+          if (talla == null) missing.add("Talla (cm)");
+          _addMessage({"role": "glyph", "text": "Para completar el diagnóstico de adulto de $nombre, necesito los datos faltantes que son: ${missing.join(', ')}."});
+          return;
+        } else {
+          _performAdultCalculation(nombre, peso, talla, genero);
+          return;
+        }
+      }
+    }
+
+    // ── Extracción Pediátrico ────────────────────────────────────────────────
+    bool hasPartialData = edad != null || peso != null || talla != null;
+    if (hasPartialData) {
+      if (edad == null || peso == null || talla == null) {
+        List<String> missing = [];
+        if (edad == null) missing.add("Edad (meses/años)");
+        if (peso == null) missing.add("Peso (kg)");
+        if (talla == null) missing.add("Talla (cm)");
+        
+        _addMessage({
+          "role": "glyph",
+          "text": "Para completar el diagnóstico pediátrico de $nombre, necesito los datos faltantes que son: ${missing.join(', ')}."
+        });
+        return;
+      } else {
+        _performAnthroCalculation(nombre, edad, peso, talla, genero);
+        return;
       }
     }
   }

@@ -30,6 +30,16 @@ class GestationalResult {
   });
 }
 
+class AdultResult {
+  final double bmi;
+  final String diagnosis;
+
+  AdultResult({
+    required this.bmi,
+    required this.diagnosis,
+  });
+}
+
 class AnthroService {
   
   static GestationalResult calculateGestational(int weeks, double weightKg, double heightCm) {
@@ -45,39 +55,39 @@ class AnthroService {
     // Tabla de Atalah simplificada (puntos de corte para Bajo Peso, Normal, Sobrepeso)
     // El cuarto rango es Obesidad (> Sobrepeso)
     final Map<int, List<double>> atalahTable = {
-      10: [20.2, 25.2, 30.1],
-      11: [20.3, 25.3, 30.2],
-      12: [20.4, 25.4, 30.3],
-      13: [20.6, 25.6, 30.5],
-      14: [20.7, 25.7, 30.6],
-      15: [20.8, 25.8, 30.7],
-      16: [21.0, 25.9, 30.8],
-      17: [21.1, 26.1, 30.9],
-      18: [21.2, 26.2, 31.0],
-      19: [21.4, 26.4, 31.2],
-      20: [21.5, 26.5, 31.3],
-      21: [21.7, 26.6, 31.5],
-      22: [21.8, 26.8, 31.6],
-      23: [22.0, 27.0, 31.8],
-      24: [22.2, 27.1, 31.9],
-      25: [22.4, 27.3, 32.1],
-      26: [22.6, 27.4, 32.2],
-      27: [22.7, 27.6, 32.4],
-      28: [22.9, 27.8, 32.5],
-      29: [23.1, 27.9, 32.7],
-      30: [23.3, 28.1, 32.8],
-      31: [23.5, 28.2, 33.0],
-      32: [23.6, 28.4, 33.1],
-      33: [23.8, 28.5, 33.3],
-      34: [24.0, 28.7, 33.4],
-      35: [24.2, 28.8, 33.6],
-      36: [24.4, 29.0, 33.7],
-      37: [24.5, 29.1, 33.9],
-      38: [24.7, 29.3, 34.0],
-      39: [24.9, 29.4, 34.2],
-      40: [25.0, 29.6, 34.3],
-      41: [25.0, 29.6, 34.3],
-      42: [25.0, 29.6, 34.3],
+      10: [20.0, 25.0, 30.0],
+      11: [20.1, 25.1, 30.1],
+      12: [20.2, 25.2, 30.2],
+      13: [20.3, 25.3, 30.3],
+      14: [20.4, 25.4, 30.4],
+      15: [20.5, 25.5, 30.5],
+      16: [20.6, 25.6, 30.6],
+      17: [20.7, 25.7, 30.7],
+      18: [20.8, 25.8, 30.8],
+      19: [21.0, 26.0, 31.0],
+      20: [21.1, 26.1, 31.1],
+      21: [21.3, 26.3, 31.3],
+      22: [21.5, 26.5, 31.5],
+      23: [21.7, 26.6, 31.6],
+      24: [21.8, 26.7, 31.7],
+      25: [22.0, 26.8, 31.8],
+      26: [22.2, 26.9, 31.9],
+      27: [22.4, 27.0, 32.0],
+      28: [22.6, 27.0, 32.1],
+      29: [22.8, 27.1, 32.2],
+      30: [23.0, 27.1, 32.3],
+      31: [23.2, 27.2, 32.4],
+      32: [23.5, 27.2, 32.5],
+      33: [23.7, 27.3, 32.6],
+      34: [23.9, 27.4, 32.7],
+      35: [24.1, 27.5, 32.8],
+      36: [24.3, 27.6, 32.9],
+      37: [24.5, 27.7, 33.0],
+      38: [24.7, 27.8, 33.1],
+      39: [24.9, 27.9, 33.2],
+      40: [25.0, 28.0, 33.3],
+      41: [25.0, 28.0, 33.3],
+      42: [25.0, 28.0, 33.3],
     };
 
     final cuts = atalahTable[weeks]!;
@@ -85,6 +95,23 @@ class AnthroService {
     if (bmi < cuts[1]) return "Peso Normal (Gestante)";
     if (bmi < cuts[2]) return "Sobrepeso (Gestante)";
     return "Obesidad (Gestante)";
+  }
+
+  static AdultResult calculateAdult(double weightKg, double heightCm) {
+    double bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
+    String diagnosis = _diagnoseAdult(bmi);
+    return AdultResult(bmi: bmi, diagnosis: diagnosis);
+  }
+
+  static String _diagnoseAdult(double bmi) {
+    if (bmi < 16.0) return "Delgadez Severa (Adulto)";
+    if (bmi < 17.0) return "Delgadez Moderada (Adulto)";
+    if (bmi < 18.5) return "Delgadez Aceptable (Adulto)";
+    if (bmi < 25.0) return "Peso Normal (Adulto)";
+    if (bmi < 30.0) return "Sobrepeso (Adulto)";
+    if (bmi < 35.0) return "Obesidad Grado I (Adulto)";
+    if (bmi < 40.0) return "Obesidad Grado II (Adulto)";
+    return "Obesidad Grado III (Mórbida) (Adulto)";
   }
 
   static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr, {double? muacCm}) {

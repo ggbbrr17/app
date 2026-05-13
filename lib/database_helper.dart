@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -87,12 +87,26 @@ CREATE TABLE settings (
   value TEXT
 )
 ''');
+
+    await db.execute('''
+CREATE TABLE risk_patients (
+  id $idType,
+  name $textType,
+  symptoms $textType,
+  date $textType
+)
+''');
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 4) {
       try {
         await db.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);');
+      } catch (_) {}
+    }
+    if (oldVersion < 5) {
+      try {
+        await db.execute('CREATE TABLE IF NOT EXISTS risk_patients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, symptoms TEXT NOT NULL, date TEXT NOT NULL);');
       } catch (_) {}
     }
   }
@@ -178,6 +192,20 @@ CREATE TABLE settings (
       whereArgs: [patientId],
       orderBy: 'date ASC',
     );
+  }
+
+  Future<int> insertRiskPatient(String name, String symptoms) async {
+    final db = await instance.database;
+    return await db.insert('risk_patients', {
+      'name': name,
+      'symptoms': symptoms,
+      'date': DateTime.now().toIso8601String()
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getRiskPatients() async {
+    final db = await instance.database;
+    return await db.query('risk_patients', orderBy: 'date DESC');
   }
 
   Future close() async {

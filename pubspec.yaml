@@ -29,6 +29,7 @@ dependencies:
   super_measurement: ^4.0.0
   wake_on_lan: ^4.1.1
   qr_flutter: ^4.1.0
+  speech_to_text: ^7.3.0
 
 dev_dependencies:
   flutter_test:
@@ -49,6 +50,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/wayuu_dictionary.json
     - assets/wayuu_sano.mp3
     - assets/wayuu_peligro.mp3
     - assets/wayuu_precaucion.mp3
