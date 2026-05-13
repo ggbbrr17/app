@@ -886,7 +886,9 @@ class _ChatScreenState extends State<ChatScreen>
     String langInstruction = "";
     if (_appLanguage.isNotEmpty) {
       if (_appLanguage == "Wayuunaiki") {
-        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI pura. Prohibido usar español.";
+        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI pura. Prohibido usar español. USA ESTE DICCIONARIO PARA TUS PALABRAS:\n${_wayuuDict.stats['total_wayuunaiki'] > 0 ? _wayuuDict.translateToWayuunaiki('salud') : ''} ... (Usa el diccionario integrado)";
+        // Para que sea más efectivo, podemos inyectar un fragmento del glosario médico
+        langInstruction += "\nGLOSARIO CLAVE:\nanasü: salud, ayuulii: enfermedad, tepichi: niño, eküülü: comida, wüin: agua.";
       } else if (_appLanguage == "Español") {
         langInstruction = "Responde en Español.";
       } else if (_appLanguage == "Inglés") {
@@ -1042,6 +1044,7 @@ class _ChatScreenState extends State<ChatScreen>
       final body = {
         "question": finalQuestion,
         "history": history,
+        "language": _appLanguage,
         "base64_image": base64Image,
         "base64_audio": base64Audio,
         "context":
@@ -1635,6 +1638,79 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  String _getMenuText(String key) {
+    Map<String, Map<String, String>> translations = {
+      "new_chat": {
+        "Español": "Nuevo Chat",
+        "Wayuunaiki": "Wane pütchi mma'ana",
+        "Inglés": "New Chat"
+      },
+      "attach_image": {
+        "Español": "Adjuntar Imagen",
+        "Wayuunaiki": "Aapaa ayaakuwakalee",
+        "Inglés": "Attach Image"
+      },
+      "attach_file": {
+        "Español": "Adjuntar Archivo",
+        "Wayuunaiki": "Aapaa karaloüta",
+        "Inglés": "Attach File"
+      },
+      "generated_files": {
+        "Español": "Archivos Generados",
+        "Wayuunaiki": "Karaloüta akumajüna",
+        "Inglés": "Generated Files"
+      },
+      "nutritional_control": {
+        "Español": "Control Nutricional",
+        "Wayuunaiki": "Kaa'uleein nne'erükü",
+        "Inglés": "Nutritional Control"
+      },
+      "translator": {
+        "Español": "Traductor",
+        "Wayuunaiki": "Pütchipü'ü",
+        "Inglés": "Translator"
+      },
+      "text": {
+        "Español": "Texto",
+        "Wayuunaiki": "Pütchi",
+        "Inglés": "Text"
+      },
+      "audio": {
+        "Español": "Audio",
+        "Wayuunaiki": "Asülajaa",
+        "Inglés": "Audio"
+      },
+      "p2p_sync": {
+        "Español": "Sincronización P2P",
+        "Wayuunaiki": "Akumajaa pütchi",
+        "Inglés": "P2P Sync"
+      },
+      "download_apk": {
+        "Español": "Descargar Nueva Versión",
+        "Wayuunaiki": "Aapaa nükua'ipa Glyph",
+        "Inglés": "Download New Version"
+      },
+      "risk_patients": {
+        "Español": "Pacientes en Riesgo",
+        "Wayuunaiki": "Wayuu ayuulii",
+        "Inglés": "Patients at Risk"
+      },
+      "online_mode": {
+        "Español": "Modo Online (Experimental)",
+        "Wayuunaiki": "Aashajawaa mma'ana",
+        "Inglés": "Online Mode"
+      },
+      "offline_mode": {
+        "Español": "Modo Offline (Gemma)",
+        "Wayuunaiki": "Aashajawaa yaa",
+        "Inglés": "Offline Mode"
+      },
+    };
+
+    String lang = _appLanguage.isEmpty ? "Español" : _appLanguage;
+    return translations[key]?[lang] ?? key;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1854,8 +1930,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.add_circle_outline,
                                 color: Colors.white60, size: 20),
-                            title: const Text("Nuevo Chat",
-                                style: TextStyle(
+                            title: Text(_getMenuText("new_chat"),
+                                style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w300,
@@ -1865,8 +1941,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.image_outlined,
                                 color: Colors.white60, size: 20),
-                            title: const Text("Adjuntar Imagen",
-                                style: TextStyle(
+                            title: Text(_getMenuText("attach_image"),
+                                style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w300,
@@ -1876,8 +1952,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.attach_file_outlined,
                                 color: Colors.white60, size: 20),
-                            title: const Text("Adjuntar Archivo",
-                                style: TextStyle(
+                            title: Text(_getMenuText("attach_file"),
+                                style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w300,
@@ -1887,8 +1963,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.folder_outlined,
                                 color: Colors.white60, size: 20),
-                            title: const Text("Archivos Generados",
-                                style: TextStyle(
+                            title: Text(_getMenuText("generated_files"),
+                                style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w300,
@@ -1898,8 +1974,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.people_alt_outlined,
                                 color: Colors.white60, size: 20),
-                            title: const Text("Control Nutricional",
-                                style: TextStyle(
+                            title: Text(_getMenuText("nutritional_control"),
+                                style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w300,
@@ -1914,8 +1990,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.g_translate_outlined,
                                 color: Colors.cyanAccent, size: 20),
-                            title: const Text("Traductor",
-                                style: TextStyle(
+                            title: Text(_getMenuText("translator"),
+                                style: const TextStyle(
                                     color: Colors.white, fontSize: 13,
                                     fontWeight: FontWeight.w500)),
                             trailing: Icon(
@@ -1934,8 +2010,8 @@ class _ChatScreenState extends State<ChatScreen>
                               contentPadding: const EdgeInsets.only(left: 45),
                               leading: const Icon(Icons.text_fields_outlined,
                                   color: Colors.white60, size: 18),
-                              title: const Text("Texto",
-                                  style: TextStyle(
+                              title: Text(_getMenuText("text"),
+                                  style: const TextStyle(
                                       color: Colors.white70, fontSize: 12)),
                               onTap: () {
                                 _toggleMenu();
@@ -1946,8 +2022,8 @@ class _ChatScreenState extends State<ChatScreen>
                               contentPadding: const EdgeInsets.only(left: 45),
                               leading: const Icon(Icons.mic_none_outlined,
                                   color: Colors.white60, size: 18),
-                              title: const Text("Audio",
-                                  style: TextStyle(
+                              title: Text(_getMenuText("audio"),
+                                  style: const TextStyle(
                                       color: Colors.white70, fontSize: 12)),
                               onTap: () {
                                 _toggleMenu();
@@ -1958,24 +2034,24 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.qr_code_2_outlined,
                                 color: Colors.white60, size: 20),
-                            title: const Text("Sincronización P2P",
-                                style: TextStyle(
+                            title: Text(_getMenuText("p2p_sync"),
+                                style: const TextStyle(
                                     color: Colors.white60, fontSize: 13)),
                             onTap: _syncP2PData,
                           ),
                           ListTile(
                             leading: const Icon(Icons.download_for_offline_outlined,
                                 color: Colors.cyanAccent, size: 20),
-                            title: const Row(
+                            title: Row(
                               children: [
-                                Text("Descargar Nueva Versión",
-                                    style: TextStyle(
+                                Text(_getMenuText("download_apk"),
+                                    style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 13,
                                         fontWeight: FontWeight.bold,
                                         letterSpacing: 1.2)),
-                                SizedBox(width: 8),
-                                Icon(Icons.android, color: Colors.greenAccent, size: 16),
+                                const SizedBox(width: 8),
+                                const Icon(Icons.android, color: Colors.greenAccent, size: 16),
                               ],
                             ),
                             onTap: () {
@@ -1988,8 +2064,8 @@ class _ChatScreenState extends State<ChatScreen>
                           ListTile(
                             leading: const Icon(Icons.warning_amber_rounded,
                                 color: Colors.orangeAccent, size: 20),
-                            title: const Text("Pacientes en Riesgo",
-                                style: TextStyle(
+                            title: Text(_getMenuText("risk_patients"),
+                                style: const TextStyle(
                                     color: Colors.white, fontSize: 13,
                                     fontWeight: FontWeight.w500)),
                             onTap: () {
@@ -2002,8 +2078,8 @@ class _ChatScreenState extends State<ChatScreen>
                                 color: Colors.white60, size: 20),
                             title: Text(
                                 _isOfflineMode
-                                    ? "Modo Online (Experimental)"
-                                    : "Modo Offline (Gemma)",
+                                    ? _getMenuText("online_mode")
+                                    : _getMenuText("offline_mode"),
                                 style: const TextStyle(
                                     color: Colors.white60,
                                     fontSize: 13,
