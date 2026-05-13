@@ -886,7 +886,7 @@ class _ChatScreenState extends State<ChatScreen>
     String langInstruction = "";
     if (_appLanguage.isNotEmpty) {
       if (_appLanguage == "Wayuunaiki") {
-        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI pura. Prohibido usar español. USA ESTE DICCIONARIO PARA TUS PALABRAS:\n${_wayuuDict.stats['total_wayuunaiki'] > 0 ? _wayuuDict.translateToWayuunaiki('salud') : ''} ... (Usa el diccionario integrado)";
+        langInstruction = "OBLIGATORIO: Responde ÚNICAMENTE en lengua WAYUUNAIKI pura. Prohibido usar español. USA ESTE DICCIONARIO PARA TUS PALABRAS:\n${( _wayuuDict.stats['total_wayuunaiki'] ?? 0 ) > 0 ? _wayuuDict.translateToWayuunaiki('salud') : ''} ... (Usa el diccionario integrado)";
         // Para que sea más efectivo, podemos inyectar un fragmento del glosario médico
         langInstruction += "\nGLOSARIO CLAVE:\nanasü: salud, ayuulii: enfermedad, tepichi: niño, eküülü: comida, wüin: agua.";
       } else if (_appLanguage == "Español") {
@@ -2295,7 +2295,7 @@ class _ChatScreenState extends State<ChatScreen>
                       child: ListTile(
                         title: Text(p['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                         subtitle: Text(p['symptoms'], style: const TextStyle(color: Colors.white70)),
-                        trailing: Text(p['date'].toString().split('T').first, style: const TextStyle(color: Colors.white50, fontSize: 12)),
+                        trailing: Text(p['date'].toString().split('T').first, style: const TextStyle(color: Colors.white54, fontSize: 12)),
                       ),
                     );
                   },
