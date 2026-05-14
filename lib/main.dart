@@ -678,6 +678,16 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _initGemmaChat() async {
+    // 1. Limpieza de memoria (Prevenir Out Of Memory en refrescos)
+    if (_gemmaChat != null) {
+      try { await _gemmaChat!.close(); } catch (_) {}
+      _gemmaChat = null;
+    }
+    if (_gemmaModel != null) {
+      try { await _gemmaModel!.close(); } catch (_) {}
+      _gemmaModel = null;
+    }
+
     final manager = ModelManager();
     await manager.initializeGemma();
 
@@ -980,12 +990,12 @@ class _ChatScreenState extends State<ChatScreen>
 
     if (_isOfflineMode && _gemmaChat != null) {
       _offlineInteractionCount++;
-      if (_offlineInteractionCount >= 4) {
-        // Prevents Out-Of-Memory crashes in local inference by flushing context
+      // Limitamos a 2 interacciones para evitar Memory Leaks / OOM (Gemma consume mucha RAM)
+      if (_offlineInteractionCount >= 2) {
         try {
           await _initGemmaChat();
-        } catch (_) {
-          // If reinit fails, keep the existing chat
+        } catch (e) {
+          debugPrint("Error flushing gemma context: $e");
         }
         _offlineInteractionCount = 0;
       }
