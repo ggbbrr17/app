@@ -1035,9 +1035,7 @@ class _ChatScreenState extends State<ChatScreen>
 
         await _gemmaChat!.addQuery(Message(
             text: finalQuestion,
-            isUser: true,
-            imageBytes:
-                base64Image != null ? base64Decode(base64Image) : null));
+            isUser: true));
 
         // _tryManualExtraction movido arriba para ser compartido.
 
