@@ -212,12 +212,7 @@ class AnthroService {
     // Manejo de valores extremos (NaN suele ocurrir si está fuera de las tablas OMS)
     // En lugar de 0.0 (que es el promedio), usamos valores que indiquen el extremo
     double safeZ(double v) {
-      if (v.isNaN) {
-        // Si el peso es muy bajo para la edad/talla, asumimos el mínimo de la tabla (-5 o -6)
-        // para que no se grafique en el centro (0.0)
-        return -5.0; 
-      }
-      return v;
+      return v.isNaN ? -99.0 : v;
     }
 
     return AnthroResult(

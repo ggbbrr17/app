@@ -715,7 +715,7 @@ class _ChatScreenState extends State<ChatScreen>
                   },
                   "edad_meses": {
                     "type": "integer",
-                    "description": "Edad en meses"
+                    "description": "Edad total en MESES. IMPORTANTE: Si el usuario dice 'años', debes multiplicar por 12. Ejemplo: 5 años = 60 meses, 12 años = 144 meses."
                   },
                   "peso_kg": {
                     "type": "number",
@@ -723,7 +723,7 @@ class _ChatScreenState extends State<ChatScreen>
                   },
                   "talla_cm": {
                     "type": "number",
-                    "description": "Talla en centímetros"
+                    "description": "Talla total en centímetros. IMPORTANTE: Si el usuario dice 'un metro cuarenta', envía 140. Ejemplo: 1.40m = 140, 60cm = 60."
                   },
                   "genero": {"type": "string", "description": "Género (m o f)"},
                   "muac_cm": {
@@ -3119,8 +3119,10 @@ class _ChatScreenState extends State<ChatScreen>
 
     final speechText = "He registrado a $nombre. $simplifiedDiag";
 
+    String zFormat(double v) => v == -99.0 ? 'N/A' : v.toStringAsFixed(2);
+
     final zScoreText =
-        '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${result.zWeightForAge.toStringAsFixed(2)}, HFA: ${result.zHeightForAge.toStringAsFixed(2)}, BMI: ${result.zBmiForAge.toStringAsFixed(2)}, W/H: ${result.zWeightForHeight.toStringAsFixed(2)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+        '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${zFormat(result.zWeightForAge)}, HFA: ${zFormat(result.zHeightForAge)}, BMI: ${zFormat(result.zBmiForAge)}, W/H: ${zFormat(result.zWeightForHeight)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
 
     _addMessage({
       "role": "glyph",
@@ -3432,11 +3434,11 @@ class _ChatScreenState extends State<ChatScreen>
 
     // 1. Buscar Años (ej. "1 año", "un año", "2 años")
     int years = 0;
-    final yearDigitMatch = RegExp(r"(\d+)\s*año").firstMatch(lower);
+    final yearDigitMatch = RegExp(r"(\d+)\s*años?").firstMatch(lower);
     if (yearDigitMatch != null) {
       years = int.tryParse(yearDigitMatch.group(1)!) ?? 0;
     } else {
-      final yearWordMatch = RegExp(r"(\w+)\s+año").firstMatch(lower);
+      final yearWordMatch = RegExp(r"(\w+)\s+años?").firstMatch(lower);
       if (yearWordMatch != null) {
         years = _spanishWordToNumber(yearWordMatch.group(1)!) ?? 0;
       }
@@ -3444,11 +3446,11 @@ class _ChatScreenState extends State<ChatScreen>
 
     // 2. Buscar Meses (ej. "12 meses", "doce meses")
     int months = 0;
-    final monthDigitMatch = RegExp(r"(\d+)\s*mes").firstMatch(lower);
+    final monthDigitMatch = RegExp(r"(\d+)\s*mes(es)?").firstMatch(lower);
     if (monthDigitMatch != null) {
       months = int.tryParse(monthDigitMatch.group(1)!) ?? 0;
     } else {
-      final monthWordMatch = RegExp(r"(\w+)\s+mes").firstMatch(lower);
+      final monthWordMatch = RegExp(r"(\w+)\s+mes(es)?").firstMatch(lower);
       if (monthWordMatch != null) {
         months = _spanishWordToNumber(monthWordMatch.group(1)!) ?? 0;
       }
@@ -3478,14 +3480,35 @@ class _ChatScreenState extends State<ChatScreen>
 
     // ── Talla ─────────────────────────────────────────────────────────────────
     double? talla;
-    final heightDigitMatch = RegExp(r"(\d+(\.\d+)?)\s*cm").firstMatch(lower);
-    if (heightDigitMatch != null) {
-      talla = double.tryParse(heightDigitMatch.group(1)!);
+    // Capturamos metros y centímetros (ej. "un metro cuarenta", "1.40 metros", "140 cm")
+    final meterMatch = RegExp(r"(\d+(\.\d+)?|un)\s*metros?\s*(\d+(\.\d+)?|(\w+))?").firstMatch(lower);
+    if (meterMatch != null) {
+      double m = 0;
+      if (meterMatch.group(1) == "un") m = 1.0;
+      else m = double.tryParse(meterMatch.group(1)!) ?? 0;
+      
+      double cm = 0;
+      if (meterMatch.group(3) != null) {
+        cm = double.tryParse(meterMatch.group(3)!) ?? (_spanishWordToNumber(meterMatch.group(3)!)?.toDouble() ?? 0);
+      }
+      talla = (m * 100) + cm;
     } else {
-      final heightWordMatch = RegExp(r"(\w+)\s*cm").firstMatch(lower);
-      if (heightWordMatch != null) {
-        final n = _spanishWordToNumber(heightWordMatch.group(1)!);
-        if (n != null) talla = n.toDouble();
+      // Capturamos opcionalmente "ciento" antes de los dígitos o la palabra
+      final heightCientoMatch = RegExp(r"(ciento\s+)?(\d+(\.\d+)?)\s*cm").firstMatch(lower);
+      if (heightCientoMatch != null) {
+        talla = double.tryParse(heightCientoMatch.group(2)!);
+        if (talla != null && heightCientoMatch.group(1) != null) {
+          talla += 100;
+        }
+      } else {
+        final heightWordMatch = RegExp(r"(ciento\s+)?(\w+)\s*cm").firstMatch(lower);
+        if (heightWordMatch != null) {
+          final n = _spanishWordToNumber(heightWordMatch.group(2)!);
+          if (n != null) {
+            talla = n.toDouble();
+            if (heightWordMatch.group(1) != null) talla += 100;
+          }
+        }
       }
     }
 
