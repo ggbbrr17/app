@@ -621,7 +621,11 @@ class _ChatScreenState extends State<ChatScreen>
           });
           _speech.listen(
             onResult: (result) {
-              if (mounted) _controller.text = result.recognizedWords;
+              if (mounted) {
+                setState(() {
+                  _controller.text = result.recognizedWords;
+                });
+              }
             },
             localeId: _appLanguage == "Inglés" ? "en_US" : "es_CO",
           );
@@ -654,6 +658,8 @@ class _ChatScreenState extends State<ChatScreen>
       if (_isOfflineMode || _isListeningSTT) {
         if (_isListeningSTT) {
           try { await _speech.stop(); } catch (_) {}
+          // Dar un breve momento para que llegue el último onResult de STT
+          await Future.delayed(const Duration(milliseconds: 300));
           if (mounted) setState(() {
             _isRecording = false;
             _isListeningSTT = false;
@@ -2208,17 +2214,6 @@ class _ChatScreenState extends State<ChatScreen>
                                     fontWeight: FontWeight.w300,
                                     letterSpacing: 1.2)),
                             onTap: _pickImage,
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.attach_file_outlined,
-                                color: Colors.white60, size: 20),
-                            title: Text(_getMenuText("attach_file"),
-                                style: const TextStyle(
-                                    color: Colors.white60,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w300,
-                                    letterSpacing: 1.2)),
-                            onTap: _pickFile,
                           ),
                           ListTile(
                             leading: const Icon(Icons.folder_outlined,
