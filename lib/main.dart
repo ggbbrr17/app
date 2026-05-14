@@ -4,6 +4,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
 
 import 'anthro_service.dart';
 import 'anthro_chart_widget.dart';
@@ -950,12 +951,15 @@ class _ChatScreenState extends State<ChatScreen>
         }
 
         if (base64Image != null) {
-          setState(() {
-            _messages.add({
-              "role": "glyph",
-              "text":
-                  "Aviso: El modo offline local no puede 'ver' imágenes. Me basaré en el texto que escribiste."
-            });
+          setState(() => _isThinking = true);
+          final imageDescription = await _analyzeImageOffline(base64Image);
+          finalQuestion = "ROL: Eres un asistente que PUEDE VER imágenes a través de un procesador de visión local. "
+              "DATOS DE VISIÓN: El procesador ha identificado que la imagen es $imageDescription. "
+              "BASADO EN ESTO: $finalQuestion";
+          
+          _addMessage({
+            "role": "glyph",
+            "text": "👁️ Visión Offline activa: He analizado la imagen y detecto: $imageDescription."
           });
           _scrollToBottom();
         }
@@ -3366,6 +3370,26 @@ class _ChatScreenState extends State<ChatScreen>
         "role": "glyph",
         "text": "❌ Error al intentar encender la computadora: $e"
       });
+    }
+  }
+
+  Future<String> _analyzeImageOffline(String base64Image) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/temp_analysis.jpg');
+      await tempFile.writeAsBytes(base64Decode(base64Image));
+
+      final inputImage = InputImage.fromFilePath(tempFile.path);
+      final imageLabeler = ImageLabeler(options: ImageLabelerOptions(confidenceThreshold: 0.5));
+      final labels = await imageLabeler.processImage(inputImage);
+      
+      if (labels.isEmpty) return "una imagen sin objetos claros";
+      
+      String desc = labels.take(3).map((l) => l.label).join(", ");
+      await imageLabeler.close();
+      return "una imagen que contiene: $desc";
+    } catch (e) {
+      return "una imagen (error de visión: $e)";
     }
   }
 }
