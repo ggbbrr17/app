@@ -415,52 +415,73 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _loadPersistedHistory() async {
-    final sessions = await DatabaseHelper.instance.getSessions();
-    if (sessions.isEmpty) {
-      _currentSessionId = await DatabaseHelper.instance.createSession();
-      final defaultMsg = {
-        "role": "glyph",
-        "type": "language_selector",
-        "text": ""
-      };
-      await DatabaseHelper.instance
-          .insertMessage(_currentSessionId!, defaultMsg);
-      setState(() {
-        _messages.add(defaultMsg);
-      });
-    } else {
-      _currentSessionId = sessions.first['id'];
-      final msgs =
-          await DatabaseHelper.instance.getSessionMessages(_currentSessionId!);
-      setState(() {
-        _messages.clear();
-        _messages.addAll(msgs.map((m) => {
+    try {
+      final sessions = await DatabaseHelper.instance.getSessions();
+      if (sessions.isEmpty) {
+        _currentSessionId = await DatabaseHelper.instance.createSession();
+        final defaultMsg = {
+          "role": "glyph",
+          "type": "language_selector",
+          "text": ""
+        };
+        await DatabaseHelper.instance
+            .insertMessage(_currentSessionId!, defaultMsg);
+        if (mounted) setState(() {
+          _messages.add(defaultMsg);
+        });
+      } else {
+        _currentSessionId = sessions.first['id'];
+        final msgs =
+            await DatabaseHelper.instance.getSessionMessages(_currentSessionId!);
+        if (!mounted) return;
+        setState(() {
+          _messages.clear();
+          _messages.addAll(msgs.map((m) {
+            dynamic data;
+            try {
+              data = m['data'] != null ? jsonDecode(m['data']) : null;
+            } catch (_) {
+              data = null;
+            }
+            return {
               "role": m['role'],
               "text": m['text'],
               "type": m['type'],
-              "data": m['data'] != null ? jsonDecode(m['data']) : null,
+              "data": data,
               "isThought": m['isThought'] == 1,
-            }));
-      });
+            };
+          }));
+        });
 
-      _chatSessions.clear();
-      _sessionIds.clear();
-      for (var session in sessions) {
-        _sessionIds.add(session['id']);
-        final sMsgs =
-            await DatabaseHelper.instance.getSessionMessages(session['id']);
-        _chatSessions.add(sMsgs
-            .map((m) => {
+        _chatSessions.clear();
+        _sessionIds.clear();
+        for (var session in sessions) {
+          _sessionIds.add(session['id']);
+          final sMsgs =
+              await DatabaseHelper.instance.getSessionMessages(session['id']);
+          _chatSessions.add(sMsgs
+              .map((m) {
+                dynamic data;
+                try {
+                  data = m['data'] != null ? jsonDecode(m['data']) : null;
+                } catch (_) {
+                  data = null;
+                }
+                return {
                   "role": m['role'],
                   "text": m['text'],
                   "type": m['type'],
-                  "data": m['data'] != null ? jsonDecode(m['data']) : null,
+                  "data": data,
                   "isThought": m['isThought'] == 1,
-                })
-            .toList());
+                };
+              })
+              .toList());
+        }
       }
+    } catch (e) {
+      debugPrint('Error loading history: $e');
     }
-    _scrollToBottom();
+    if (mounted) _scrollToBottom();
   }
 
   Future<void> _initTts() async {
@@ -531,6 +552,7 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   void _addMessage(Map<String, dynamic> msg) {
+    if (!mounted) return;
     setState(() {
       _messages.add(msg);
     });
@@ -547,63 +569,77 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _pickImage() async {
-    _playWaterSound();
-    FilePickerResult? res =
-        await FilePicker.platform.pickFiles(type: FileType.image);
-    if (res != null) {
-      final bytes = await File(res.files.single.path!).readAsBytes();
-      setState(() {
-        _isMenuOpen = false;
-        _showTextField = true;
-        _pendingImageBase64 = base64Encode(bytes);
-        _pendingImageName = res.files.single.name;
-      });
+    try {
+      _playWaterSound();
+      FilePickerResult? res =
+          await FilePicker.platform.pickFiles(type: FileType.image);
+      if (res != null && res.files.single.path != null) {
+        final bytes = await File(res.files.single.path!).readAsBytes();
+        if (!mounted) return;
+        setState(() {
+          _isMenuOpen = false;
+          _showTextField = true;
+          _pendingImageBase64 = base64Encode(bytes);
+          _pendingImageName = res.files.single.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('pickImage error: $e');
     }
   }
 
   Future<void> _pickFile() async {
-    FilePickerResult? res =
-        await FilePicker.platform.pickFiles(type: FileType.any);
-    if (res != null && res.files.single.path != null) {
-      final bytes = await File(res.files.single.path!).readAsBytes();
-      setState(() {
-        _isMenuOpen = false;
-        _menuAnimationController.reverse();
-        _showTextField = true;
-        _pendingImageBase64 = base64Encode(bytes);
-        _pendingImageName = res.files.single.name;
-      });
+    try {
+      FilePickerResult? res =
+          await FilePicker.platform.pickFiles(type: FileType.any);
+      if (res != null && res.files.single.path != null) {
+        final bytes = await File(res.files.single.path!).readAsBytes();
+        if (!mounted) return;
+        setState(() {
+          _isMenuOpen = false;
+          _menuAnimationController.reverse();
+          _showTextField = true;
+          _pendingImageBase64 = base64Encode(bytes);
+          _pendingImageName = res.files.single.name;
+        });
+      }
+    } catch (e) {
+      debugPrint('pickFile error: $e');
     }
   }
 
   Future<void> _startRecording({bool forceSTT = false}) async {
     try {
       if (_isOfflineMode || forceSTT) {
-      bool available = await _speech.initialize();
-      if (available) {
-        setState(() {
-          _isRecording = true;
-          _isListeningSTT = true;
-        });
-        _speech.listen(
-          onResult: (result) {
-            _controller.text = result.recognizedWords;
-          },
-          localeId: _appLanguage == "Inglés" ? "en_US" : "es_CO",
-        );
-      } else {
-        _addMessage({"role": "glyph", "text": "Error: El reconocimiento de voz offline no está disponible en este dispositivo."});
+        bool available = false;
+        try { available = await _speech.initialize(); } catch (_) {}
+        if (available) {
+          if (!mounted) return;
+          setState(() {
+            _isRecording = true;
+            _isListeningSTT = true;
+          });
+          _speech.listen(
+            onResult: (result) {
+              if (mounted) _controller.text = result.recognizedWords;
+            },
+            localeId: _appLanguage == "Inglés" ? "en_US" : "es_CO",
+          );
+        } else {
+          _addMessage({"role": "glyph", "text": "Error: El reconocimiento de voz offline no está disponible en este dispositivo."});
+        }
+        return;
       }
-      return;
-    }
 
       if (await _audioRecorder.hasPermission()) {
         final path = p.join((await getTemporaryDirectory()).path,
             'audio_${DateTime.now().ms}.m4a');
         await _audioRecorder.start(const RecordConfig(), path: path);
+        if (!mounted) return;
         setState(() => _isRecording = true);
       }
     } catch (e) {
+      if (!mounted) return;
       _addMessage({"role": "glyph", "text": "Error al iniciar grabación: $e"});
       setState(() {
         _isRecording = false;
@@ -614,23 +650,31 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<String?> _stopRecording({bool autoSend = true}) async {
-    if (_isOfflineMode || _isListeningSTT) {
-      if (_isListeningSTT) {
-        await _speech.stop();
-        setState(() {
-          _isRecording = false;
-          _isListeningSTT = false;
-        });
-        if (autoSend && _controller.text.isNotEmpty) {
-           _handleSend();
+    try {
+      if (_isOfflineMode || _isListeningSTT) {
+        if (_isListeningSTT) {
+          try { await _speech.stop(); } catch (_) {}
+          if (mounted) setState(() {
+            _isRecording = false;
+            _isListeningSTT = false;
+          });
+          if (autoSend && _controller.text.isNotEmpty) {
+            _handleSend();
+          }
         }
+        return null;
       }
+
+      final path = await _audioRecorder.stop();
+      if (mounted) setState(() => _isRecording = false);
+      return path != null ? base64Encode(await File(path).readAsBytes()) : null;
+    } catch (e) {
+      if (mounted) setState(() {
+        _isRecording = false;
+        _isListeningSTT = false;
+      });
       return null;
     }
-
-    final path = await _audioRecorder.stop();
-    setState(() => _isRecording = false);
-    return path != null ? base64Encode(await File(path).readAsBytes()) : null;
   }
 
   Future<void> _initGemmaChat() async {
@@ -886,6 +930,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _sendMultimodalData(
       {String question = "", String? base64Image, String? base64Audio}) async {
+    if (!mounted) return;
     setState(() => _isThinking = true);
 
     String finalQuestion = question;
@@ -1045,11 +1090,11 @@ class _ChatScreenState extends State<ChatScreen>
         }
         _scrollToBottom();
       } catch (e) {
-        _addMessage(
+        if (mounted) _addMessage(
             {"role": "glyph", "text": "Error interno del modelo local: $e"});
-        _scrollToBottom();
+        if (mounted) _scrollToBottom();
       } finally {
-        setState(() => _isThinking = false);
+        if (mounted) setState(() => _isThinking = false);
       }
       return;
     }
@@ -1104,8 +1149,10 @@ class _ChatScreenState extends State<ChatScreen>
           }
         }
       }
+    } catch (e) {
+      if (mounted) _addMessage({"role": "glyph", "text": "Error al conectar con el servidor: $e"});
     } finally {
-      setState(() => _isThinking = false);
+      if (mounted) setState(() => _isThinking = false);
     }
   }
 
@@ -2640,18 +2687,22 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _syncP2PData() async {
     _toggleMenu();
-    final file = await _exportDatabaseToCSV();
-    _addMessage({
-      "role": "glyph",
-      "text":
-          "He preparado los datos de la comunidad para sincronización física (P2P). Compártelos con otro promotor de salud para unir las bases de datos.",
-      "type": "file_share",
-      "data": {
-        "path": file.path,
-        "name": "sync_data.csv",
-        "text": "Compartir datos para Sincronización"
-      }
-    });
+    try {
+      final file = await _exportDatabaseToCSV();
+      _addMessage({
+        "role": "glyph",
+        "text":
+            "He preparado los datos de la comunidad para sincronización física (P2P). Compártelos con otro promotor de salud para unir las bases de datos.",
+        "type": "file_share",
+        "data": {
+          "path": file.path,
+          "name": "sync_data.csv",
+          "text": "Compartir datos para Sincronización"
+        }
+      });
+    } catch (e) {
+      _addMessage({"role": "glyph", "text": "Error al exportar datos: $e"});
+    }
   }
 
   void _showEmergencyGuide() {
