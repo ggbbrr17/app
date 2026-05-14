@@ -1024,10 +1024,6 @@ class _ChatScreenState extends State<ChatScreen>
               "DATOS DE VISIÓN: El procesador ha identificado que la imagen es $imageDescription. "
               "BASADO EN ESTO: $finalQuestion";
           
-          _addMessage({
-            "role": "glyph",
-            "text": "👁️ Visión Offline activa: He analizado la imagen y detecto: $imageDescription."
-          });
           _scrollToBottom();
         }
 
@@ -1972,20 +1968,14 @@ class _ChatScreenState extends State<ChatScreen>
                       setState(() => _showTextField = true);
                       _focusNode.requestFocus();
                     },
-                    onLongPressStart: (_) => _startRecording(),
+                    onLongPressStart: (_) => _startRecording(forceSTT: true),
                     onLongPressEnd: (_) async {
-                      final audio = await _stopRecording(autoSend: true);
-                      if (audio != null) {
-                        _sendMultimodalData(
-                            question:
-                                "INSTRUCCIÓN ESPECIAL: El audio adjunto es mi mensaje de voz. Escucha lo que digo y RESPONDE DIRECTAMENTE. IMPORTANTE: Tienes la capacidad técnica de encender mi computadora Acer usando la función 'wake_on_lan'. Si en el audio pido que la enciendas, responde confirmando que lo harás y activa el comando. NO digas que no puedes hacerlo físicamente, porque SÍ puedes a través del código.",
-                            base64Audio: audio);
-                      }
+                      await _stopRecording(autoSend: true);
                     },
                     child: Center(
                       child: AnimatedScale(
                         duration: const Duration(milliseconds: 300),
-                        scale: _showTextField ? 0.4 : (_isRecording ? 1.4 : 1.0),
+                        scale: _showTextField ? 0.4 : (_isRecording ? 1.8 : 1.0),
                         child: AnimatedBuilder(
                           animation: Listenable.merge(
                               [_pulseController, _waveController]),
@@ -2201,10 +2191,13 @@ class _ChatScreenState extends State<ChatScreen>
                         children: [
                           const SizedBox(height: 50),
                           Align(
-                            alignment: Alignment.centerRight,
-                            child: IconButton(
-                              icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
-                              onPressed: _toggleMenu,
+                            alignment: Alignment.centerLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 16.0),
+                              child: IconButton(
+                                icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
+                                onPressed: _toggleMenu,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 10),
@@ -2256,51 +2249,19 @@ class _ChatScreenState extends State<ChatScreen>
                             },
                           ),
 
-                          // Traductor con Submen de Texto y Audio
+                          // Traductor
                           ListTile(
                             leading: const Icon(Icons.g_translate_outlined,
-                                color: Colors.cyanAccent, size: 20),
+                                color: Colors.white60, size: 20),
                             title: Text(_getMenuText("translator"),
                                 style: const TextStyle(
-                                    color: Colors.white, fontSize: 13,
-                                    fontWeight: FontWeight.w500)),
-                            trailing: Icon(
-                              _isTranslatorSubMenuOpen ? Icons.expand_less : Icons.expand_more,
-                              color: Colors.white60,
-                              size: 16,
-                            ),
+                                    color: Colors.white60, fontSize: 13,
+                                    fontWeight: FontWeight.w300)),
                             onTap: () {
-                              setState(() {
-                                _isTranslatorSubMenuOpen = !_isTranslatorSubMenuOpen;
-                              });
+                              _toggleMenu();
+                              _showBilingualGlossary();
                             },
                           ),
-                          if (_isTranslatorSubMenuOpen) ...[
-                            ListTile(
-                              contentPadding: const EdgeInsets.only(left: 45),
-                              leading: const Icon(Icons.text_fields_outlined,
-                                  color: Colors.white60, size: 18),
-                              title: Text(_getMenuText("text"),
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 12)),
-                              onTap: () {
-                                _toggleMenu();
-                                _showBilingualGlossary();
-                              },
-                            ),
-                            ListTile(
-                              contentPadding: const EdgeInsets.only(left: 45),
-                              leading: const Icon(Icons.mic_none_outlined,
-                                  color: Colors.white60, size: 18),
-                              title: Text(_getMenuText("audio"),
-                                  style: const TextStyle(
-                                      color: Colors.white70, fontSize: 12)),
-                              onTap: () {
-                                _toggleMenu();
-                                _startTranslatorAudioMode();
-                              },
-                            ),
-                          ],
                           ListTile(
                             leading: const Icon(Icons.qr_code_2_outlined,
                                 color: Colors.white60, size: 20),
@@ -2310,20 +2271,13 @@ class _ChatScreenState extends State<ChatScreen>
                             onTap: _syncP2PData,
                           ),
                           ListTile(
-                            leading: const Icon(Icons.download_for_offline_outlined,
-                                color: Colors.cyanAccent, size: 20),
-                            title: Row(
-                              children: [
-                                Text(_getMenuText("download_apk"),
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1.2)),
-                                const SizedBox(width: 8),
-                                const Icon(Icons.android, color: Colors.greenAccent, size: 16),
-                              ],
-                            ),
+                            leading: const Text("🤖", style: TextStyle(fontSize: 20)),
+                            title: Text(_getMenuText("download_apk"),
+                                style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
                             onTap: () {
                               _toggleMenu();
                               _sendMultimodalData(
