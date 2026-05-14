@@ -1368,64 +1368,73 @@ class _ChatScreenState extends State<ChatScreen>
   // ─── AGRICULTURAL CONTENT ─────────────────────────────────────────────────
 
   String _getFrijolContent() {
-    if (_tutorLanguage == "Wayuunaiki") {
-      return "El Frijol Guajirito (Vigna unguiculata)\n\n"
-          "Tü plantajirü aka süka pülü maikirunüi sünainmüin tü mmakat müsia akuwaipajüi tü eküülü pülüshi. "
-          "Püsirayaa 40-60 cm süka wopu süpüla tü wayataa. "
-          "Emayaa 2 o 3 waküin süka wune mma süpüla wane jintü anasü.\n\n"
-          "Kaa'uleein Eetaain: Tü plantakat eejüna tü bakterijakat tü mmakat süpüla akumajüin nitrogenokai süchiki tü wanüliakat. "
-          "Nnojotsü pülaainjatüin tü fertilizanteka tütüjülia.\n\n"
-          "Eküülü pülüshi: Anüiki tü soköshi, eejüna wane oütüü süchiki tü yaakat 'etapa crítica'. "
-          "Müsia pütchikot tü waküin süpüla tü natiakat paala, tü aapakat wayuu süpüla tü mmaka outshi.";
-    }
-    if (_tutorLanguage == "Inglés") {
-      return "The Guajiro Bean (Vigna unguiculata)\n\n"
-          "This crop is a survival master in poor soils. Planting begins with direct seeding — transplanting is not recommended because its roots are sensitive to initial movement. Plant at 40–60 cm spacing to allow air circulation, preventing fungal diseases in humid conditions.\n\n"
-          "Germination & Soil: Sowing 2–3 seeds per site ensures at least one strong plant emerges. The plant has a symbiotic relationship with soil bacteria that 'trap' nitrogen from the air and fix it to the soil — no expensive chemical fertilizers needed.\n\n"
-          "Critical Care: Although it tolerates extreme heat, there is a period called the 'critical stage' during pod formation. If the plant suffers severe drought at that moment, flowers drop and there will be no harvest. A supplemental irrigation at this stage is the difference between a successful and a failed crop.";
-    }
-    // Español y Bilingüe
+    String wayuu = "Tü Frijol Guajirokat (Vigna unguiculata)\n\n"
+        "Tü plantajirü aka süka pülü maikirunüi sünainmüin tü mmakat müsia akuwaipajüi tü eküülü pülüshi. "
+        "Püsirayaa 40-60 cm süka wopu süpüla tü wayataa. "
+        "Emayaa 2 o 3 waküin süka wune mma süpüla wane jintü anasü.\n\n"
+        "Kaa'uleein Eetaain: Tü plantakat eejüna tü bakterijakat tü mmakat süpüla akumajüin nitrogenokai süchiki tü wanüliakat. "
+        "Nnojotsü pülaainjatüin tü fertilizanteka tütüjülia.\n\n"
+        "Eküülü pülüshi: Anüiki tü soköshi, eejüna wane oütüü süchiki tü yaakat 'etapa crítica'. "
+        "Müsia pütchikot tü waküin süpüla tü natiakat paala, tü aapakat wayuu süpüla tü mmaka outshi.";
+
+    String en = "The Guajiro Bean (Vigna unguiculata)\n\n"
+        "This crop is a survival master in poor soils. Planting begins with direct seeding — transplanting is not recommended because its roots are sensitive to initial movement. Plant at 40–60 cm spacing to allow air circulation, preventing fungal diseases in humid conditions.\n\n"
+        "Germination & Soil: Sowing 2–3 seeds per site ensures at least one strong plant emerges. The plant has a symbiotic relationship with soil bacteria that 'trap' nitrogen from the air and fix it to the soil — no expensive chemical fertilizers needed.\n\n"
+        "Critical Care: Although it tolerates extreme heat, there is a period called the 'critical stage' during pod formation. If the plant suffers severe drought at that moment, flowers drop and there will be no harvest. A supplemental irrigation at this stage is the difference between a successful and a failed crop.";
+
     String es = "El Frijol Guajirito (Vigna unguiculata)\n\n"
         "Este cultivo es un maestro de la supervivencia en suelos pobres. Su plantación comienza con la siembra directa; no se recomienda el trasplante porque sus raíces son sensibles al movimiento inicial. Debes sembrar a una distancia de 40 a 60 cm entre plantas para permitir que el aire circule, lo cual previene hongos si llega a haber mucha humedad.\n\n"
         "Germinación y Suelo: Al sembrar 2 o 3 semillas por sitio, aseguras que al menos una planta fuerte emerja. La planta tiene una relación simbiótica con bacterias del suelo que 'atrapan' el nitrógeno del aire y lo pegan a la tierra; por eso, no necesitas fertilizantes químicos costosos.\n\n"
         "Cuidado Crítico: Aunque tolera el calor extremo, existe un periodo llamado 'etapa crítica' que es durante la formación de las vainas. Si en ese momento la planta sufre demasiada sed, las flores se caen y no habrá cosecha. Un riego de auxilio en esta fase es la diferencia entre un cultivo exitoso y uno fallido.";
+
+    if (_tutorLanguage == "Wayuunaiki") return wayuu;
+    if (_tutorLanguage == "Inglés") return en;
+    if (_tutorLanguage == "Español") return es;
+
     if (_tutorLanguage == "Bilingüe") {
-      return "$es\n\n---\n\n"
-          "Tü Frijol Guajirokat (Vigna unguiculata)\n\n"
-          "Tü plantajirü aka süka pülü maikirunüi sünainmüin tü mmakat. Emayaa 40-60 cm süka wopu. Püsirayaa 2-3 waküin süpüla jintü anasü.\n\n"
-          "Kaa'uleein: Tü plantakat eejüna tü bakterijakat süpüla akumajüin nitrogenokai. Nnojotsü pülaainjatüin tü fertilizanteka.\n\n"
-          "Eküülü pülüshi: Eejüna 'etapa crítica' sünainmüin tü vainas akumaakat. Pütchikot wane aapüin wayuu süpüla tü mmaka outshi.";
+      if (_appLanguage == "Wayuunaiki") {
+        return "$wayuu\n\n---\n\n$es";
+      } else if (_appLanguage == "Inglés") {
+        return "$en\n\n---\n\n$es";
+      } else {
+        return "$es\n\n---\n\n$wayuu";
+      }
     }
     return es;
   }
 
   String _getMoringaContent() {
-    if (_tutorLanguage == "Wayuunaiki") {
-      return "Tü Moringa (Moringa oleifera)\n\n"
-          "Tü moringa aka wane aapiakat ekirajükat maa'ulu (3 metros wane juyaka). "
-          "Tü kaa'uleein pülüshikat aka süka tü outaakat. Süpüla tü mmakat La Guajirat, müsia akua'ipa, "
-          "tü mmakat anüiki tü pasatkat; müsia tü wayuukat nümayaa, tü yaakat nüpütaa süchiirua.\n\n"
-          "Akumajaa: Müsia pülaain bolsakat nüünüin, jieechishin nüünüin süpüla tü yaakat anüiki. "
-          "Müsia pülaain 40x40 cm süpüla tü yaakat anüiki.\n\n"
-          "Kaa'uleein: Tü poda de despunte aka müsia pülaain süpüla tü aapiakat anüiki copa. "
-          "Jieechishin tü hojakat süpüla eküülü müsia tü mmakat anasü nümayaa sünainmüin.";
-    }
-    if (_tutorLanguage == "Inglés") {
-      return "The Moringa Tree (Moringa oleifera)\n\n"
-          "Moringa is an ultra-fast-growing tree (it can grow up to 3 meters in a year). The key to planting lies in drainage. In La Guajira, although the soil is dry, it can sometimes be very compact; if water becomes waterlogged, the moringa root rots within days.\n\n"
-          "Germination & Transplanting: If using seedling bags, ensure they have good depth, as moringa develops a taproot (like a long carrot) very quickly. When transplanting to the permanent site, the hole must be wide (about 40x40 cm) so the soil is loose and the root can sink in effortlessly.\n\n"
-          "Care & Production: The most important management is tip pruning (despunte). If left to grow freely, you'll have a tall pole with few leaves. By cutting the tip at one meter, you force the tree to widen its canopy. This not only gives you more leaves for consumption, but creates natural shade that protects the surrounding soil, retaining moisture longer.";
-    }
+    String wayuu = "Tü Moringa (Moringa oleifera)\n\n"
+        "Tü moringa aka wane aapiakat ekirajükat maa'ulu (3 metros wane juyaka). "
+        "Tü kaa'uleein pülüshikat aka süka tü outaakat. Süpüla tü mmakat La Guajirat, müsia akua'ipa, "
+        "tü mmakat anüiki tü pasatkat; müsia tü wayuukat nümayaa, tü yaakat nüpütaa süchiirua.\n\n"
+        "Akumajaa: Müsia pülaain bolsakat nüünüin, jieechishin nüünüin süpüla tü yaakat anüiki. "
+        "Müsia pülaain 40x40 cm süpüla tü yaakat anüiki.\n\n"
+        "Kaa'uleein: Tü poda de despunte aka müsia pülaain süpüla tü aapiakat anüiki copa. "
+        "Jieechishin tü hojakat süpüla eküülü müsia tü mmakat anasü nümayaa sünainmüin.";
+
+    String en = "The Moringa Tree (Moringa oleifera)\n\n"
+        "Moringa is an ultra-fast-growing tree (it can grow up to 3 meters in a year). The key to planting lies in drainage. In La Guajira, although the soil is dry, it can sometimes be very compact; if water becomes waterlogged, the moringa root rots within days.\n\n"
+        "Germination & Transplanting: If using seedling bags, ensure they have good depth, as moringa develops a taproot (like a long carrot) very quickly. When transplanting to the permanent site, the hole must be wide (about 40x40 cm) so the soil is loose and the root can sink in effortlessly.\n\n"
+        "Care & Production: The most important management is tip pruning (despunte). If left to grow freely, you'll have a tall pole with few leaves. By cutting the tip at one meter, you force the tree to widen its canopy. This not only gives you more leaves for consumption, but creates natural shade that protects the surrounding soil, retaining moisture longer.";
+
     String es = "La Moringa (Moringa oleifera)\n\n"
         "La moringa es un árbol de crecimiento ultra rápido (puede crecer hasta 3 metros en un año). La clave de su plantación está en el drenaje. En La Guajira, aunque el suelo es seco, a veces es muy compacto; si el agua se queda estancada, la raíz de la moringa se pudre en cuestión de días.\n\n"
         "Germinación y Trasplante: Si usas bolsas de semillero, asegúrate de que tengan buena profundidad, ya que la moringa desarrolla una raíz pivotante (como una zanahoria larga) muy rápido. Al trasplantar al sitio definitivo, el hoyo debe ser amplio (unos 40x40 cm) para que la tierra esté suelta y la raíz baje sin esfuerzo.\n\n"
         "Cuidado y Producción: El manejo más importante es la poda de despunte. Si la dejas crecer libre, tendrás un poste alto con pocas hojas. Al cortar la punta cuando mide un metro, obligas al árbol a ensanchar su copa. Esto no solo te da más hojas para consumo, sino que crea una sombra natural que protege el suelo alrededor del tronco, manteniendo la humedad por más tiempo.";
+
+    if (_tutorLanguage == "Wayuunaiki") return wayuu;
+    if (_tutorLanguage == "Inglés") return en;
+    if (_tutorLanguage == "Español") return es;
+
     if (_tutorLanguage == "Bilingüe") {
-      return "$es\n\n---\n\n"
-          "Tü Moringa (Moringa oleifera)\n\n"
-          "Tü moringa aka wane aapiakat ekirajükat (3 metros wane juyaka). Tü kaa'uleein pülüshikat aka tü outaakat. "
-          "Müsia pülaain bolsakat nüünüin süpüla tü yaakat anüiki. Tü hoyookat süpüla 40x40 cm.\n\n"
-          "Kaa'uleein: Poda de despunte süpüla tü aapiakat copa anasü. Jieechishin hojakat müsia tü mmakat anasü nümayaa.";
+      if (_appLanguage == "Wayuunaiki") {
+        return "$wayuu\n\n---\n\n$es";
+      } else if (_appLanguage == "Inglés") {
+        return "$en\n\n---\n\n$es";
+      } else {
+        return "$es\n\n---\n\n$wayuu";
+      }
     }
     return es;
   }
