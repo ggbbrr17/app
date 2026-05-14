@@ -996,8 +996,8 @@ class _ChatScreenState extends State<ChatScreen>
 
     if (_isOfflineMode && _gemmaChat != null) {
       _offlineInteractionCount++;
-      // Limitamos a 2 interacciones para evitar Memory Leaks / OOM (Gemma consume mucha RAM)
-      if (_offlineInteractionCount >= 2) {
+      // Limitamos a 1 interacción para evitar Memory Leaks / OOM (Gemma consume mucha RAM)
+      if (_offlineInteractionCount >= 1) {
         try {
           await _initGemmaChat();
         } catch (e) {
@@ -2190,7 +2190,15 @@ class _ChatScreenState extends State<ChatScreen>
                       ),
                       child: Column(
                         children: [
-                          const SizedBox(height: 100),
+                          const SizedBox(height: 50),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: IconButton(
+                              icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
+                              onPressed: _toggleMenu,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                           ListTile(
                             leading: const Icon(Icons.add_circle_outline,
                                 color: Colors.white60, size: 20),
