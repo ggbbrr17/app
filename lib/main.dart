@@ -2039,7 +2039,7 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
               ),
             ),
-            // Overlay de Traductor por Audio (Centrado)
+            // Overlay de Traductor por Audio
             if (_isTranslatorAudioMode)
               Positioned.fill(
                 child: Container(
@@ -2047,11 +2047,11 @@ class _ChatScreenState extends State<ChatScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Triángulo Palpitante en el Centro
+                      // Triángulo palpitante
                       AnimatedBuilder(
                         animation: _pulseController,
                         builder: (context, _) => Transform.scale(
-                          scale: 1.0 + (_pulseController.value * 0.2),
+                          scale: 1.0 + (_pulseController.value * (_isRecording ? 0.25 : 0.05)),
                           child: CustomPaint(
                             painter: FragmentedTrianglePainter(
                               animationValue: _waveController.value,
@@ -2062,35 +2062,97 @@ class _ChatScreenState extends State<ChatScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 36),
+                      // Estado
                       Text(
-                        "ESCUCHANDO...",
+                        _isRecording ? "ESCUCHANDO..." : "LISTO PARA GRABAR",
                         style: TextStyle(
-                          color: Colors.cyanAccent.withValues(alpha: 0.9),
-                          fontSize: 16,
+                          color: _isRecording
+                              ? Colors.cyanAccent.withValues(alpha: 0.9)
+                              : Colors.white38,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
-                          letterSpacing: 4.0,
+                          letterSpacing: 3.5,
                         ),
                       ),
-                      const SizedBox(height: 60),
-                      // Botón Cuadrado Rojo para Parar
-                      GestureDetector(
-                        onTap: _stopTranslatorAudioMode,
-                        child: Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent.withValues(alpha: 0.15),
-                            border: Border.all(color: Colors.redAccent, width: 2),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(color: Colors.redAccent.withValues(alpha: 0.3), blurRadius: 20)
-                            ]
+                      // Texto reconocido en tiempo real
+                      if (_controller.text.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                          child: Text(
+                            _controller.text,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.75),
+                              fontSize: 13,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            maxLines: 4,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          child: const Center(
-                            child: Icon(Icons.stop_rounded, color: Colors.redAccent, size: 34),
+                        )
+                      else
+                        const SizedBox(height: 24),
+                      const SizedBox(height: 20),
+                      // Botones: Grabar + Detener
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Botón grabar (mic)
+                          GestureDetector(
+                            onTap: _isRecording ? null : _restartTranslatorRecording,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 250),
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: _isRecording
+                                    ? Colors.white.withValues(alpha: 0.04)
+                                    : Colors.cyanAccent.withValues(alpha: 0.15),
+                                border: Border.all(
+                                  color: _isRecording ? Colors.white24 : Colors.cyanAccent,
+                                  width: 2,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: _isRecording
+                                    ? []
+                                    : [BoxShadow(color: Colors.cyanAccent.withValues(alpha: 0.3), blurRadius: 18)],
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  Icons.mic_rounded,
+                                  color: _isRecording ? Colors.white24 : Colors.cyanAccent,
+                                  size: 32,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 28),
+                          // Botón detener (cuadrado rojo)
+                          GestureDetector(
+                            onTap: _stopTranslatorAudioMode,
+                            child: Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.15),
+                                border: Border.all(color: Colors.redAccent, width: 2),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(color: Colors.redAccent.withValues(alpha: 0.3), blurRadius: 20)
+                                ],
+                              ),
+                              child: const Center(
+                                child: Icon(Icons.stop_rounded, color: Colors.redAccent, size: 34),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        _isRecording ? "Habla ahora · Toca ■ para traducir" : "Toca 🎙 para grabar",
+                        style: TextStyle(color: Colors.white30, fontSize: 11, letterSpacing: 1.2),
                       ),
                     ],
                   ),
@@ -2429,28 +2491,56 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   void _startTranslatorAudioMode() async {
+    _controller.clear();
     setState(() {
       _isTranslatorAudioMode = true;
     });
-    // Forzamos modo STT para el traductor para que sea tiempo real
-    _startRecording(forceSTT: true);
+    await _startRecording(forceSTT: true);
+  }
+
+  void _restartTranslatorRecording() async {
+    _controller.clear();
+    await _startRecording(forceSTT: true);
   }
 
   void _stopTranslatorAudioMode() async {
-    // Detenemos el reconocimiento de voz sin enviar automáticamente
+    // 1. Detener reconocimiento
     await _stopRecording(autoSend: false);
-    
-    final textToTranslate = _controller.text;
+
+    // 2. Capturar texto antes de limpiar
+    final textToTranslate = _controller.text.trim();
+
+    // 3. Cerrar overlay
+    if (mounted) setState(() => _isTranslatorAudioMode = false);
+
+    // 4. Enviar si hay texto
     if (textToTranslate.isNotEmpty) {
       _controller.clear();
-      _sendMultimodalData(
-        question: "Por favor, traduce lo siguiente al idioma Wayuunaiki: $textToTranslate"
-      );
+      _addMessage({"role": "user", "text": "🎙️ $textToTranslate"});
+
+      String prompt;
+      if (_appLanguage == "Wayuunaiki") {
+        prompt = "Traduce al Español: $textToTranslate";
+      } else if (_appLanguage == "Inglés") {
+        prompt = "Translate to Wayuunaiki: $textToTranslate";
+      } else {
+        // Español por defecto → Wayuunaiki
+        prompt = "Traduce al Wayuunaiki: $textToTranslate";
+      }
+
+      // Usar diccionario offline primero; si hay resultado, mostrarlo directamente
+      if (_wayuuDict.isLoaded) {
+        _handleWayuuTranslation(textToTranslate);
+      } else {
+        _sendMultimodalData(question: prompt);
+      }
+    } else {
+      // Sin texto capturado — informar al usuario
+      _addMessage({
+        "role": "glyph",
+        "text": "No se detectó voz. Toca el micrófono para intentarlo de nuevo."
+      });
     }
-    
-    setState(() {
-      _isTranslatorAudioMode = false;
-    });
   }
 
   void _showRiskPatients() async {
