@@ -4,7 +4,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
-import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
+import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart' hide ModelManager;
 
 import 'anthro_service.dart';
 import 'anthro_chart_widget.dart';
