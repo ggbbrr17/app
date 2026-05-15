@@ -413,10 +413,11 @@ class _ChatScreenState extends State<ChatScreen>
                 parent: _menuAnimationController, curve: Curves.easeOut));
     _initializeNotifications();
     _startNotificationPolling();
-    _loadPersistedHistory();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadGemmaModel();
+    // First load the model, THEN show the interactive greeting
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadPersistedHistory();
+      if (mounted) _loadGemmaModel();
     });
   }
 
@@ -424,17 +425,8 @@ class _ChatScreenState extends State<ChatScreen>
     try {
       final sessions = await DatabaseHelper.instance.getSessions();
       if (sessions.isEmpty) {
+        // New user: just create the session. Language selector shown after model loads.
         _currentSessionId = await DatabaseHelper.instance.createSession();
-        final defaultMsg = {
-          "role": "glyph",
-          "type": "language_selector",
-          "text": ""
-        };
-        await DatabaseHelper.instance
-            .insertMessage(_currentSessionId!, defaultMsg);
-        if (mounted) setState(() {
-          _messages.add(defaultMsg);
-        });
       } else {
         _currentSessionId = sessions.first['id'];
         final msgs =
@@ -839,11 +831,14 @@ class _ChatScreenState extends State<ChatScreen>
       try {
         await _initGemmaChat();
         setState(() => _isOfflineMode = true);
+        // Model ready: show interactive greeting
         _addMessage({
           "role": "glyph",
           "type": "check_animation",
           "text": ""
         });
+        await Future.delayed(const Duration(milliseconds: 800));
+        _showLanguageSelectorIfNeeded();
       } catch (e) {
         _addMessage({
           "role": "glyph",
@@ -931,11 +926,14 @@ class _ChatScreenState extends State<ChatScreen>
             "type": "check_animation",
             "text": ""
           });
+          await Future.delayed(const Duration(milliseconds: 800));
+          _showLanguageSelectorIfNeeded();
         } catch (e) {
           _addMessage({
             "role": "glyph",
             "text": "❌ Error al inicializar el modelo: $e"
           });
+          _showLanguageSelectorIfNeeded();
         } finally {
           setState(() => _isThinking = false);
           _scrollToBottom();
@@ -948,6 +946,25 @@ class _ChatScreenState extends State<ChatScreen>
         _scrollToBottom();
       },
     );
+  }
+
+  /// Shows the language selector bubble only when the chat is empty
+  /// (new session). This is called AFTER the model finishes loading.
+  void _showLanguageSelectorIfNeeded() {
+    if (!mounted) return;
+    final hasContent = _messages.any((m) =>
+        m['type'] != 'check_animation' && (m['text'] as String?)?.isNotEmpty == true);
+    if (hasContent) return; // Returning user with history — skip
+    final langMsg = {
+      "role": "glyph",
+      "type": "language_selector",
+      "text": ""
+    };
+    if (_currentSessionId != null) {
+      DatabaseHelper.instance.insertMessage(_currentSessionId!, langMsg);
+    }
+    setState(() => _messages.add(langMsg));
+    _scrollToBottom();
   }
 
   Future<void> _sendMultimodalData(
