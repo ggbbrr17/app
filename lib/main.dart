@@ -1003,10 +1003,13 @@ class _ChatScreenState extends State<ChatScreen>
     setState(() => _isThinking = true);
 
     String finalQuestion = question;
-    if (base64Image != null) {
+    if (base64Image != null && !_isOfflineMode) {
       finalQuestion =
           "INSTRUCCIÓN ESPECIAL: Se ha adjuntado una imagen. Analízala completamente y describe lo que ves (alimentos, personas, objetos, estado nutricional si aplica). Da explicaciones nutricionales detalladas en Español y Wayuunaiki si se muestran alimentos, o describe el contenido visual si es otra cosa. \nPREGUNTA: " +
               question;
+    } else if (base64Image != null && _isOfflineMode) {
+       // En modo offline, el prompt se construye abajo con los resultados del labeler local
+       finalQuestion = question;
     }
 
     // Lógica de idioma global
@@ -1285,10 +1288,23 @@ class _ChatScreenState extends State<ChatScreen>
     if (text.toLowerCase().startsWith("traducir ") ||
         text.toLowerCase().startsWith("traduce ") ||
         text.toLowerCase().startsWith("translate ")) {
-      final query = text.replaceFirst(RegExp(r'^(traducir|traduce|translate)\s+', caseSensitive: false), '');
-      _handleWayuuTranslation(query);
+      
+      if (img != null) {
+        // Si hay una imagen, debemos enviarla al modelo multimodal
+        _sendMultimodalData(question: text, base64Image: img);
+        return;
+      }
+
+      // Si es solo texto, usamos el diccionario rápido
+      setState(() => _isThinking = true);
+      Future.delayed(const Duration(milliseconds: 600), () {
+        final query = text.replaceFirst(RegExp(r'^(traducir|traduce|translate)\s+', caseSensitive: false), '');
+        _handleWayuuTranslation(query);
+        setState(() => _isThinking = false);
+      });
       return;
     }
+    
     if (text.toLowerCase().startsWith("buscar ") && text.toLowerCase().contains("wayuu")) {
       final query = text.replaceFirst(RegExp(r'^buscar\s+', caseSensitive: false), '').replaceAll(RegExp(r'wayuu(naiki)?', caseSensitive: false), '').trim();
       _handleWayuuLookup(query);
