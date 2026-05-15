@@ -114,7 +114,7 @@ class AnthroService {
     return "Obesidad Grado III (Mórbida) (Adulto)";
   }
 
-  static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr, {double? muacCm}) {
+  static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr, {double? muacCm, int? ageInDays}) {
     if (ageInMonths < 0 || ageInMonths > 228) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Edad fuera de rango (0-19 años)", muacDiagnosis: "");
     if (weightKg < 0.5 || weightKg > 200) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Peso fuera de rango realista (0.5-200kg)", muacDiagnosis: "");
     if (heightCm < 30 || heightCm > 250) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Talla fuera de rango realista (30-250cm)", muacDiagnosis: "");
@@ -129,8 +129,8 @@ class AnthroService {
     double zWfh = double.nan;
 
     try {
-      // Usar Age(months: ...) para precisión exacta según tablas OMS
-      final age = Age.byMonthsAgo(ageInMonths);
+      // Usar Age.byDaysAgo si está disponible para precisión exacta según tablas OMS
+      final age = ageInDays != null ? Age.byDaysAgo(ageInDays) : Age.byMonthsAgo(ageInMonths);
       final weight = Mass$Kilogram(weightKg);
       final height = Length$Centimeter(heightCm);
       

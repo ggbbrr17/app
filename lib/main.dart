@@ -370,6 +370,12 @@ class _ChatScreenState extends State<ChatScreen>
   bool _isHealthProfessional = true;
   bool _isRiskAssessmentMode = false;
   String? _pendingRiskName;
+  bool _isInteractiveAnthroFlow = false;
+  String? _interactiveGender;
+  DateTime? _interactiveDob;
+  double? _interactiveWeight;
+  double? _interactiveHeight;
+  String? _interactiveName;
   bool _isTranslatorSubMenuOpen = false;
   bool _isTranslatorAudioMode = false;
   final WayuuDictionary _wayuuDict = WayuuDictionary();
@@ -1548,6 +1554,69 @@ class _ChatScreenState extends State<ChatScreen>
                 ],
               )
             ],
+            if (msg["type"] == "patient_type_selector") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  _buildPatientTypeOption("👦 Niño"),
+                  _buildPatientTypeOption("👧 Niña"),
+                  _buildPatientTypeOption("👨 Hombre"),
+                  _buildPatientTypeOption("👩 Mujer"),
+                ],
+              )
+            ],
+            if (msg["type"] == "weight_input_bubble") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 12),
+              _buildNumberInput("Peso (kg)", (val) {
+                 _interactiveWeight = val;
+                 _messages.removeWhere((m) => m["type"] == "weight_input_bubble");
+                 _addMessage({"role": "user", "text": "$val kg"});
+                 _addMessage({
+                   "role": "glyph",
+                   "type": "height_input_bubble",
+                   "text": "¿Cuál es la talla en centímetros?"
+                 });
+              })
+            ],
+            if (msg["type"] == "height_input_bubble") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 12),
+              _buildNumberInput("Talla (cm)", (val) {
+                 _interactiveHeight = val;
+                 _messages.removeWhere((m) => m["type"] == "height_input_bubble");
+                 _addMessage({"role": "user", "text": "$val cm"});
+                 
+                 // Perform anthro calculation!
+                 int exactDays = DateTime.now().difference(_interactiveDob!).inDays;
+                 int months = exactDays ~/ 30; // approximate for logging, actual will use exactDays
+                 _performAnthroCalculation(
+                   _interactiveName ?? "Paciente",
+                   months,
+                   _interactiveWeight!,
+                   _interactiveHeight!,
+                   _interactiveGender!,
+                   ageInDays: exactDays
+                 );
+                 
+                 setState(() {
+                   _isInteractiveAnthroFlow = false;
+                 });
+              })
+            ],
             if (msg["type"] == "anthro_chart" && msg["data"] != null) ...[
               Text(msg["data"]["text"],
                   style: const TextStyle(
@@ -1791,11 +1860,16 @@ class _ChatScreenState extends State<ChatScreen>
         if (role == "Profesional") {
            _addMessage({
              "role": "glyph",
-             "text": _appLanguage == "Wayuunaiki" 
-                 ? "Anasü. Tayaa tü kaa'uleein süpüla:\n1. Z-Score (OMS)\n2. Atalah\n3. IMC\nPütchajaa tü wayuukalü:\n• Jintüt\n• Kachon\n• Nutuma\n• Nütüjülü"
-                 : _appLanguage == "Inglés"
-                     ? "Perfect. I calculate WHO Z-Scores, Gestational charts, and Adult BMI.\nPlease provide:\n• Name\n• Age (months)\n• Weight (kg)\n• Height (cm)\n• Gender"
-                     : "Excelente. Mis funciones clínicas incluyen:\n• Curvas OMS (Z-Score)\n• Gráficas Atalah (Gestacional)\n• IMC Adulto\nPor favor envíame:\n• Nombre\n• Edad\n• Peso (kg)\n• Talla (cm)\n• Género"
+             "type": "patient_type_selector",
+             "text": "¿El paciente es niño, niña, hombre o mujer?"
+           });
+           setState(() {
+             _isInteractiveAnthroFlow = true;
+             _interactiveGender = null;
+             _interactiveDob = null;
+             _interactiveWeight = null;
+             _interactiveHeight = null;
+             _interactiveName = null;
            });
         } else {
            _addMessage({
@@ -1842,6 +1916,119 @@ class _ChatScreenState extends State<ChatScreen>
           );
         }
       ),
+    );
+  }
+
+  Widget _buildPatientTypeOption(String text) {
+    return GestureDetector(
+      onTap: () async {
+         setState(() {
+            _messages.removeWhere((m) => m["type"] == "patient_type_selector");
+         });
+         _addMessage({"role": "user", "text": text});
+         
+         if (text.contains("Niño") || text.contains("Niña")) {
+            _interactiveGender = text.contains("Niño") ? "m" : "f";
+            
+            // Show date picker
+            final DateTime? picked = await showDatePicker(
+               context: context,
+               initialDate: DateTime.now().subtract(const Duration(days: 365)),
+               firstDate: DateTime.now().subtract(const Duration(days: 365 * 20)),
+               lastDate: DateTime.now(),
+               builder: (context, child) {
+                 return Theme(
+                   data: Theme.of(context).copyWith(
+                     colorScheme: const ColorScheme.dark(
+                       primary: Colors.cyanAccent,
+                       onPrimary: Colors.black,
+                       surface: Color(0xFF1E293B),
+                       onSurface: Colors.white,
+                     ),
+                   ),
+                   child: child!,
+                 );
+               },
+            );
+            
+            if (picked != null) {
+               _interactiveDob = picked;
+               _addMessage({"role": "user", "text": "Fecha de nacimiento: ${picked.toLocal().toString().split(' ')[0]}"});
+               
+               // Ask for weight
+               _addMessage({
+                 "role": "glyph",
+                 "type": "weight_input_bubble",
+                 "text": "¿Cuál es el peso del paciente en kilogramos?"
+               });
+            } else {
+               // User cancelled picker
+               _addMessage({
+                 "role": "glyph",
+                 "text": "Operación cancelada. ¿En qué más puedo ayudarte?"
+               });
+               setState(() {
+                 _isInteractiveAnthroFlow = false;
+               });
+            }
+         } else {
+            // Hombre / Mujer
+            _addMessage({
+              "role": "glyph",
+              "text": "Evaluación de adultos en desarrollo. Por favor escribe directamente los datos como: 'Juan, 25 años, 70kg, 175cm'."
+            });
+            setState(() {
+               _isInteractiveAnthroFlow = false;
+            });
+         }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.blueAccent.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.5)),
+        ),
+        child: Text(text, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+      ),
+    );
+  }
+
+  Widget _buildNumberInput(String hint, Function(double) onSubmit) {
+    final TextEditingController inputCtrl = TextEditingController();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 100,
+          child: TextField(
+            controller: inputCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+              filled: true,
+              fillColor: Colors.black.withValues(alpha: 0.3),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.check_circle, color: Colors.cyanAccent, size: 28),
+          onPressed: () {
+            final val = double.tryParse(inputCtrl.text.replaceAll(',', '.'));
+            if (val != null) {
+              onSubmit(val);
+            }
+          },
+        )
+      ],
     );
   }
 
@@ -3089,10 +3276,10 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _performAnthroCalculation(
       String nombre, int edad, double peso, double talla, String genero,
-      {double? muacCm}) {
+      {double? muacCm, int? ageInDays}) {
     AnthroResult result;
     try {
-       result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
+       result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm, ageInDays: ageInDays);
     } catch (e) {
        _addMessage({"role": "glyph", "text": "Error en el cálculo: Los datos ingresados son extremos o inválidos."});
        return;
