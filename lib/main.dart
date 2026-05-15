@@ -958,7 +958,7 @@ class _ChatScreenState extends State<ChatScreen>
     String finalQuestion = question;
     if (base64Image != null) {
       finalQuestion =
-          "INSTRUCCIÓN ESPECIAL: Identifica los alimentos en la imagen adjunta (si no la puedes ver, asume que es una imagen de comida relacionada con la pregunta). Da explicaciones nutricionales detalladas en Español y Wayuunaiki del alimento, y brinda recomendaciones. \nPREGUNTA: " +
+          "INSTRUCCIÓN ESPECIAL: Se ha adjuntado una imagen. Analízala completamente y describe lo que ves (alimentos, personas, objetos, estado nutricional si aplica). Da explicaciones nutricionales detalladas en Español y Wayuunaiki si se muestran alimentos, o describe el contenido visual si es otra cosa. \nPREGUNTA: " +
               question;
     }
 
@@ -1565,12 +1565,27 @@ class _ChatScreenState extends State<ChatScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildPatientTypeOption("👦 Niño"),
-                  _buildPatientTypeOption("👧 Niña"),
-                  _buildPatientTypeOption("👨 Hombre"),
-                  _buildPatientTypeOption("👩 Mujer"),
+                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👦 Jintüi (Niño)" : "👦 Niño"),
+                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👧 Jintüt (Niña)" : "👧 Niña"),
+                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👨 Toloyuu (Hombre)" : "👨 Hombre"),
+                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👩 Majayüt (Mujer)" : "👩 Mujer"),
                 ],
               )
+            ],
+            if (msg["type"] == "name_input_bubble") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 12),
+              _buildTextInput("Nombre", (val) {
+                 _interactiveName = val;
+                 _messages.removeWhere((m) => m["type"] == "name_input_bubble");
+                 _addMessage({"role": "user", "text": val});
+                 
+                 // Show date picker right after name is submitted
+                 _showDobPickerForInteractiveFlow();
+              })
             ],
             if (msg["type"] == "weight_input_bubble") ...[
               Text(msg["text"] ?? "",
@@ -1585,7 +1600,7 @@ class _ChatScreenState extends State<ChatScreen>
                  _addMessage({
                    "role": "glyph",
                    "type": "height_input_bubble",
-                   "text": "¿Cuál es la talla en centímetros?"
+                   "text": _translate("height_q")
                  });
               })
             ],
@@ -1861,7 +1876,7 @@ class _ChatScreenState extends State<ChatScreen>
            _addMessage({
              "role": "glyph",
              "type": "patient_type_selector",
-             "text": "¿El paciente es niño, niña, hombre o mujer?"
+             "text": _translate("patient_type_q")
            });
            setState(() {
              _isInteractiveAnthroFlow = true;
@@ -2032,12 +2047,132 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  String _translate(String key) {
+    final Map<String, Map<String, String>> t = {
+      "patient_type_q": {
+        "Español": "¿El paciente es niño, niña, hombre o mujer?",
+        "Wayuunaiki": "¿Chi wayuukai niia jintüi, jintüt, toloyuu o majayüt?",
+        "Inglés": "Is the patient a boy, girl, man or woman?"
+      },
+      "name_q": {
+        "Español": "¿Cómo se llama el paciente?",
+        "Wayuunaiki": "¿Kasa nüpüshi chi wayuukai?",
+        "Inglés": "What is the patient's name?"
+      },
+      "weight_q": {
+        "Español": "¿Cuál es el peso en kilogramos?",
+        "Wayuunaiki": "¿Je'tsü nüpüla en kilogramos?",
+        "Inglés": "What is the weight in kilograms?"
+      },
+      "height_q": {
+        "Español": "¿Cuál es la talla en centímetros?",
+        "Wayuunaiki": "¿Je'tsü nno'u en centímetros?",
+        "Inglés": "What is the height in centimeters?"
+      },
+    };
+    final lang = _appLanguage.isEmpty ? "Español" : _appLanguage;
+    return t[key]?[lang] ?? t[key]?["Español"] ?? key;
+  }
+
+  Future<void> _showDobPickerForInteractiveFlow() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().subtract(const Duration(days: 365)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 20)),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Colors.cyanAccent,
+              onPrimary: Colors.black,
+              surface: Color(0xFF0A0A0F),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF0A0A0F),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      _interactiveDob = picked;
+      final dateStr = "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      _addMessage({"role": "user", "text": dateStr});
+      _addMessage({
+        "role": "glyph",
+        "type": "weight_input_bubble",
+        "text": _translate("weight_q")
+      });
+    } else {
+      _addMessage({"role": "glyph", "text": "Selección de fecha cancelada."});
+      setState(() => _isInteractiveAnthroFlow = false);
+    }
+  }
+
+  Widget _buildTextInput(String hint, Function(String) onSubmit) {
+    final TextEditingController inputCtrl = TextEditingController();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 160,
+          child: TextField(
+            controller: inputCtrl,
+            keyboardType: TextInputType.name,
+            textCapitalization: TextCapitalization.words,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+              filled: true,
+              fillColor: Colors.black.withValues(alpha: 0.3),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton(
+          icon: const Icon(Icons.check_circle, color: Colors.cyanAccent, size: 28),
+          onPressed: () {
+            final val = inputCtrl.text.trim();
+            if (val.isNotEmpty) onSubmit(val);
+          },
+        )
+      ],
+    );
+  }
+
   String _getMenuText(String key) {
     Map<String, Map<String, String>> translations = {
       "new_chat": {
         "Español": "Nuevo Chat",
         "Wayuunaiki": "Wane pütchi mma'ana",
         "Inglés": "New Chat"
+      },
+      "patient_type_q": {
+        "Español": "¿El paciente es niño, niña, hombre o mujer?",
+        "Wayuunaiki": "¿Chi wayuukai niia jintüi, jintüt, toloyuu o majayüt?",
+        "Inglés": "Is the patient a boy, girl, man or woman?"
+      },
+      "name_q": {
+        "Español": "¿Cómo se llama el paciente?",
+        "Wayuunaiki": "¿Kasa nüpüshi chi wayuukai?",
+        "Inglés": "What is the patient's name?"
+      },
+      "weight_q": {
+        "Español": "¿Cuál es el peso en kilogramos?",
+        "Wayuunaiki": "¿Je'tsü nüpüla en kilogramos?",
+        "Inglés": "What is the weight in kilograms?"
+      },
+      "height_q": {
+        "Español": "¿Cuál es la talla en centímetros?",
+        "Wayuunaiki": "¿Je'tsü nno'u en centímetros?",
+        "Inglés": "What is the height in centimeters?"
       },
       "attach_image": {
         "Español": "Adjuntar Imagen",
@@ -2881,24 +3016,55 @@ class _ChatScreenState extends State<ChatScreen>
   // ─── WAYUUNAIKI TRANSLATION HANDLERS ──────────────────────────────────────
   void _handleWayuuTranslation(String text) {
     if (!_wayuuDict.isLoaded) {
-      _addMessage({
-        "role": "glyph",
-        "text": "⏳ El diccionario aún se está cargando..."
-      });
+      final loadingMsg = _appLanguage == "Inglés"
+          ? "⏳ Dictionary is still loading..."
+          : _appLanguage == "Wayuunaiki"
+            ? "⏳ Tü diccionariokat eejünajatüin..."
+            : "⏳ El diccionario aún se está cargando...";
+      _addMessage({"role": "glyph", "text": loadingMsg});
       return;
     }
     final lang = _wayuuDict.detectLanguage(text);
-    String result;
+    final StringBuffer result = StringBuffer();
+
     if (lang == 'wayuunaiki') {
-      result = "🌵 Wayuunaiki → 🇪🇸 Español\n\n"
-          "Entrada: $text\n"
-          "Traducción: ${_wayuuDict.translateToSpanish(text)}";
+      result.writeln("🌵 Wayuunaiki → 🇪🇸 Español\n");
+      final words = text.toLowerCase().split(RegExp(r'\s+'));
+      for (final word in words) {
+        final clean = word.replaceAll(RegExp(r"[^\wáéíóúüñ']"), '');
+        if (clean.isEmpty) continue;
+        final esp = _wayuuDict.lookupWayuu(clean);
+        if (esp != null) {
+          result.writeln("• $clean → $esp");
+        } else {
+          final notFound = _appLanguage == "Inglés"
+              ? "'$clean' — word not found in dictionary"
+              : _appLanguage == "Wayuunaiki"
+                ? "'$clean' — nnojötsü pütchi tü diccionariokat"
+                : "'$clean' — palabra no está en el diccionario";
+          result.writeln("⚠️ $notFound");
+        }
+      }
     } else {
-      result = "🇪🇸 Español → 🌵 Wayuunaiki\n\n"
-          "Entrada: $text\n"
-          "Traducción: ${_wayuuDict.translateToWayuunaiki(text)}";
+      result.writeln("🇪🇸 Español → 🌵 Wayuunaiki\n");
+      final words = text.toLowerCase().split(RegExp(r'\s+'));
+      for (final word in words) {
+        final clean = word.replaceAll(RegExp(r"[^\wáéíóúüñ']"), '');
+        if (clean.isEmpty) continue;
+        final way = _wayuuDict.lookupSpanish(clean);
+        if (way != null) {
+          result.writeln("• $clean → $way");
+        } else {
+          final notFound = _appLanguage == "Inglés"
+              ? "'$clean' — word not found in dictionary"
+              : _appLanguage == "Wayuunaiki"
+                ? "'$clean' — nnojötsü pütchi tü diccionariokat"
+                : "'$clean' — palabra no está en el diccionario";
+          result.writeln("⚠️ $notFound");
+        }
+      }
     }
-    _addMessage({"role": "glyph", "text": result});
+    _addMessage({"role": "glyph", "text": result.toString().trim()});
   }
 
   void _handleWayuuLookup(String word) {
