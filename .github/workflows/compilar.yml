@@ -55,6 +55,9 @@ jobs:
           # Asegurar que el SceneManifest sea eliminado si existe (evita pantalla negra)
           /usr/libexec/PlistBuddy -c "Delete :UIApplicationSceneManifest" ios/Runner/Info.plist || true
 
+          # Forzar formato XML limpio para evitar errores de parseo en AltStore (NSCocoaErrorDomain 3840)
+          plutil -convert xml1 ios/Runner/Info.plist || true
+
           # Impeller is enabled by default in modern Flutter and should not be disabled.
 
           # Generar configuración de release
@@ -87,8 +90,8 @@ jobs:
 
           mkdir -p Payload
           cp -r build/ios/iphoneos/Runner.app Payload/
-          # Use ditto to create the IPA; preserves resource forks correctly for iOS
-          ditto -c -k --sequesterRsrc --keepParent Payload mi_aplicacion.ipa
+          # Usar zip estándar en lugar de ditto para evitar metadatos __MACOSX o resource forks que corrompen el parseo de AltStore
+          zip -qr mi_aplicacion.ipa Payload
 
       - name: Guardar archivo final
         uses: actions/upload-artifact@v4
