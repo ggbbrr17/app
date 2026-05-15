@@ -170,81 +170,134 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
          referenceData = WHOGrowthReferenceWeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
          yLabel = "Peso (kg)";
          minY = 0; maxY = maxX > 60 ? 60 : 30;
-       } else if (type == "HFA") {
-         standardData = WHOGrowthStandardsLengthForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
-         referenceData = WHOGrowthReferenceHeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
-         yLabel = "Longitud / Talla (cm)";
-         minY = 40; maxY = maxX > 60 ? 180 : 130;
-       } else if (type == "BFA") {
-         standardData = WHOGrowthStandardsBodyMassIndexForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
-         referenceData = WHOGrowthReferenceBodyMassIndexForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
-         yLabel = "IMC (kg/m²)";
-         minY = 10; maxY = 30;
-       }
-
-       for (int i = 0; i <= maxX; i++) {
-         dynamic lms = i <= 60 ? (standardData?[i]) : (referenceData?[i]);
-         if (lms != null) {
-           line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
-           line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
-           lineMinus2.add(FlSpot(i.toDouble(), lms.standardDeviation(-2).toDouble()));
-           line3.add(FlSpot(i.toDouble(), lms.standardDeviation(3).toDouble()));
-           lineMinus3.add(FlSpot(i.toDouble(), lms.standardDeviation(-3).toDouble()));
+         for (int i = 0; i <= maxX; i++) {
+           dynamic lms = i <= 60 ? (standardData?[i]) : (referenceData?[i]);
+           if (lms != null) {
+             line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
+             line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
+             lineMinus2.add(FlSpot(i.toDouble(), lms.standardDeviation(-2).toDouble()));
+             line3.add(FlSpot(i.toDouble(), lms.standardDeviation(3).toDouble()));
+             lineMinus3.add(FlSpot(i.toDouble(), lms.standardDeviation(-3).toDouble()));
+           }
          }
-       }
+        } else if (type == "HFA") {
+          yLabel = "Longitud / Talla (cm)";
+          minY = 40; maxY = maxX > 60 ? 180 : 130;
+          
+          final lenForAge = WHOGrowthStandardsLengthForAgeData().data[sex];
+          final heightForAge = WHOGrowthStandardsHeightForAgeData().data[sex];
+          final refHeightForAge = WHOGrowthReferenceHeightForAgeData().data[sex];
+
+          for (int i = 0; i <= maxX; i++) {
+            dynamic lms;
+            if (i < 24) {
+              lms = lenForAge?[i]?.lms;
+            } else if (i <= 60) {
+              lms = heightForAge?[i]?.lms;
+            } else {
+              lms = refHeightForAge?[i]?.lms;
+            }
+
+            if (lms != null) {
+              line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
+              line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
+              lineMinus2.add(FlSpot(i.toDouble(), lms.standardDeviation(-2).toDouble()));
+              line3.add(FlSpot(i.toDouble(), lms.standardDeviation(3).toDouble()));
+              lineMinus3.add(FlSpot(i.toDouble(), lms.standardDeviation(-3).toDouble()));
+            }
+          }
+        } else if (type == "BFA") {
+          standardData = WHOGrowthStandardsBodyMassIndexForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
+          referenceData = WHOGrowthReferenceBodyMassIndexForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
+          yLabel = "IMC (kg/m²)";
+          minY = 10; maxY = 30;
+
+          for (int i = 0; i <= maxX; i++) {
+            dynamic lms = i <= 60 ? (standardData?[i]) : (referenceData?[i]);
+            if (lms != null) {
+              line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
+              line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
+              lineMinus2.add(FlSpot(i.toDouble(), lms.standardDeviation(-2).toDouble()));
+              line3.add(FlSpot(i.toDouble(), lms.standardDeviation(3).toDouble()));
+              lineMinus3.add(FlSpot(i.toDouble(), lms.standardDeviation(-3).toDouble()));
+            }
+          }
+        }
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.only(right: 18, top: 18, bottom: 12),
-      child: LineChart(
-        LineChartData(
-          minX: minX, maxX: maxX,
-          minY: minY, maxY: maxY,
-          gridData: const FlGridData(show: true, drawVerticalLine: true, horizontalInterval: 10, verticalInterval: 12),
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              axisNameWidget: Text(xLabel, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-              axisNameSize: 16,
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 22,
-                getTitlesWidget: (val, meta) => Text("${val.toInt()}", style: const TextStyle(color: Colors.white54, fontSize: 8)),
-              ),
-            ),
-            leftTitles: AxisTitles(
-              axisNameWidget: Text(yLabel, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
-              axisNameSize: 16,
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 28,
-                getTitlesWidget: (val, meta) => Text(val.toInt().toString(), style: const TextStyle(color: Colors.white54, fontSize: 8)),
-              ),
-            ),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    return Column(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(16),
           ),
-          borderData: FlBorderData(show: true, border: Border.all(color: Colors.white10)),
-          lineBarsData: [
-            LineChartBarData(spots: line3, color: Colors.redAccent.withValues(alpha: 0.5), isCurved: true, dotData: const FlDotData(show: false), barWidth: 1),
-            LineChartBarData(spots: line2, color: Colors.orangeAccent.withValues(alpha: 0.5), isCurved: true, dotData: const FlDotData(show: false), barWidth: 1),
-            LineChartBarData(spots: line0, color: Colors.greenAccent.withValues(alpha: 0.8), isCurved: true, dotData: const FlDotData(show: false), barWidth: 2),
-            LineChartBarData(spots: lineMinus2, color: Colors.orangeAccent.withValues(alpha: 0.5), isCurved: true, dotData: const FlDotData(show: false), barWidth: 1),
-            LineChartBarData(spots: lineMinus3, color: Colors.redAccent.withValues(alpha: 0.5), isCurved: true, dotData: const FlDotData(show: false), barWidth: 1),
-            LineChartBarData(
-              spots: [FlSpot(xValue.isFinite ? xValue : 0.0, yValue.isFinite ? yValue : 0.0)],
-              color: Colors.cyanAccent,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (s, p, b, i) => FlDotCirclePainter(radius: 4, color: Colors.cyanAccent, strokeWidth: 1, strokeColor: Colors.black),
+          padding: const EdgeInsets.only(right: 18, top: 18, bottom: 4),
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 1.6,
+                child: LineChart(
+                  LineChartData(
+                    minX: minX, maxX: maxX,
+                    minY: minY, maxY: maxY,
+                    gridData: const FlGridData(show: true, drawVerticalLine: true, horizontalInterval: 10, verticalInterval: 12),
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        axisNameWidget: Text(xLabel, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                        axisNameSize: 16,
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 22,
+                          getTitlesWidget: (val, meta) => Text("${val.toInt()}", style: const TextStyle(color: Colors.white54, fontSize: 8)),
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        axisNameWidget: Text(yLabel, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+                        axisNameSize: 16,
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 28,
+                          getTitlesWidget: (val, meta) => Text(val.toInt().toString(), style: const TextStyle(color: Colors.white54, fontSize: 8)),
+                        ),
+                      ),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    ),
+                    borderData: FlBorderData(show: true, border: Border.all(color: Colors.white10)),
+                    lineBarsData: [
+                      LineChartBarData(spots: line3, color: Colors.white.withValues(alpha: 0.3), isCurved: false, dotData: const FlDotData(show: false), barWidth: 1),
+                      LineChartBarData(spots: line2, color: Colors.redAccent.withValues(alpha: 0.5), isCurved: false, dotData: const FlDotData(show: false), barWidth: 1),
+                      LineChartBarData(spots: line0, color: Colors.greenAccent, isCurved: false, dotData: const FlDotData(show: false), barWidth: 2),
+                      LineChartBarData(spots: lineMinus2, color: Colors.redAccent.withValues(alpha: 0.5), isCurved: false, dotData: const FlDotData(show: false), barWidth: 1),
+                      LineChartBarData(spots: lineMinus3, color: Colors.white.withValues(alpha: 0.3), isCurved: false, dotData: const FlDotData(show: false), barWidth: 1),
+                      LineChartBarData(
+                        spots: [FlSpot(xValue.isFinite ? xValue : 0.0, yValue.isFinite ? yValue : 0.0)],
+                        color: Colors.cyanAccent,
+                        dotData: FlDotData(
+                          show: true,
+                          getDotPainter: (s, p, b, i) => FlDotCirclePainter(radius: 5, color: Colors.cyanAccent, strokeWidth: 2, strokeColor: Colors.black),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              if (type == "HFA" && maxX <= 60)
+                Padding(
+                  padding: const EdgeInsets.only(left: 44, bottom: 8),
+                  child: Row(
+                    children: [
+                      const Text("LENGTH", style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold)),
+                      Container(margin: const EdgeInsets.symmetric(horizontal: 8), height: 12, width: 1, color: Colors.white10),
+                      const Text("HEIGHT", style: TextStyle(color: Colors.white24, fontSize: 10, fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

@@ -1989,52 +1989,16 @@ class _ChatScreenState extends State<ChatScreen>
          });
          _addMessage({"role": "user", "text": text});
          
-         if (text.contains("Niño") || text.contains("Niña")) {
-            _interactiveGender = text.contains("Niño") ? "m" : "f";
+         if (text.contains("Niño") || text.contains("Niña") || text.contains("Jintüi") || text.contains("Jintüt")) {
+            _interactiveGender = (text.contains("Niño") || text.contains("Jintüi")) ? "m" : "f";
             
-            // Show date picker
-            final DateTime? picked = await showDatePicker(
-               context: context,
-               initialDate: DateTime.now().subtract(const Duration(days: 365)),
-               firstDate: DateTime.now().subtract(const Duration(days: 365 * 20)),
-               lastDate: DateTime.now(),
-               builder: (context, child) {
-                 return Theme(
-                   data: Theme.of(context).copyWith(
-                     colorScheme: const ColorScheme.dark(
-                       primary: Colors.cyanAccent,
-                       onPrimary: Colors.black,
-                       surface: Color(0xFF1E293B),
-                       onSurface: Colors.white,
-                     ),
-                   ),
-                   child: child!,
-                 );
-               },
-            );
-            
-            if (picked != null) {
-               _interactiveDob = picked;
-               _addMessage({"role": "user", "text": "Fecha de nacimiento: ${picked.toLocal().toString().split(' ')[0]}"});
-               
-               // Ask for weight
-               _addMessage({
-                 "role": "glyph",
-                 "type": "weight_input_bubble",
-                 "text": "¿Cuál es el peso del paciente en kilogramos?"
-               });
-            } else {
-               // User cancelled picker
-               _addMessage({
-                 "role": "glyph",
-                 "text": "Operación cancelada. ¿En qué más puedo ayudarte?"
-               });
-               setState(() {
-                 _isInteractiveAnthroFlow = false;
-               });
-            }
+            // Ask for name first
+            _addMessage({
+              "role": "glyph",
+              "type": "name_input_bubble",
+              "text": _translate("name_q")
+            });
          } else {
-            // Hombre / Mujer
             _addMessage({
               "role": "glyph",
               "text": "Evaluación de adultos en desarrollo. Por favor escribe directamente los datos como: 'Juan, 25 años, 70kg, 175cm'."
