@@ -143,7 +143,7 @@ class AnthroService {
           sex: sex, 
           age: age, 
           lengthHeight: height, 
-          measure: ageInMonths < 24 ? LengthHeightMeasurementPosition.recumbent : LengthHeightMeasurementPosition.standing
+          measure: ageInMonths <= 24 ? LengthHeightMeasurementPosition.recumbent : LengthHeightMeasurementPosition.standing
         );
         zHfa = lfa.zScore().toDouble();
 
@@ -159,7 +159,7 @@ class AnthroService {
         zBmi = bmi.zScore().toDouble();
 
         // Peso para la Talla (WFH) - Disponible para 0-5 años (o hasta 120cm)
-        if (ageInMonths < 24) {
+        if (ageInMonths <= 24) {
            final wfl = WHOGrowthStandardsWeightForLength(sex: sex, age: age, weight: weight, length: height, measure: LengthHeightMeasurementPosition.recumbent);
            zWfh = wfl.zScore().toDouble();
         } else {

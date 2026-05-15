@@ -76,10 +76,10 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
           ),
           child: Row(
             children: [
-              _buildTab(0, "P/E"),
-              _buildTab(1, "T/E"),
-              _buildTab(2, "IMC/E"),
-              _buildTab(3, "P/T"),
+              _buildTab(0, "WFA"),
+              _buildTab(1, "HFA"),
+              _buildTab(2, "BMI"),
+              _buildTab(3, "WFH"),
             ],
           ),
         ),
@@ -138,10 +138,12 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
 
     double minX = 0, maxX = 60;
     double minY = 0, maxY = 30;
-    String xLabel = "Edad (m)";
+    String xLabel = "Edad (meses)";
+    String yLabel = "Indicador";
 
     if (type == "WFH") {
-       xLabel = "Talla (cm)";
+       xLabel = "Longitud / Talla (cm)";
+       yLabel = "Peso (kg)";
        minX = 45; maxX = 120;
        minY = 2; maxY = 30;
        
@@ -166,14 +168,17 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
        if (type == "WFA") {
          standardData = WHOGrowthStandardsWeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
          referenceData = WHOGrowthReferenceWeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
+         yLabel = "Peso (kg)";
          minY = 0; maxY = maxX > 60 ? 60 : 30;
        } else if (type == "HFA") {
          standardData = WHOGrowthStandardsLengthForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
          referenceData = WHOGrowthReferenceHeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
+         yLabel = "Longitud / Talla (cm)";
          minY = 40; maxY = maxX > 60 ? 180 : 130;
        } else if (type == "BFA") {
          standardData = WHOGrowthStandardsBodyMassIndexForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
          referenceData = WHOGrowthReferenceBodyMassIndexForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
+         yLabel = "IMC (kg/m²)";
          minY = 10; maxY = 30;
        }
 
@@ -202,6 +207,8 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
           gridData: const FlGridData(show: true, drawVerticalLine: true, horizontalInterval: 10, verticalInterval: 12),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
+              axisNameWidget: Text(xLabel, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+              axisNameSize: 16,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 22,
@@ -209,6 +216,8 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
               ),
             ),
             leftTitles: AxisTitles(
+              axisNameWidget: Text(yLabel, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
+              axisNameSize: 16,
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 28,
