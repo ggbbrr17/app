@@ -220,36 +220,66 @@ class AnimatedHamburger extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 48,
-        height: 48,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            AnimatedPositioned(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeOutBack,
-                top: isOpen ? 23 : 16,
-                child: AnimatedRotation(
-                    duration: const Duration(milliseconds: 500),
-                    turns: isOpen ? 0.125 : 0,
-                    child: Container(
-                        width: 26, height: 2.5, color: Colors.white))),
-            AnimatedOpacity(
-                duration: const Duration(milliseconds: 300),
-                opacity: isOpen ? 0.0 : 1.0,
-                child: Container(width: 16, height: 2.5, color: Colors.white)),
-            AnimatedPositioned(
-                duration: const Duration(milliseconds: 500),
-                curve: Curves.easeOutBack,
-                bottom: isOpen ? 23 : 16,
-                child: AnimatedRotation(
-                    duration: const Duration(milliseconds: 500),
-                    turns: isOpen ? -0.125 : 0,
-                    child: Container(
-                        width: 26, height: 2.5, color: Colors.white))),
-          ],
-        ),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0.0, end: isOpen ? 1.0 : 0.0),
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutBack,
+        builder: (context, t, _) {
+          return SizedBox(
+            width: 48,
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Top bar — moves to center and rotates +45° forming X
+                Positioned(
+                  top: lerpDouble(14.0, 23.0, t),
+                  child: Transform.rotate(
+                    angle: t * math.pi * 0.25,
+                    child: Transform.scale(
+                      scale: 1.0 + (t * 0.1),
+                      child: Container(
+                        width: 26, height: 2.5,
+                        decoration: BoxDecoration(
+                          color: Color.lerp(Colors.white, Colors.cyanAccent, t),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // Middle bar — fades out
+                Opacity(
+                  opacity: (1.0 - t * 2).clamp(0.0, 1.0),
+                  child: Container(
+                    width: 16, height: 2.5,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                // Bottom bar — moves to center and rotates -45°
+                Positioned(
+                  bottom: lerpDouble(14.0, 23.0, t),
+                  child: Transform.rotate(
+                    angle: -t * math.pi * 0.25,
+                    child: Transform.scale(
+                      scale: 1.0 + (t * 0.1),
+                      child: Container(
+                        width: 26, height: 2.5,
+                        decoration: BoxDecoration(
+                          color: Color.lerp(Colors.white, Colors.cyanAccent, t),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -2610,7 +2640,16 @@ class _ChatScreenState extends State<ChatScreen>
                             onTap: _syncP2PData,
                           ),
                           ListTile(
-                            leading: const Text("🤖", style: TextStyle(fontSize: 20)),
+                            leading: TweenAnimationBuilder<double>(
+                              tween: Tween(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.elasticOut,
+                              builder: (_, v, __) => Transform.scale(
+                                scale: v,
+                                child: const Icon(Icons.android_rounded,
+                                    color: Color(0xFF3DDC84), size: 22),
+                              ),
+                            ),
                             title: Text(_getMenuText("download_apk"),
                                 style: const TextStyle(
                                     color: Colors.white60,
