@@ -41,14 +41,15 @@ class AdultResult {
 }
 
 class AnthroService {
-  
-  static GestationalResult calculateGestational(int weeks, double weightKg, double heightCm) {
+  static GestationalResult calculateGestational(
+      int weeks, double weightKg, double heightCm) {
     double bmi = weightKg / ((heightCm / 100) * (heightCm / 100));
     String diagnosis = _diagnoseGestational(weeks, bmi);
     return GestationalResult(bmi: bmi, diagnosis: diagnosis, weeks: weeks);
   }
 
   static String _diagnoseGestational(int weeks, double bmi) {
+    int originalWeeks = weeks;
     if (weeks < 10) weeks = 10;
     if (weeks > 42) weeks = 42;
 
@@ -91,10 +92,11 @@ class AnthroService {
     };
 
     final cuts = atalahTable[weeks]!;
-    if (bmi < cuts[0]) return "Bajo Peso (Gestante)";
-    if (bmi < cuts[1]) return "Peso Normal (Gestante)";
-    if (bmi < cuts[2]) return "Sobrepeso (Gestante)";
-    return "Obesidad (Gestante)";
+    String suffix = originalWeeks < 10 ? " (Referencia Sem. 10)" : "";
+    if (bmi < cuts[0]) return "Bajo Peso (Gestante)$suffix";
+    if (bmi < cuts[1]) return "Peso Normal (Gestante)$suffix";
+    if (bmi < cuts[2]) return "Sobrepeso (Gestante)$suffix";
+    return "Obesidad (Gestante)$suffix";
   }
 
   static AdultResult calculateAdult(double weightKg, double heightCm) {
@@ -114,12 +116,37 @@ class AnthroService {
     return "Obesidad Grado III (Mórbida) (Adulto)";
   }
 
-  static AnthroResult calculate(int ageInMonths, double weightKg, double heightCm, String genderStr, {double? muacCm, int? ageInDays}) {
-    if (ageInMonths < 0 || ageInMonths > 228) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Edad fuera de rango (0-19 años)", muacDiagnosis: "");
-    if (weightKg < 0.5 || weightKg > 200) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Peso fuera de rango realista (0.5-200kg)", muacDiagnosis: "");
-    if (heightCm < 30 || heightCm > 250) return AnthroResult(zWeightForAge: -5, zHeightForAge: -5, zBmiForAge: -5, zWeightForHeight: -5, diagnosis: "Talla fuera de rango realista (30-250cm)", muacDiagnosis: "");
+  static AnthroResult calculate(
+      int ageInMonths, double weightKg, double heightCm, String genderStr,
+      {double? muacCm}) {
+    if (ageInMonths < 0 || ageInMonths > 228)
+      return AnthroResult(
+          zWeightForAge: -5,
+          zHeightForAge: -5,
+          zBmiForAge: -5,
+          zWeightForHeight: -5,
+          diagnosis: "Edad fuera de rango (0-19 años)",
+          muacDiagnosis: "");
+    if (weightKg < 0.5 || weightKg > 200)
+      return AnthroResult(
+          zWeightForAge: -5,
+          zHeightForAge: -5,
+          zBmiForAge: -5,
+          zWeightForHeight: -5,
+          diagnosis: "Peso fuera de rango realista (0.5-200kg)",
+          muacDiagnosis: "");
+    if (heightCm < 30 || heightCm > 250)
+      return AnthroResult(
+          zWeightForAge: -5,
+          zHeightForAge: -5,
+          zBmiForAge: -5,
+          zWeightForHeight: -5,
+          diagnosis: "Talla fuera de rango realista (30-250cm)",
+          muacDiagnosis: "");
 
-    Sex sex = (genderStr.toLowerCase().contains('m') || genderStr.toLowerCase().contains('masculino') || genderStr.toLowerCase().contains('niño'))
+    Sex sex = (genderStr.toLowerCase().contains('m') ||
+            genderStr.toLowerCase().contains('masculino') ||
+            genderStr.toLowerCase().contains('niño'))
         ? Sex.male
         : Sex.female;
 
@@ -129,22 +156,24 @@ class AnthroService {
     double zWfh = double.nan;
 
     try {
-      // Usar Age.byDaysAgo si está disponible para precisión exacta según tablas OMS
-      final age = ageInDays != null ? Age.byDaysAgo(ageInDays) : Age.byMonthsAgo(ageInMonths);
+      // Usar Age(months: ...) para precisión exacta según tablas OMS
+      final age = Age.byMonthsAgo(ageInMonths);
       final weight = Mass$Kilogram(weightKg);
       final height = Length$Centimeter(heightCm);
-      
+
       if (ageInMonths <= 60) {
         // WHO Growth Standards 0-5 años
-        final wfa = WHOGrowthStandardsWeightForAge(sex: sex, age: age, weight: weight);
+        final wfa =
+            WHOGrowthStandardsWeightForAge(sex: sex, age: age, weight: weight);
         zWfa = wfa.zScore().toDouble();
 
         final lfa = WHOGrowthStandardsLengthForAge(
-          sex: sex, 
-          age: age, 
-          lengthHeight: height, 
-          measure: ageInMonths <= 24 ? LengthHeightMeasurementPosition.recumbent : LengthHeightMeasurementPosition.standing
-        );
+            sex: sex,
+            age: age,
+            lengthHeight: height,
+            measure: ageInMonths < 24
+                ? LengthHeightMeasurementPosition.recumbent
+                : LengthHeightMeasurementPosition.standing);
         zHfa = lfa.zScore().toDouble();
 
         final bmiVal = weightKg / ((heightCm / 100) * (heightCm / 100));
@@ -159,22 +188,33 @@ class AnthroService {
         zBmi = bmi.zScore().toDouble();
 
         // Peso para la Talla (WFH) - Disponible para 0-5 años (o hasta 120cm)
-        if (ageInMonths <= 24) {
-           final wfl = WHOGrowthStandardsWeightForLength(sex: sex, age: age, weight: weight, length: height, measure: LengthHeightMeasurementPosition.recumbent);
-           zWfh = wfl.zScore().toDouble();
+        if (ageInMonths < 24) {
+          final wfl = WHOGrowthStandardsWeightForLength(
+              sex: sex,
+              age: age,
+              weight: weight,
+              length: height,
+              measure: LengthHeightMeasurementPosition.recumbent);
+          zWfh = wfl.zScore().toDouble();
         } else {
-           final wfh = WHOGrowthStandardsWeightForHeight(sex: sex, age: age, weight: weight, height: height, measure: LengthHeightMeasurementPosition.standing);
-           zWfh = wfh.zScore().toDouble();
+          final wfh = WHOGrowthStandardsWeightForHeight(
+              sex: sex,
+              age: age,
+              weight: weight,
+              height: height,
+              measure: LengthHeightMeasurementPosition.standing);
+          zWfh = wfh.zScore().toDouble();
         }
-
       } else {
         // WHO Growth Reference 5-19 años
         if (ageInMonths <= 120) {
-          final wfa = WHOGrowthReferenceWeightForAge(sex: sex, age: age, weight: weight);
+          final wfa = WHOGrowthReferenceWeightForAge(
+              sex: sex, age: age, weight: weight);
           zWfa = wfa.zScore().toDouble();
         }
 
-        final hfa = WHOGrowthReferenceHeightForAge(sex: sex, age: age, lengthHeight: height);
+        final hfa = WHOGrowthReferenceHeightForAge(
+            sex: sex, age: age, lengthHeight: height);
         zHfa = hfa.zScore().toDouble();
 
         final bmiVal = weightKg / ((heightCm / 100) * (heightCm / 100));
@@ -201,11 +241,14 @@ class AnthroService {
     String muacDiagnosis = "";
     if (muacCm != null && ageInMonths >= 6 && ageInMonths <= 59) {
       if (muacCm < 11.5) {
-        muacDiagnosis = "🔴 PELIGRO: Desnutrición Aguda Severa (MUAC < 11.5 cm)";
+        muacDiagnosis =
+            "🔴 PELIGRO: Desnutrición Aguda Severa (MUAC < 11.5 cm)";
       } else if (muacCm < 12.5) {
-        muacDiagnosis = "🟡 PRECAUCIÓN: Desnutrición Aguda Moderada (MUAC < 12.5 cm)";
+        muacDiagnosis =
+            "🟡 PRECAUCIÓN: Desnutrición Aguda Moderada (MUAC < 12.5 cm)";
       } else {
-        muacDiagnosis = "🟢 Normal: Sin riesgo de desnutrición aguda según MUAC";
+        muacDiagnosis =
+            "🟢 Normal: Sin riesgo de desnutrición aguda según MUAC";
       }
     }
 
@@ -225,11 +268,13 @@ class AnthroService {
     );
   }
 
-  static String _diagnose(double zWfa, double zHfa, double zBmi, double zWfh, int ageInMonths) {
-    if (zBmi.isNaN && zWfh.isNaN && zHfa.isNaN) return "Datos insuficientes para el diagnóstico clínico.";
+  static String _diagnose(
+      double zWfa, double zHfa, double zBmi, double zWfh, int ageInMonths) {
+    if (zBmi.isNaN && zWfh.isNaN && zHfa.isNaN)
+      return "Datos insuficientes para el diagnóstico clínico.";
 
     List<String> findings = [];
-    
+
     // 1. ANÁLISIS DE CRECIMIENTO LINEAL (Talla para la Edad - Desnutrición Crónica)
     if (!zHfa.isNaN) {
       if (zHfa < -3) {
@@ -245,7 +290,8 @@ class AnthroService {
 
     // 2. ANÁLISIS DE PESO Y PROPORCIONALIDAD (Peso/Talla o IMC)
     double acuteIndicator = (ageInMonths <= 60 && !zWfh.isNaN) ? zWfh : zBmi;
-    String acuteLabel = (ageInMonths <= 60 && !zWfh.isNaN) ? "Peso/Talla" : "IMC/Edad";
+    String acuteLabel =
+        (ageInMonths <= 60 && !zWfh.isNaN) ? "Peso/Talla" : "IMC/Edad";
 
     if (!acuteIndicator.isNaN) {
       if (acuteIndicator < -3) {
@@ -257,7 +303,8 @@ class AnthroService {
       } else if (acuteIndicator > 3) {
         // Explicación especial para casos de Talla Baja Extrema (como el caso de Pedro)
         if (zHfa < -3) {
-          findings.add("❗ IMC ELEVADO debido a Talla Baja Extrema (No necesariamente Obesidad primaria)");
+          findings.add(
+              "❗ IMC ELEVADO debido a Talla Baja Extrema (No necesariamente Obesidad primaria)");
         } else {
           findings.add("⚠️ OBESIDAD");
         }
@@ -272,13 +319,14 @@ class AnthroService {
 
     // 3. ANÁLISIS DE PESO PARA LA EDAD (Indicador global)
     if (!zWfa.isNaN) {
-      if (zWfa < -3) findings.add("Bajo Peso Severo para la edad");
+      if (zWfa < -3)
+        findings.add("Bajo Peso Severo para la edad");
       else if (zWfa < -2) findings.add("Bajo Peso para la edad");
     }
 
     // Generar resumen profesional
     if (findings.isEmpty) return "Crecimiento Normal";
-    
+
     return findings.join("\n• ");
   }
 }

@@ -1778,6 +1778,31 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
               ],
             ],
+            if (msg["type"] == "gestational_result" && msg["data"] != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.pinkAccent.withValues(alpha: 0.15),
+                      Colors.purpleAccent.withValues(alpha: 0.10),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.pinkAccent.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  msg["text"] ?? "",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
             if (msg["type"] == "file_share" && msg["data"] != null) ...[
               GestureDetector(
                   onTap: () => Share.shareXFiles([XFile(msg["data"]["path"])],
@@ -3792,15 +3817,9 @@ class _ChatScreenState extends State<ChatScreen>
 
     _addMessage({
       "role": "glyph",
-      "type":
-          "anthro_chart", // Reutilizamos el widget de gráfico o mostramos el texto
-      "text": zScoreText,
+      "type": "gestational_result",  // Tipo propio: NO renderiza gráficas
+      "text": "$zScoreText\n\n$simplifiedDiag",
       "data": {
-        "edad": semanas,
-        "peso": peso,
-        "talla": talla,
-        "genero": "f",
-        "diag": "${result.diagnosis} / ${_getWayuuDiagnosis(result.diagnosis)}",
         "text": speechText
       }
     });
