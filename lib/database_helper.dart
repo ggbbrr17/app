@@ -20,7 +20,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -96,6 +96,19 @@ CREATE TABLE risk_patients (
   date $textType
 )
 ''');
+
+    await db.execute('''
+CREATE TABLE gestational_patients (
+  id $idType,
+  name $textType,
+  weeks $intType,
+  weight_kg $realType,
+  height_cm $realType,
+  bmi $realType,
+  diagnosis $textType,
+  date $textType
+)
+''');
   }
 
   Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
@@ -107,6 +120,22 @@ CREATE TABLE risk_patients (
     if (oldVersion < 5) {
       try {
         await db.execute('CREATE TABLE IF NOT EXISTS risk_patients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, symptoms TEXT NOT NULL, date TEXT NOT NULL);');
+      } catch (_) {}
+    }
+    if (oldVersion < 6) {
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS gestational_patients (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            weeks INTEGER NOT NULL,
+            weight_kg REAL NOT NULL,
+            height_cm REAL NOT NULL,
+            bmi REAL NOT NULL,
+            diagnosis TEXT NOT NULL,
+            date TEXT NOT NULL
+          );
+        ''');
       } catch (_) {}
     }
   }
@@ -206,6 +235,19 @@ CREATE TABLE risk_patients (
   Future<List<Map<String, dynamic>>> getRiskPatients() async {
     final db = await instance.database;
     return await db.query('risk_patients', orderBy: 'date DESC');
+  }
+
+  Future<int> insertGestationalPatient(Map<String, dynamic> row) async {
+    final db = await instance.database;
+    return await db.insert('gestational_patients', {
+      ...row,
+      'date': DateTime.now().toIso8601String()
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getAllGestationalPatients() async {
+    final db = await instance.database;
+    return await db.query('gestational_patients', orderBy: 'date DESC');
   }
 
   Future close() async {

@@ -28,6 +28,7 @@ import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:wake_on_lan/wake_on_lan.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -446,6 +447,7 @@ class _ChatScreenState extends State<ChatScreen>
                 parent: _menuAnimationController, curve: Curves.easeOut));
     _initializeNotifications();
     _startNotificationPolling();
+    _requestPermissions();
 
     // First load the model, THEN show the interactive greeting
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -640,6 +642,7 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _startRecording({bool forceSTT = false}) async {
+    if (_isRecording) return;
     try {
       if (_isOfflineMode || forceSTT) {
         bool available = false;
@@ -683,6 +686,7 @@ class _ChatScreenState extends State<ChatScreen>
         _isListeningSTT = false;
         _isTranslatorAudioMode = false;
       });
+      _addMessage({"role": "glyph", "text": "Error al iniciar grabación: $e"});
     }
   }
 
@@ -692,7 +696,7 @@ class _ChatScreenState extends State<ChatScreen>
         if (_isListeningSTT) {
           try { await _speech.stop(); } catch (_) {}
           // Dar tiempo suficiente para que llegue el último resultado del STT
-          await Future.delayed(const Duration(milliseconds: 600));
+          await Future.delayed(const Duration(milliseconds: 800));
           if (mounted) setState(() {
             _isRecording = false;
             _isListeningSTT = false;
@@ -736,7 +740,7 @@ class _ChatScreenState extends State<ChatScreen>
     final manager = ModelManager();
     await manager.initializeGemma();
 
-    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
+    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 2048);
     _gemmaChat = await _gemmaModel!.createChat(
         supportsFunctionCalls: true,
         toolChoice: ToolChoice.auto,
@@ -854,6 +858,11 @@ class _ChatScreenState extends State<ChatScreen>
         text:
             "Eres experto en salud pediátrica, agricultura y Wayuunaiki. Usa herramientas para mediciones, traducción y búsqueda. Responde siempre en $_appLanguage. IMPORTANTE: No uses asteriscos (*) en tus respuestas, usa texto plano.",
         isUser: false));
+  }
+
+  Future<void> _requestPermissions() async {
+    await Permission.microphone.request();
+    await Permission.notification.request();
   }
 
   Future<void> _loadGemmaModel() async {
@@ -2363,6 +2372,11 @@ class _ChatScreenState extends State<ChatScreen>
         "Wayuunaiki": "¿Je'tsü nno'u en centímetros?",
         "Inglés": "What is the height in centimeters?"
       },
+      "pregnant_mothers": {
+        "Español": "Madres Gestantes",
+        "Wayuunaiki": "Majayüt kachonjanatüin",
+        "Inglés": "Pregnant Mothers"
+      },
       "attach_image": {
         "Español": "Adjuntar Imagen",
         "Wayuunaiki": "Aapaa ayaakuwakalee",
@@ -2476,8 +2490,12 @@ class _ChatScreenState extends State<ChatScreen>
                   ignoring: _showTextField,
                   child: GestureDetector(
                     onTap: () {
-                      setState(() => _showTextField = true);
-                      _focusNode.requestFocus();
+                      if (_isRecording) {
+                        _stopRecording(autoSend: true);
+                      } else {
+                        setState(() => _showTextField = true);
+                        _focusNode.requestFocus();
+                      }
                     },
                     onLongPressStart: (_) => _startRecording(),
                     onLongPressEnd: (_) async {
@@ -2763,6 +2781,20 @@ class _ChatScreenState extends State<ChatScreen>
                             onTap: () {
                               _toggleMenu();
                               _showNutritionalControl();
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.pregnant_woman_outlined,
+                                color: Colors.white60, size: 20),
+                            title: Text(_getMenuText("pregnant_mothers"),
+                                style: const TextStyle(
+                                    color: Colors.white60,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w300,
+                                    letterSpacing: 1.2)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showGestationalControl();
                             },
                           ),
 
@@ -3418,6 +3450,54 @@ class _ChatScreenState extends State<ChatScreen>
     );
   }
 
+  Future<void> _showGestationalControl() async {
+    final patients = await DatabaseHelper.instance.getAllGestationalPatients();
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: const Text("Control Madres Gestantes",
+            style: TextStyle(color: Colors.white)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: patients.isEmpty
+              ? const Text("No hay datos guardados de gestantes.",
+                  style: TextStyle(color: Colors.white70))
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: patients.length,
+                  itemBuilder: (ctx, i) {
+                    final p = patients[i];
+                    return ListTile(
+                      title: Text(p['name'],
+                          style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(
+                          "EG: ${p['weeks']} sem - ${p['diagnosis']}\n${p['date'].toString().split('T')[0]}",
+                          style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                      trailing: const Icon(Icons.female_rounded, color: Colors.pinkAccent),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _addMessage({
+                          "role": "glyph",
+                          "text": "Informe de ${p['name']}:\nSemanas: ${p['weeks']}\nPeso: ${p['weight_kg']}kg\nTalla: ${p['height_cm']}cm\nIMC: ${p['bmi'].toStringAsFixed(1)}\nDiagnóstico: ${p['diagnosis']}"
+                        });
+                      },
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cerrar",
+                style: TextStyle(color: Colors.pinkAccent)),
+          )
+        ],
+      ),
+    );
+  }
+
   void _showPatientQR(Map<String, dynamic> patient) async {
     final measurements =
         await DatabaseHelper.instance.getPatientMeasurements(patient['id']);
@@ -3829,11 +3909,24 @@ class _ChatScreenState extends State<ChatScreen>
 
     _addMessage({
       "role": "glyph",
-      "type": "gestational_result",  // Tipo propio: NO renderiza gráficas
+      "type": "gestational_result", // Tipo propio: NO renderiza gráficas
       "text": "$zScoreText\n\n$simplifiedDiag",
       "data": {
+        "weeks": semanas,
+        "bmi": result.bmi,
+        "diagnosis": result.diagnosis,
         "text": speechText
       }
+    });
+
+    // Guardar en la base de datos
+    await DatabaseHelper.instance.insertGestationalPatient({
+      'name': nombre,
+      'weeks': semanas,
+      'weight_kg': peso,
+      'height_cm': talla,
+      'bmi': result.bmi,
+      'diagnosis': result.diagnosis,
     });
 
     String? wayuuAudio;
