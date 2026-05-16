@@ -1105,8 +1105,8 @@ class _ChatScreenState extends State<ChatScreen>
           final imageDescription = await _analyzeImageOffline(contextImage);
           // Reemplazamos la palabra "imagen" si fue enviada por el usuario para evitar el rechazo
           String userInstruction = finalQuestion.replaceAll(RegExp(r'imagen|foto', caseSensitive: false), 'escena');
-          finalQuestion = "CONTEXTO: En la escena actual frente a ti, se han detectado los siguientes elementos clave: $imageDescription. "
-              "TAREA: Responde a la siguiente instrucción asumiendo que estos elementos están presentes: $userInstruction";
+          finalQuestion = "CONTEXTO VISUAL DETECTADO: $imageDescription. \n\n"
+              "TAREA: Como experto, responde a la siguiente instrucción del usuario basándote en el contexto visual detectado arriba: $userInstruction";
           
           _scrollToBottom();
         }
@@ -1328,16 +1328,26 @@ class _ChatScreenState extends State<ChatScreen>
       _scrollToBottom();
       
       Future.delayed(const Duration(milliseconds: 800), () {
-        final query = text.replaceFirst(RegExp(r'^(traducir|traduce|translate)\s*', caseSensitive: false), '').trim();
-        if (query.isEmpty) {
-          _addMessage({
-            "role": "glyph", 
-            "text": _appLanguage == "Inglés" ? "What do you want me to translate?" : "¿Qué pütchi quieres que traduzca?"
-          });
-        } else {
-          _handleWayuuTranslation(query);
+        try {
+          final query = text.replaceFirst(
+              RegExp(r'^(traducir|traduce|translate)\s*',
+                  caseSensitive: false),
+              '').trim();
+          if (query.isEmpty) {
+            _addMessage({
+              "role": "glyph",
+              "text": _appLanguage == "Inglés"
+                  ? "What do you want me to translate?"
+                  : "¿Qué pütchi quieres que traduzca?"
+            });
+          } else {
+            _handleWayuuTranslation(query);
+          }
+        } catch (e) {
+          debugPrint("Error in translation: $e");
+        } finally {
+          if (mounted) setState(() => _isThinking = false);
         }
-        if (mounted) setState(() => _isThinking = false);
       });
       return;
     }
