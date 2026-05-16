@@ -94,6 +94,19 @@ class GlobePainter extends CustomPainter {
   final Map<String, Map<String, String>> labels;
   final String language;
 
+  final List<List<math.Point<double>>> _continents = [
+    // South America
+    [math.Point(-55, -70), math.Point(-15, -80), math.Point(12, -72), math.Point(10, -50), math.Point(-35, -35), math.Point(-55, -70)],
+    // North America
+    [math.Point(15, -100), math.Point(20, -115), math.Point(60, -165), math.Point(70, -100), math.Point(45, -50), math.Point(25, -75), math.Point(15, -100)],
+    // Africa
+    [math.Point(35, 20), math.Point(30, -10), math.Point(5, -10), math.Point(-35, 20), math.Point(-35, 30), math.Point(10, 50), math.Point(35, 35), math.Point(35, 20)],
+    // Eurasia
+    [math.Point(10, 120), math.Point(70, 170), math.Point(75, 10), math.Point(40, -10), math.Point(30, 30), math.Point(10, 60), math.Point(10, 120)],
+    // Australia
+    [math.Point(-10, 115), math.Point(-40, 115), math.Point(-40, 150), math.Point(-10, 150), math.Point(-10, 115)],
+  ];
+
   GlobePainter({
     required this.rotationX,
     required this.rotationY,
@@ -150,6 +163,33 @@ class GlobePainter extends CustomPainter {
         }
         canvas.drawPath(latPath, Paint()..color = Colors.cyanAccent.withValues(alpha: 0.1)..style = PaintingStyle.stroke);
       }
+    }
+
+    // Draw continents
+    final continentPaint = Paint()
+      ..color = Colors.cyanAccent.withValues(alpha: 0.2)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+
+    for (var continent in _continents) {
+      Path path = Path();
+      bool first = true;
+      for (var point in continent) {
+        double lat = point.x * math.pi / 180.0;
+        double lon = point.y * math.pi / 180.0;
+        var p = _project(radius, lon, lat);
+        if (p.z > -radius * 0.2) { // Show slightly beyond front face
+          if (first) {
+            path.moveTo(center.dx + p.dx, center.dy + p.dy);
+            first = false;
+          } else {
+            path.lineTo(center.dx + p.dx, center.dy + p.dy);
+          }
+        } else {
+          first = true;
+        }
+      }
+      canvas.drawPath(path, continentPaint);
     }
 
     for (var country in countries) {

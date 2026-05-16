@@ -741,7 +741,7 @@ class _ChatScreenState extends State<ChatScreen>
     final manager = ModelManager();
     await manager.initializeGemma();
 
-    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
+    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 2048);
     _gemmaChat = await _gemmaModel!.createChat(
         supportsFunctionCalls: true,
         toolChoice: ToolChoice.auto,
@@ -749,7 +749,7 @@ class _ChatScreenState extends State<ChatScreen>
           Tool(
               name: "registrar_medicion_pediatrica",
               description:
-                  "IMPORTANT: Use this tool ALWAYS when the user provides pediatric data (name, age, weight, height, gender) to calculate the nutritional diagnosis. Data: Pedro, 12 months, 0kg, 60cm, male.",
+                  "Registra datos pediátricos (nombre, edad en meses, peso, talla, genero) para diagnóstico nutricional.",
               parameters: {
                 "type": "object",
                 "properties": {
@@ -787,7 +787,7 @@ class _ChatScreenState extends State<ChatScreen>
           Tool(
               name: "registrar_medicion_gestante",
               description:
-                  "Use this tool when the user provides pregnancy data (name, gestational weeks, weight, height) to calculate the gestational BMI diagnosis.",
+                  "Registra datos de embarazo (nombre, semanas, peso, talla) para diagnóstico de IMC gestacional.",
               parameters: {
                 "type": "object",
                 "properties": {
