@@ -406,6 +406,7 @@ class _ChatScreenState extends State<ChatScreen>
   double? _interactiveWeight;
   double? _interactiveHeight;
   String? _interactiveName;
+  int? _interactiveWeeks;
   bool _isTranslatorSubMenuOpen = false;
   bool _isTranslatorAudioMode = false;
   final WayuuDictionary _wayuuDict = WayuuDictionary();
@@ -1656,6 +1657,7 @@ class _ChatScreenState extends State<ChatScreen>
                   _buildPatientTypeOption(_translate("patient_girl")),
                   _buildPatientTypeOption(_translate("patient_man")),
                   _buildPatientTypeOption(_translate("patient_woman")),
+                  _buildPatientTypeOption(_translate("patient_pregnant")),
                 ],
               )
             ],
@@ -1670,8 +1672,29 @@ class _ChatScreenState extends State<ChatScreen>
                  _messages.removeWhere((m) => m["type"] == "name_input_bubble");
                  _addMessage({"role": "user", "text": val});
                  
-                 // Show date picker right after name is submitted
-                 _showDobPickerForInteractiveFlow();
+                 if (_interactiveGender == "gestante") {
+                   _addMessage({"role": "glyph", "type": "weeks_input_bubble", "text": "¿Cuántas semanas de gestación tiene?"});
+                 } else {
+                   // Show date picker right after name is submitted
+                   _showDobPickerForInteractiveFlow();
+                 }
+              })
+            ],
+            if (msg["type"] == "weeks_input_bubble") ...[
+              Text(msg["text"] ?? "",
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 14)),
+              const SizedBox(height: 12),
+              _buildNumberInput("Semanas", (val) {
+                 _interactiveWeeks = val.toInt();
+                 _messages.removeWhere((m) => m["type"] == "weeks_input_bubble");
+                 _addMessage({"role": "user", "text": "${val.toInt()} semanas"});
+                 _addMessage({
+                   "role": "glyph",
+                   "type": "weight_input_bubble",
+                   "text": _translate("weight_q")
+                 });
               })
             ],
             if (msg["type"] == "weight_input_bubble") ...[
@@ -1702,17 +1725,26 @@ class _ChatScreenState extends State<ChatScreen>
                  _messages.removeWhere((m) => m["type"] == "height_input_bubble");
                  _addMessage({"role": "user", "text": "$val cm"});
                  
-                 // Perform anthro calculation!
-                 int exactDays = DateTime.now().difference(_interactiveDob!).inDays;
-                 int months = exactDays ~/ 30; // approximate for logging, actual will use exactDays
-                 _performAnthroCalculation(
-                   _interactiveName ?? "Paciente",
-                   months,
-                   _interactiveWeight!,
-                   _interactiveHeight!,
-                   _interactiveGender!,
-                   ageInDays: exactDays
-                 );
+                 if (_interactiveGender == "gestante") {
+                   _performGestationalCalculation(
+                     _interactiveName ?? "Gestante",
+                     _interactiveWeeks ?? 0,
+                     _interactiveWeight!,
+                     _interactiveHeight!
+                   );
+                 } else {
+                   // Perform anthro calculation!
+                   int exactDays = DateTime.now().difference(_interactiveDob!).inDays;
+                   int months = exactDays ~/ 30; // approximate for logging, actual will use exactDays
+                   _performAnthroCalculation(
+                     _interactiveName ?? "Paciente",
+                     months,
+                     _interactiveWeight!,
+                     _interactiveHeight!,
+                     _interactiveGender!,
+                     ageInDays: exactDays
+                   );
+                 }
                  
                  setState(() {
                    _isInteractiveAnthroFlow = false;
@@ -1972,6 +2004,7 @@ class _ChatScreenState extends State<ChatScreen>
              _interactiveWeight = null;
              _interactiveHeight = null;
              _interactiveName = null;
+             _interactiveWeeks = null;
            });
         } else {
            _addMessage({
@@ -2032,11 +2065,20 @@ class _ChatScreenState extends State<ChatScreen>
          final bool isChild = text.contains("Niño") || text.contains("Niña") || 
                             text.contains("Jintüi") || text.contains("Jintüt") ||
                             text.contains("Boy") || text.contains("Girl");
+         final bool isGestante = text.contains("Gestante") || text.contains("Pregnant") || text.contains("Kachonwa'a") || text.contains("Emechijäsü");
          
          if (isChild) {
             _interactiveGender = (text.contains("Niño") || text.contains("Jintüi") || text.contains("Boy")) ? "m" : "f";
             
             // Ask for name first
+            _addMessage({
+              "role": "glyph",
+              "type": "name_input_bubble",
+              "text": _translate("name_q")
+            });
+         } else if (isGestante) {
+            _interactiveGender = "gestante";
+            
             _addMessage({
               "role": "glyph",
               "type": "name_input_bubble",
@@ -2143,6 +2185,11 @@ class _ChatScreenState extends State<ChatScreen>
         "Español": "Madre / Cuidador",
         "Wayuunaiki": "Ei / Eküliya",
         "Inglés": "Mother / Caregiver"
+      },
+      "patient_pregnant": {
+        "Español": "🤰 Gestante",
+        "Wayuunaiki": "🤰 Kachonwa'a (Gestante)",
+        "Inglés": "🤰 Pregnant"
       },
       "patient_boy": {
         "Español": "👦 Niño",
