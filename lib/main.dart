@@ -741,7 +741,7 @@ class _ChatScreenState extends State<ChatScreen>
     final manager = ModelManager();
     await manager.initializeGemma();
 
-    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 2048);
+    _gemmaModel = await FlutterGemma.getActiveModel(maxTokens: 1024);
     _gemmaChat = await _gemmaModel!.createChat(
         supportsFunctionCalls: true,
         toolChoice: ToolChoice.auto,
@@ -1052,7 +1052,7 @@ class _ChatScreenState extends State<ChatScreen>
     String langInstruction = "";
     if (_appLanguage.isNotEmpty) {
       if (_appLanguage == "Wayuunaiki") {
-        langInstruction = "OBLIGATORIO: Responde solo en WAYUUNAIKI. Prohibido español. Glosario: anasü (salud), ayuulii (enfermo), tepichi (niño), eküülü (comida).";
+        langInstruction = "OBLIGATORIO: Responde solo en WAYUUNAIKI. SE BREVE, MÁXIMO 2 ORACIONES CORTAS. NO REPITAS PALABRAS. Glosario: anasü (salud), ayuulii (enfermo), tepichi (niño), eküülü (comida).";
       } else if (_appLanguage == "Español") {
         langInstruction = "Responde en Español.";
       } else if (_appLanguage == "Inglés") {
