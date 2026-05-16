@@ -13,7 +13,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version: '3.29.3' # Versión fija para evitar errores de detección
+          flutter-version: '3.44.0' # Actualizado para garantizar Dart >= 3.8
       - name: Check Versions
         run: |
           flutter --version
