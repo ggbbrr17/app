@@ -55,6 +55,7 @@ flutter:
   assets:
     - assets/logo.png
     - assets/wayuu_dictionary.json
+    - assets/world.geo.json
     - assets/wayuu_sano.mp3
     - assets/wayuu_peligro.mp3
     - assets/wayuu_precaucion.mp3

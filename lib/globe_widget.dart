@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:convert';
 import 'dart:math' as math;
 
 class GlobeWidget extends StatefulWidget {
@@ -43,15 +45,64 @@ class _GlobeWidgetState extends State<GlobeWidget> with SingleTickerProviderStat
     "fra": {"Español": "Francia", "Inglés": "France", "Wayuunaiki": "Püransia"},
   };
 
+  List<List<math.Point<double>>> _realContinents = [];
+
   @override
   void initState() {
     super.initState();
+    _loadGeoJson();
     _controller = AnimationController(vsync: this, duration: const Duration(seconds: 20))..repeat();
     _controller.addListener(() {
       setState(() {
         _rotationY += 0.005;
       });
     });
+  }
+
+  Future<void> _loadGeoJson() async {
+    try {
+      final String jsonString = await rootBundle.loadString('assets/world.geo.json');
+      final data = json.decode(jsonString);
+      final features = data['features'] as List;
+      
+      List<List<math.Point<double>>> parsedPaths = [];
+      
+      for (var feature in features) {
+        final geometry = feature['geometry'];
+        if (geometry == null) continue;
+        
+        final type = geometry['type'];
+        final coordinates = geometry['coordinates'];
+        
+        if (type == 'Polygon') {
+          for (var ring in coordinates) {
+            List<math.Point<double>> path = [];
+            for (var point in ring) {
+              path.add(math.Point<double>((point[1] as num).toDouble(), (point[0] as num).toDouble()));
+            }
+            if (path.length > 5) parsedPaths.add(path);
+          }
+        } else if (type == 'MultiPolygon') {
+          for (var polygon in coordinates) {
+            for (var ring in polygon) {
+              List<math.Point<double>> path = [];
+              for (var point in ring) {
+                path.add(math.Point<double>((point[1] as num).toDouble(), (point[0] as num).toDouble()));
+              }
+              if (path.length > 5) parsedPaths.add(path);
+            }
+          }
+        }
+      }
+      
+      if (mounted) {
+        setState(() {
+           _realContinents = parsedPaths;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading geojson: $e");
+    }
   }
 
   @override
@@ -80,6 +131,7 @@ class _GlobeWidgetState extends State<GlobeWidget> with SingleTickerProviderStat
             countries: _countries,
             labels: _countryLabels,
             language: widget.appLanguage,
+            continents: _realContinents,
           ),
         ),
       ),
@@ -93,19 +145,7 @@ class GlobePainter extends CustomPainter {
   final List<Map<String, dynamic>> countries;
   final Map<String, Map<String, String>> labels;
   final String language;
-
-  final List<List<math.Point<double>>> _continents = [
-    // South America
-    [math.Point(-55, -70), math.Point(-15, -80), math.Point(12, -72), math.Point(10, -50), math.Point(-35, -35), math.Point(-55, -70)],
-    // North America
-    [math.Point(15, -100), math.Point(20, -115), math.Point(60, -165), math.Point(70, -100), math.Point(45, -50), math.Point(25, -75), math.Point(15, -100)],
-    // Africa
-    [math.Point(35, 20), math.Point(30, -10), math.Point(5, -10), math.Point(-35, 20), math.Point(-35, 30), math.Point(10, 50), math.Point(35, 35), math.Point(35, 20)],
-    // Eurasia
-    [math.Point(10, 120), math.Point(70, 170), math.Point(75, 10), math.Point(40, -10), math.Point(30, 30), math.Point(10, 60), math.Point(10, 120)],
-    // Australia
-    [math.Point(-10, 115), math.Point(-40, 115), math.Point(-40, 150), math.Point(-10, 150), math.Point(-10, 115)],
-  ];
+  final List<List<math.Point<double>>> continents;
 
   GlobePainter({
     required this.rotationX,
@@ -113,6 +153,7 @@ class GlobePainter extends CustomPainter {
     required this.countries,
     required this.labels,
     required this.language,
+    required this.continents,
   });
 
   @override
@@ -165,13 +206,13 @@ class GlobePainter extends CustomPainter {
       }
     }
 
-    // Draw continents
+    // Draw real continents
     final continentPaint = Paint()
-      ..color = Colors.cyanAccent.withValues(alpha: 0.2)
+      ..color = Colors.cyanAccent.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0;
+      ..strokeWidth = 0.8;
 
-    for (var continent in _continents) {
+    for (var continent in continents) {
       Path path = Path();
       bool first = true;
       for (var point in continent) {
