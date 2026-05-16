@@ -1606,8 +1606,8 @@ class _ChatScreenState extends State<ChatScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildTopicBubble(_translate("topic_health")),
-                  _buildTopicBubble(_translate("topic_agri")),
+                  _buildTopicBubble("Salud"),
+                  _buildTopicBubble("Agricultura"),
                 ],
               )
             ],
@@ -1622,8 +1622,8 @@ class _ChatScreenState extends State<ChatScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildRoleBubble(_translate("role_medic")),
-                  _buildRoleBubble(_translate("role_mother")),
+                  _buildRoleBubble("Profesional"),
+                  _buildRoleBubble("Persona"),
                 ],
               )
             ],
