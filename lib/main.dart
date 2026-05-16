@@ -3861,8 +3861,8 @@ class _ChatScreenState extends State<ChatScreen>
     });
   }
 
-  void _performGestationalCalculation(
-      String nombre, int semanas, double peso, double talla) {
+  Future<void> _performGestationalCalculation(
+      String nombre, int semanas, double peso, double talla) async {
     final result = AnthroService.calculateGestational(semanas, peso, talla);
     setState(() => _lastManualDiagnosis = result.diagnosis);
 
