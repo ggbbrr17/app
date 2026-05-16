@@ -13,9 +13,11 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          flutter-version-file: pubspec.yaml
-      - name: Check Dart version
-        run: dart --version
+          flutter-version: '3.29.3' # Versión fija para evitar errores de detección
+      - name: Check Versions
+        run: |
+          flutter --version
+          dart --version
       - run: flutter pub get
       - run: flutter build apk --release
       - name: Upload APK
