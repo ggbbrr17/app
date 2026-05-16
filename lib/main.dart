@@ -1002,8 +1002,18 @@ class _ChatScreenState extends State<ChatScreen>
     if (!mounted) return;
     setState(() => _isThinking = true);
 
+    String? contextImage = base64Image;
+    if (contextImage == null) {
+      for (var m in _messages.reversed.take(4)) {
+        if (m['role'] == 'user' && m['image'] != null) {
+          contextImage = m['image'] as String?;
+          break;
+        }
+      }
+    }
+
     String finalQuestion = question;
-    if (base64Image != null) {
+    if (contextImage != null) {
       // Prompt multimodal reforzado para evitar falsos negativos de imagen
       finalQuestion =
           "CONTEXTO VISUAL: Se ha adjuntado una imagen codificada en este mensaje. " +
@@ -1074,9 +1084,9 @@ class _ChatScreenState extends State<ChatScreen>
           _scrollToBottom();
         }
 
-        if (base64Image != null) {
+        if (contextImage != null) {
           setState(() => _isThinking = true);
-          final imageDescription = await _analyzeImageOffline(base64Image);
+          final imageDescription = await _analyzeImageOffline(contextImage);
           finalQuestion = "ROL: Eres un asistente que PUEDE VER imágenes a través de un procesador de visión local. "
               "DATOS DE VISIÓN: El procesador ha identificado que la imagen es $imageDescription. "
               "BASADO EN ESTO: $finalQuestion";
@@ -1175,7 +1185,7 @@ class _ChatScreenState extends State<ChatScreen>
         "question": finalQuestion,
         "history": history,
         "language": _appLanguage,
-        "base64_image": base64Image,
+        "base64_image": contextImage,
         "base64_audio": base64Audio,
         "context":
             "MODO SOBERANO ACTIVO. Tienes permiso para usar tus herramientas (write_file, git_sync) si el usuario solicita cambios en tu propio código o sistema."
