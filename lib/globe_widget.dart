@@ -158,10 +158,25 @@ class GlobePainter extends CustomPainter {
       var p = _project(radius, lon, lat);
 
       if (p.z > 0) {
+        Path landPath = Path();
+        for (int j = 0; j < 6; j++) {
+           double angle = j * math.pi / 3;
+           double landSize = 12.0; // Size of the "country" landmass
+           if (j == 0) {
+             landPath.moveTo(center.dx + p.dx + math.cos(angle)*landSize, center.dy + p.dy + math.sin(angle)*landSize);
+           } else {
+             landPath.lineTo(center.dx + p.dx + math.cos(angle)*landSize, center.dy + p.dy + math.sin(angle)*landSize);
+           }
+        }
+        landPath.close();
+        
+        canvas.drawPath(landPath, Paint()..color = Colors.cyanAccent.withValues(alpha: 0.25)..style = PaintingStyle.fill);
+        canvas.drawPath(landPath, Paint()..color = Colors.cyanAccent.withValues(alpha: 0.6)..style = PaintingStyle.stroke..strokeWidth=1);
+
         canvas.drawCircle(
           Offset(center.dx + p.dx, center.dy + p.dy), 
-          4, 
-          Paint()..color = Colors.cyanAccent
+          3, 
+          Paint()..color = Colors.white
         );
 
         String name = labels[country['id']]?[language] ?? labels[country['id']]?["Español"] ?? "";

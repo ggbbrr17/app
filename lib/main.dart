@@ -863,6 +863,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _requestPermissions() async {
     await Permission.microphone.request();
+    await Permission.speech.request();
     await Permission.notification.request();
   }
 
@@ -2507,7 +2508,10 @@ class _ChatScreenState extends State<ChatScreen>
                     onLongPressEnd: (_) async {
                       // Pequeño delay para que el STT entregue el último resultado
                       await Future.delayed(const Duration(milliseconds: 400));
-                      await _stopRecording(autoSend: true);
+                      final audio = await _stopRecording(autoSend: true);
+                      if (audio != null) {
+                         _sendMultimodalData(base64Audio: audio);
+                      }
                     },
                     child: Center(
                       child: AnimatedScale(
