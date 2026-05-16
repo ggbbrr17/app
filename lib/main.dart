@@ -1013,7 +1013,7 @@ class _ChatScreenState extends State<ChatScreen>
     }
 
     String finalQuestion = question.isEmpty && contextImage != null 
-        ? "Describe la imagen en detalle." 
+        ? "¿Qué puedes deducir de los elementos presentes en esta escena?" 
         : question;
 
     if (contextImage != null && !_isOfflineMode) {
@@ -1090,9 +1090,10 @@ class _ChatScreenState extends State<ChatScreen>
         if (contextImage != null) {
           setState(() => _isThinking = true);
           final imageDescription = await _analyzeImageOffline(contextImage);
-          finalQuestion = "ROL: Eres un asistente que PUEDE VER a través de un analizador local. "
-              "DATOS DE VISIÓN: El procesador de imágenes ha detectado lo siguiente: $imageDescription. "
-              "USA EXCLUSIVAMENTE ESTOS DATOS PARA RESPONDER: $finalQuestion";
+          // Reemplazamos la palabra "imagen" si fue enviada por el usuario para evitar el rechazo
+          String userInstruction = finalQuestion.replaceAll(RegExp(r'imagen|foto', caseSensitive: false), 'escena');
+          finalQuestion = "CONTEXTO: En la escena actual frente a ti, se han detectado los siguientes elementos clave: $imageDescription. "
+              "TAREA: Responde a la siguiente instrucción asumiendo que estos elementos están presentes: $userInstruction";
           
           _scrollToBottom();
         }
