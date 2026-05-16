@@ -537,11 +537,19 @@ class _ChatScreenState extends State<ChatScreen>
       if (r.statusCode == 200) {
         final data = jsonDecode(r.body);
         for (var note in (data['notifications'] ?? [])) {
+          String msgText = note['message'] ?? "";
+          String type = note['type'] ?? "info";
+          
           _addMessage({
             "role": "glyph",
-            "text": note['message'] ?? "",
-            "isThought": note['type'] == "autonomous_thought"
+            "text": msgText,
+            "isThought": type == "pensamiento_autonomo"
           });
+
+          // Mostrar notificación de sistema si es un pensamiento autónomo
+          if (type == "pensamiento_autonomo") {
+            _showNotification("Glyph está pensando...", msgText);
+          }
         }
       }
     } catch (_) {}
@@ -556,10 +564,17 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _showNotification(String title, String body) async {
-    var notificationDetails =
-        fln.NotificationDetails(iOS: fln.DarwinNotificationDetails());
+    var notificationDetails = fln.NotificationDetails(
+        android: fln.AndroidNotificationDetails(
+          'glyph_thoughts',
+          'Pensamientos de Glyph',
+          channelDescription: 'Notificaciones de introspección autónoma',
+          importance: fln.Importance.max,
+          priority: fln.Priority.high,
+        ),
+        iOS: fln.DarwinNotificationDetails());
     await flutterLocalNotificationsPlugin.show(
-        0, title, body, notificationDetails);
+        math.Random().nextInt(10000), title, body, notificationDetails);
   }
 
   @override
