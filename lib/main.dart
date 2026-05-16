@@ -3637,7 +3637,7 @@ class _ChatScreenState extends State<ChatScreen>
       {double? muacCm, int? ageInDays}) {
     AnthroResult result;
     try {
-       result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm, ageInDays: ageInDays);
+       result = AnthroService.calculate(edad, peso, talla, genero, muacCm: muacCm);
     } catch (e) {
        _addMessage({"role": "glyph", "text": "Error en el cálculo: Los datos ingresados son extremos o inválidos."});
        return;
