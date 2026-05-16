@@ -5,6 +5,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart' hide ModelManager;
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
 
 import 'anthro_service.dart';
 import 'anthro_chart_widget.dart';
@@ -4238,18 +4240,93 @@ class _ChatScreenState extends State<ChatScreen>
       final tempDir = await getTemporaryDirectory();
       final tempFile = File('${tempDir.path}/temp_analysis.jpg');
       await tempFile.writeAsBytes(base64Decode(base64Image));
-
       final inputImage = InputImage.fromFilePath(tempFile.path);
-      final imageLabeler = ImageLabeler(options: ImageLabelerOptions(confidenceThreshold: 0.5));
+
+      // --- Analizador 1: Etiquetas generales (qué se ve) ---
+      final imageLabeler = ImageLabeler(
+          options: ImageLabelerOptions(confidenceThreshold: 0.4));
       final labels = await imageLabeler.processImage(inputImage);
-      
-      if (labels.isEmpty) return "una imagen sin objetos claros";
-      
-      String desc = labels.take(3).map((l) => l.label).join(", ");
       await imageLabeler.close();
-      return "una imagen que contiene: $desc";
+
+      // --- Analizador 2: Detección de objetos (qué objetos con posición) ---
+      List<String> objectDescriptions = [];
+      try {
+        final objectDetector = ObjectDetector(
+          options: ObjectDetectorOptions(
+            mode: DetectionMode.single,
+            classifyObjects: true,
+            multipleObjects: true,
+          ),
+        );
+        final objects = await objectDetector.processImage(inputImage);
+        await objectDetector.close();
+        for (final obj in objects.take(5)) {
+          final cat = obj.labels.isNotEmpty ? obj.labels.first.text : 'objeto desconocido';
+          final conf = obj.labels.isNotEmpty ? (obj.labels.first.confidence * 100).toInt() : 0;
+          objectDescriptions.add('$cat ($conf% certeza)');
+        }
+      } catch (_) {}
+
+      // --- Analizador 3: Reconocimiento de texto visible en la imagen ---
+      String ocrText = '';
+      try {
+        final textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+        final recognizedText = await textRecognizer.processImage(inputImage);
+        await textRecognizer.close();
+        if (recognizedText.text.trim().isNotEmpty) {
+          ocrText = recognizedText.text.trim().replaceAll('\n', ' ');
+          if (ocrText.length > 200) ocrText = ocrText.substring(0, 200) + '...';
+        }
+      } catch (_) {}
+
+      // --- Construir descripción narrativa clínica para Gemma ---
+      final StringBuffer description = StringBuffer();
+
+      if (labels.isNotEmpty) {
+        final topLabels = labels
+            .where((l) => l.confidence > 0.4)
+            .take(8)
+            .map((l) => '${l.label} (${(l.confidence * 100).toInt()}%)')
+            .join(', ');
+        description.write('Elementos visuales detectados: $topLabels. ');
+      }
+
+      if (objectDescriptions.isNotEmpty) {
+        description.write('Objetos identificados: ${objectDescriptions.join(', ')}. ');
+      }
+
+      if (ocrText.isNotEmpty) {
+        description.write('Texto visible en la imagen: "$ocrText". ');
+      }
+
+      // Interpretar contexto clínico para Gemma
+      final raw = labels.map((l) => l.label.toLowerCase()).toList();
+      final List<String> clinicalNotes = [];
+
+      if (raw.any((l) => l.contains('child') || l.contains('baby') || l.contains('infant') || l.contains('person') || l.contains('human'))) {
+        clinicalNotes.add('Parece haber una persona o niño en la escena');
+      }
+      if (raw.any((l) => l.contains('food') || l.contains('fruit') || l.contains('vegetable') || l.contains('meal') || l.contains('plate'))) {
+        clinicalNotes.add('Se observan alimentos o comida');
+      }
+      if (raw.any((l) => l.contains('skin') || l.contains('arm') || l.contains('leg') || l.contains('face') || l.contains('body'))) {
+        clinicalNotes.add('Se aprecian partes del cuerpo que podrían indicar estado nutricional');
+      }
+      if (raw.any((l) => l.contains('thin') || l.contains('skinny') || l.contains('emaciated') || l.contains('muscle'))) {
+        clinicalNotes.add('La escena podría reflejar un estado físico que merece atención nutricional');
+      }
+      if (raw.any((l) => l.contains('hospital') || l.contains('medical') || l.contains('clinic'))) {
+        clinicalNotes.add('La escena parece ser un entorno de salud o médico');
+      }
+
+      if (clinicalNotes.isNotEmpty) {
+        description.write('Interpretación clínica: ${clinicalNotes.join('. ')}.');
+      }
+
+      final result = description.toString().trim();
+      return result.isNotEmpty ? result : 'una imagen sin elementos identificables claramente';
     } catch (e) {
-      return "una imagen (error de visión: $e)";
+      return 'una imagen (error de análisis: $e)';
     }
   }
 }
