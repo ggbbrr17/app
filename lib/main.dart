@@ -13,6 +13,7 @@ import 'anthro_chart_widget.dart';
 import 'database_helper.dart';
 import 'model_manager.dart';
 import 'wayuu_dictionary.dart';
+import 'globe_widget.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:path/path.dart' as p;
@@ -2347,6 +2348,11 @@ class _ChatScreenState extends State<ChatScreen>
 
   String _getMenuText(String key) {
     Map<String, Map<String, String>> translations = {
+      "world": {
+        "Español": "Mundo",
+        "Wayuunaiki": "Mma",
+        "Inglés": "World"
+      },
       "new_chat": {
         "Español": "Nuevo Chat",
         "Wayuunaiki": "Wane pütchi mma'ana",
@@ -2800,6 +2806,18 @@ class _ChatScreenState extends State<ChatScreen>
 
                           // Traductor
                           ListTile(
+                            leading: const Icon(Icons.public,
+                                color: Colors.white60, size: 20),
+                            title: Text(_getMenuText("world"),
+                                style: const TextStyle(
+                                    color: Colors.white60, fontSize: 13,
+                                    fontWeight: FontWeight.w300)),
+                            onTap: () {
+                              _toggleMenu();
+                              _showGlobeDialog();
+                            },
+                          ),
+                          ListTile(
                             leading: const Icon(Icons.g_translate_outlined,
                                 color: Colors.white60, size: 20),
                             title: Text(_getMenuText("translator"),
@@ -3244,6 +3262,24 @@ class _ChatScreenState extends State<ChatScreen>
             child: Text(esp,
                 style: const TextStyle(color: Colors.white70, fontSize: 13)),
           ),
+        ],
+      ),
+    );
+  }
+
+  void _showGlobeDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        title: Text(_getMenuText("world"),
+            style: const TextStyle(color: Colors.white)),
+        content: GlobeWidget(appLanguage: _appLanguage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cerrar", style: TextStyle(color: Colors.cyanAccent)),
+          )
         ],
       ),
     );
