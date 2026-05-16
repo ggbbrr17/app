@@ -1012,15 +1012,18 @@ class _ChatScreenState extends State<ChatScreen>
       }
     }
 
-    String finalQuestion = question;
-    if (contextImage != null) {
-      // Prompt multimodal reforzado para evitar falsos negativos de imagen
+    String finalQuestion = question.isEmpty && contextImage != null 
+        ? "Describe la imagen en detalle." 
+        : question;
+
+    if (contextImage != null && !_isOfflineMode) {
+      // Prompt multimodal reforzado (Solo para ONLINE donde el modelo sí ve la imagen real)
       finalQuestion =
           "CONTEXTO VISUAL: Se ha adjuntado una imagen codificada en este mensaje. " +
           "TAREA: Analiza detalladamente la imagen adjunta. Identifica personas, alimentos, objetos o signos de salud. " +
           "Si es un niño, observa su estado general. Si hay alimentos, describe su valor nutricional. " +
           "INSTRUCCIÓN DE IDIOMA: Responde en el idioma solicitado. \n\n" +
-          "PREGUNTA DEL USUARIO: " + question;
+          "PREGUNTA DEL USUARIO: " + finalQuestion;
     }
 
     // Lógica de idioma global
@@ -1087,9 +1090,9 @@ class _ChatScreenState extends State<ChatScreen>
         if (contextImage != null) {
           setState(() => _isThinking = true);
           final imageDescription = await _analyzeImageOffline(contextImage);
-          finalQuestion = "ROL: Eres un asistente que PUEDE VER imágenes a través de un procesador de visión local. "
-              "DATOS DE VISIÓN: El procesador ha identificado que la imagen es $imageDescription. "
-              "BASADO EN ESTO: $finalQuestion";
+          finalQuestion = "ROL: Eres un asistente que PUEDE VER a través de un analizador local. "
+              "DATOS DE VISIÓN: El procesador de imágenes ha detectado lo siguiente: $imageDescription. "
+              "USA EXCLUSIVAMENTE ESTOS DATOS PARA RESPONDER: $finalQuestion";
           
           _scrollToBottom();
         }
