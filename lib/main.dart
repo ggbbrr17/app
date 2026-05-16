@@ -638,7 +638,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _startRecording({bool forceSTT = false}) async {
     try {
-      if ((_isOfflineMode && !_isTranslatorAudioMode) || forceSTT) {
+      if (_isOfflineMode || forceSTT) {
         bool available = false;
         try { available = await _speech.initialize(); } catch (_) {}
         if (available) {
@@ -683,7 +683,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<String?> _stopRecording({bool autoSend = true}) async {
     try {
-      if ((_isOfflineMode && !_isTranslatorAudioMode) || _isListeningSTT) {
+      if (_isOfflineMode || _isListeningSTT) {
         if (_isListeningSTT) {
           try { await _speech.stop(); } catch (_) {}
           // Dar un breve momento para que llegue el último onResult de STT
@@ -2908,10 +2908,10 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   void _stopTranslatorAudioMode() async {
-    // 1. Detener reconocimiento
-    await _stopRecording(autoSend: false);
+    // 1. Detener grabación o STT
+    final audioBase64 = await _stopRecording(autoSend: false);
 
-    // 2. Capturar texto antes de limpiar
+    // 2. Capturar texto de STT (si estábamos offline o se forzó STT)
     final textToTranslate = _controller.text.trim();
 
     // 3. Cerrar overlay
