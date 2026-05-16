@@ -5,8 +5,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart' hide ModelManager;
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
-import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart' hide ModelManager;
+import 'package:google_mlkit_object_detection/google_mlkit_object_detection.dart' hide ModelManager;
 
 import 'anthro_service.dart';
 import 'anthro_chart_widget.dart';
