@@ -638,7 +638,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<void> _startRecording({bool forceSTT = false}) async {
     try {
-      if (_isOfflineMode || forceSTT) {
+      if ((_isOfflineMode && !_isTranslatorAudioMode) || forceSTT) {
         bool available = false;
         try { available = await _speech.initialize(); } catch (_) {}
         if (available) {
@@ -683,7 +683,7 @@ class _ChatScreenState extends State<ChatScreen>
 
   Future<String?> _stopRecording({bool autoSend = true}) async {
     try {
-      if (_isOfflineMode || _isListeningSTT) {
+      if ((_isOfflineMode && !_isTranslatorAudioMode) || _isListeningSTT) {
         if (_isListeningSTT) {
           try { await _speech.stop(); } catch (_) {}
           // Dar un breve momento para que llegue el último onResult de STT
@@ -2898,12 +2898,12 @@ class _ChatScreenState extends State<ChatScreen>
     setState(() {
       _isTranslatorAudioMode = true;
     });
-    await _startRecording(forceSTT: true);
+    await _startRecording();
   }
 
   void _restartTranslatorRecording() async {
     _controller.clear();
-    await _startRecording(forceSTT: true);
+    await _startRecording();
   }
 
   void _stopTranslatorAudioMode() async {
@@ -3559,30 +3559,52 @@ class _ChatScreenState extends State<ChatScreen>
     }
     setState(() => _lastManualDiagnosis = result.diagnosis);
 
-    String simplifiedDiag = "";
+    String esText = "";
+    String wayuuText = "";
+    String enText = "";
+
     if (result.diagnosis.contains("Normal")) {
-      simplifiedDiag =
-          "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!\n\n🌵 Wayuunaiki: Waima ni'iruku, katsinshi nia. Anashii pükülin nia sümaa eküülü anasü. ¡Müle'u chia!";
-    } else if (result.diagnosis.contains("Desnutrición") ||
-        result.diagnosis.contains("Delgadez")) {
-      simplifiedDiag =
-          "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible para que un profesional lo evalúe.\n\n🌵 Wayuunaiki: Jülüja aa'in. Cho'ujaasü ataralü mma'ana. Püshajaa chi jintükai eemüin tü piichi ataralü eesü kasakai.";
-    } else if (result.diagnosis.contains("Sobrepeso") ||
-        result.diagnosis.contains("Obesidad")) {
-      simplifiedDiag =
-          "Precaución. Tiene exceso de peso. Recomendación: Por favor, intente dar una alimentación más balanceada y consulte con un profesional.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü nutuma. Pükülin nia sümaa eküülü anasü siia püshajaa chi eekai atüjain.";
+      esText = "Está creciendo sano y fuerte. Recomendación: Continúe alimentándolo con comida local variada y mucho amor. ¡Sigan así!";
+      wayuuText = "Waima ni'iruku, katsinshi nia. Anashii pükülin nia sümaa eküülü anasü. ¡Müle'u chia!";
+      enText = "He is growing healthy and strong. Recommendation: Continue feeding him with varied local food and lots of love. Keep it up!";
+    } else if (result.diagnosis.contains("Desnutrición") || result.diagnosis.contains("Delgadez")) {
+      esText = "Precaución. Necesita atención urgente. Recomendación: Por favor, lleve al niño al centro de salud más cercano lo antes posible.";
+      wayuuText = "Jülüja aa'in. Cho'ujaasü ataralü mma'ana. Püshajaa chi jintükai eemüin tü piichi ataralü eesü kasakai.";
+      enText = "Caution. Urgent attention needed. Recommendation: Please take the child to the nearest health center as soon as possible.";
+    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+      esText = "Precaución. Tiene exceso de peso. Recomendación: Intente dar una alimentación más balanceada y consulte con un profesional.";
+      wayuuText = "Jülüja aa'in. Alatusü nutuma. Pükülin nia sümaa eküülü anasü siia püshajaa chi eekai atüjain.";
+      enText = "Caution. He is overweight. Recommendation: Try to provide a more balanced diet and consult a professional.";
+    }
+
+    String simplifiedDiag = "";
+    String speechText = "";
+    
+    if (_appLanguage == "Inglés") {
+      simplifiedDiag = enText;
+      speechText = "I have registered $nombre. $enText";
+    } else if (_appLanguage == "Wayuunaiki") {
+      simplifiedDiag = wayuuText;
+      speechText = "Tashajaa $nombre. $wayuuText";
+    } else {
+      simplifiedDiag = "$esText\n\n🌵 Wayuunaiki: $wayuuText";
+      speechText = "He registrado a $nombre. $esText";
     }
 
     if (result.muacDiagnosis.isNotEmpty) {
       simplifiedDiag += "\n\nMUAC: " + result.muacDiagnosis;
     }
 
-    final speechText = "He registrado a $nombre. $simplifiedDiag";
-
     String zFormat(double v) => v == -99.0 ? 'N/A' : v.toStringAsFixed(2);
 
-    final zScoreText =
-        '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${zFormat(result.zWeightForAge)}, HFA: ${zFormat(result.zHeightForAge)}, BMI: ${zFormat(result.zBmiForAge)}, W/H: ${zFormat(result.zWeightForHeight)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+    String zScoreText = "";
+    if (_appLanguage == "Inglés") {
+      zScoreText = '📊 Data: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${zFormat(result.zWeightForAge)}, HFA: ${zFormat(result.zHeightForAge)}, BMI: ${zFormat(result.zBmiForAge)}, W/H: ${zFormat(result.zWeightForHeight)}\nDiagnosis: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+    } else if (_appLanguage == "Wayuunaiki") {
+      zScoreText = '📊 Pütchi: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${zFormat(result.zWeightForAge)}, HFA: ${zFormat(result.zHeightForAge)}, BMI: ${zFormat(result.zBmiForAge)}, W/H: ${zFormat(result.zWeightForHeight)}\nE\'raajia: ${_getWayuuDiagnosis(result.diagnosis)}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+    } else {
+      zScoreText = '📊 Datos: $edad m, $peso kg, $talla cm\nZ-Scores: WFA: ${zFormat(result.zWeightForAge)}, HFA: ${zFormat(result.zHeightForAge)}, BMI: ${zFormat(result.zBmiForAge)}, W/H: ${zFormat(result.zWeightForHeight)}\nDiagnóstico: ${result.diagnosis}${result.muacDiagnosis.isNotEmpty ? '\n${result.muacDiagnosis}' : ''}';
+    }
 
     _addMessage({
       "role": "glyph",
@@ -3667,22 +3689,46 @@ class _ChatScreenState extends State<ChatScreen>
     final result = AnthroService.calculateGestational(semanas, peso, talla);
     setState(() => _lastManualDiagnosis = result.diagnosis);
 
-    String simplifiedDiag = "";
+    String esText = "";
+    String wayuuText = "";
+    String enText = "";
+
     if (result.diagnosis.contains("Normal")) {
-      simplifiedDiag =
-          "Su estado nutricional es adecuado para las $semanas semanas de gestación. Recomendación: Continúe con su alimentación balanceada y asista a sus controles prenatales.\n\n🌵 Wayuunaiki: Anashii tü pükülinka süpüla $semanas semanas kachonwa'a pia. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+      esText = "Su estado nutricional es adecuado para las $semanas semanas de gestación. Recomendación: Continúe con su alimentación balanceada y asista a sus controles prenatales.";
+      wayuuText = "Anashii tü pükülinka süpüla $semanas semanas kachonwa'a pia. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+      enText = "Your nutritional status is adequate for $semanas weeks of gestation. Recommendation: Continue with your balanced diet and attend your prenatal checkups.";
     } else if (result.diagnosis.contains("Bajo Peso")) {
-      simplifiedDiag =
-          "Precaución. Su peso es bajo para las $semanas semanas de gestación. Recomendación: Aumente la ingesta de proteínas y energía, y consulte con su nutricionista en el próximo control.\n\n🌵 Wayuunaiki: Jülüja aa'in. Pe'u pia süpüla $semanas semanas kachonwa'a pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
-    } else if (result.diagnosis.contains("Sobrepeso") ||
-        result.diagnosis.contains("Obesidad")) {
-      simplifiedDiag =
-          "Precaución. Su peso es superior al recomendado para las $semanas semanas. Recomendación: Cuide las porciones de carbohidratos y grasas, y manténgase activa según lo permita su médico.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü pütuma süpüla $semanas semanas. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+      esText = "Precaución. Su peso es bajo para las $semanas semanas de gestación. Recomendación: Aumente la ingesta de proteínas y energía, y consulte con su nutricionista en el próximo control.";
+      wayuuText = "Jülüja aa'in. Pe'u pia süpüla $semanas semanas kachonwa'a pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
+      enText = "Caution. Your weight is low for $semanas weeks of gestation. Recommendation: Increase your protein and energy intake, and consult your nutritionist at your next checkup.";
+    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+      esText = "Precaución. Su peso es superior al recomendado para las $semanas semanas. Recomendación: Cuide las porciones de carbohidratos y grasas, y manténgase activa según lo permita su médico.";
+      wayuuText = "Jülüja aa'in. Alatusü pütuma süpüla $semanas semanas. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+      enText = "Caution. Your weight is higher than recommended for $semanas weeks. Recommendation: Watch your carbohydrate and fat portions, and stay active as allowed by your doctor.";
     }
 
-    final speechText = "He registrado a la gestante $nombre. $simplifiedDiag";
-    final zScoreText =
-        'IMC Gestacional: ${result.bmi.toStringAsFixed(1)}\nSemanas: $semanas\nDiagnóstico: ${result.diagnosis}';
+    String simplifiedDiag = "";
+    String speechText = "";
+    
+    if (_appLanguage == "Inglés") {
+      simplifiedDiag = enText;
+      speechText = "I have registered the pregnant woman $nombre. $enText";
+    } else if (_appLanguage == "Wayuunaiki") {
+      simplifiedDiag = wayuuText;
+      speechText = "Tashajaa majayüt $nombre. $wayuuText"; 
+    } else {
+      simplifiedDiag = "$esText\n\n🌵 Wayuunaiki: $wayuuText";
+      speechText = "He registrado a la gestante $nombre. $esText";
+    }
+
+    String zScoreText = "";
+    if (_appLanguage == "Inglés") {
+      zScoreText = 'Gestational BMI: ${result.bmi.toStringAsFixed(1)}\\nWeeks: $semanas\\nDiagnosis: ${result.diagnosis}';
+    } else if (_appLanguage == "Wayuunaiki") {
+      zScoreText = 'IMC Majayüt: ${result.bmi.toStringAsFixed(1)}\nSemanas: $semanas\nE\'raajia: ${_getWayuuDiagnosis(result.diagnosis)}';
+    } else {
+      zScoreText = 'IMC Gestacional: ${result.bmi.toStringAsFixed(1)}\nSemanas: $semanas\nDiagnóstico: ${result.diagnosis}';
+    }
 
     _addMessage({
       "role": "glyph",
@@ -3726,22 +3772,46 @@ class _ChatScreenState extends State<ChatScreen>
     final result = AnthroService.calculateAdult(peso, talla);
     setState(() => _lastManualDiagnosis = result.diagnosis);
 
-    String simplifiedDiag = "";
+    String esText = "";
+    String wayuuText = "";
+    String enText = "";
+
     if (result.diagnosis.contains("Normal")) {
-      simplifiedDiag =
-          "Su IMC es normal. Recomendación: Mantenga una dieta equilibrada y actividad física regular.\n\n🌵 Wayuunaiki: Anashii tü pükülinka. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+      esText = "Su IMC es normal. Recomendación: Mantenga una dieta equilibrada y actividad física regular.";
+      wayuuText = "Anashii tü pükülinka. Püküla eküülü anasü siia püshajaa chi eekai atüjain.";
+      enText = "Your BMI is normal. Recommendation: Maintain a balanced diet and regular physical activity.";
     } else if (result.diagnosis.contains("Delgadez")) {
-      simplifiedDiag =
-          "Precaución. Su IMC indica delgadez. Recomendación: Aumente la ingesta calórica con alimentos nutritivos y consulte a un nutricionista.\n\n🌵 Wayuunaiki: Jülüja aa'in. Pe'u pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
-    } else if (result.diagnosis.contains("Sobrepeso") ||
-        result.diagnosis.contains("Obesidad")) {
-      simplifiedDiag =
-          "Precaución. Su IMC indica exceso de peso. Recomendación: Reduzca el consumo de azúcares y grasas saturadas, y aumente la actividad física.\n\n🌵 Wayuunaiki: Jülüja aa'in. Alatusü pütuma. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+      esText = "Precaución. Su IMC indica delgadez. Recomendación: Aumente la ingesta calórica con alimentos nutritivos y consulte a un nutricionista.";
+      wayuuText = "Jülüja aa'in. Pe'u pia. Püküla eküülü katsinsü siia püshajaa chi eekai atüjain.";
+      enText = "Caution. Your BMI indicates thinness. Recommendation: Increase caloric intake with nutritious foods and consult a nutritionist.";
+    } else if (result.diagnosis.contains("Sobrepeso") || result.diagnosis.contains("Obesidad")) {
+      esText = "Precaución. Su IMC indica exceso de peso. Recomendación: Reduzca el consumo de azúcares y grasas saturadas, y aumente la actividad física.";
+      wayuuText = "Jülüja aa'in. Alatusü pütuma. Püküla eküülü anasü siia nnojot pülatüin pütuma.";
+      enText = "Caution. Your BMI indicates excess weight. Recommendation: Reduce consumption of sugars and saturated fats, and increase physical activity.";
     }
 
-    final speechText = "He registrado al adulto $nombre. $simplifiedDiag";
-    final zScoreText =
-        'IMC Adulto: ${result.bmi.toStringAsFixed(1)}\nDiagnóstico: ${result.diagnosis}';
+    String simplifiedDiag = "";
+    String speechText = "";
+    
+    if (_appLanguage == "Inglés") {
+      simplifiedDiag = enText;
+      speechText = "I have registered the adult $nombre. $enText";
+    } else if (_appLanguage == "Wayuunaiki") {
+      simplifiedDiag = wayuuText;
+      speechText = "Tashajaa toloyuu $nombre. $wayuuText"; 
+    } else {
+      simplifiedDiag = "$esText\n\n🌵 Wayuunaiki: $wayuuText";
+      speechText = "He registrado al adulto $nombre. $esText";
+    }
+
+    String zScoreText = "";
+    if (_appLanguage == "Inglés") {
+      zScoreText = 'Adult BMI: ${result.bmi.toStringAsFixed(1)}\\nDiagnosis: ${result.diagnosis}';
+    } else if (_appLanguage == "Wayuunaiki") {
+      zScoreText = 'IMC Toloyuu/Majayüt: ${result.bmi.toStringAsFixed(1)}\nE\'raajia: ${_getWayuuDiagnosis(result.diagnosis)}';
+    } else {
+      zScoreText = 'IMC Adulto: ${result.bmi.toStringAsFixed(1)}\nDiagnóstico: ${result.diagnosis}';
+    }
 
     _addMessage({
       "role": "glyph",
