@@ -170,31 +170,40 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
          referenceData = WHOGrowthReferenceWeightForAgeData().data[sex]?.map((k, v) => MapEntry(k, v.lms));
          yLabel = "Peso (kg)";
          minY = 0; maxY = maxX > 60 ? 60 : 30;
-         for (int i = 0; i <= maxX; i++) {
-           dynamic lms = i <= 60 ? (standardData?[i]) : (referenceData?[i]);
-           if (lms != null) {
-             line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
-             line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
-             lineMinus2.add(FlSpot(i.toDouble(), lms.standardDeviation(-2).toDouble()));
-             line3.add(FlSpot(i.toDouble(), lms.standardDeviation(3).toDouble()));
-             lineMinus3.add(FlSpot(i.toDouble(), lms.standardDeviation(-3).toDouble()));
-           }
-         }
+          for (int i = 0; i <= maxX; i++) {
+            dynamic lms;
+            if (i <= 60) {
+              // WHO Standards use days (0-1856)
+              int dayIndex = (i * 30.4375).round();
+              lms = standardData?[dayIndex];
+            } else {
+              // WHO Reference use months (61-228)
+              lms = referenceData?[i];
+            }
+
+            if (lms != null) {
+              line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
+              line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));
+              lineMinus2.add(FlSpot(i.toDouble(), lms.standardDeviation(-2).toDouble()));
+              line3.add(FlSpot(i.toDouble(), lms.standardDeviation(3).toDouble()));
+              lineMinus3.add(FlSpot(i.toDouble(), lms.standardDeviation(-3).toDouble()));
+            }
+          }
         } else if (type == "HFA") {
           yLabel = "Longitud / Talla (cm)";
           minY = 40; maxY = maxX > 60 ? 180 : 130;
           
           final lenForAge = WHOGrowthStandardsLengthForAgeData().data[sex];
-          final heightForAge = WHOGrowthStandardsHeightForAgeData().data[sex];
           final refHeightForAge = WHOGrowthReferenceHeightForAgeData().data[sex];
 
           for (int i = 0; i <= maxX; i++) {
             dynamic lms;
-            if (i < 24) {
-              lms = lenForAge?[i]?.lms;
-            } else if (i <= 60) {
-              lms = heightForAge?[i]?.lms;
+            if (i <= 60) {
+              // WHO Standards use days
+              int dayIndex = (i * 30.4375).round();
+              lms = lenForAge?[dayIndex]?.lms;
             } else {
+              // WHO Reference use months
               lms = refHeightForAge?[i]?.lms;
             }
 
@@ -213,7 +222,16 @@ class _AnthroChartWidgetState extends State<AnthroChartWidget> {
           minY = 10; maxY = 30;
 
           for (int i = 0; i <= maxX; i++) {
-            dynamic lms = i <= 60 ? (standardData?[i]) : (referenceData?[i]);
+            dynamic lms;
+            if (i <= 60) {
+              // WHO Standards use days (0-1856)
+              int dayIndex = (i * 30.4375).round();
+              lms = standardData?[dayIndex];
+            } else {
+              // WHO Reference use months (61-228)
+              lms = referenceData?[i];
+            }
+
             if (lms != null) {
               line0.add(FlSpot(i.toDouble(), lms.standardDeviation(0).toDouble()));
               line2.add(FlSpot(i.toDouble(), lms.standardDeviation(2).toDouble()));

@@ -1003,13 +1003,14 @@ class _ChatScreenState extends State<ChatScreen>
     setState(() => _isThinking = true);
 
     String finalQuestion = question;
-    if (base64Image != null && !_isOfflineMode) {
+    if (base64Image != null) {
+      // Prompt multimodal reforzado para evitar falsos negativos de imagen
       finalQuestion =
-          "INSTRUCCIÓN ESPECIAL: Se ha adjuntado una imagen. Analízala completamente y describe lo que ves (alimentos, personas, objetos, estado nutricional si aplica). Da explicaciones nutricionales detalladas en Español y Wayuunaiki si se muestran alimentos, o describe el contenido visual si es otra cosa. \nPREGUNTA: " +
-              question;
-    } else if (base64Image != null && _isOfflineMode) {
-       // En modo offline, el prompt se construye abajo con los resultados del labeler local
-       finalQuestion = question;
+          "CONTEXTO VISUAL: Se ha adjuntado una imagen codificada en este mensaje. " +
+          "TAREA: Analiza detalladamente la imagen adjunta. Identifica personas, alimentos, objetos o signos de salud. " +
+          "Si es un niño, observa su estado general. Si hay alimentos, describe su valor nutricional. " +
+          "INSTRUCCIÓN DE IDIOMA: Responde en el idioma solicitado. \n\n" +
+          "PREGUNTA DEL USUARIO: " + question;
     }
 
     // Lógica de idioma global
@@ -1297,10 +1298,19 @@ class _ChatScreenState extends State<ChatScreen>
 
       // Si es solo texto, usamos el diccionario rápido
       setState(() => _isThinking = true);
-      Future.delayed(const Duration(milliseconds: 600), () {
-        final query = text.replaceFirst(RegExp(r'^(traducir|traduce|translate)\s+', caseSensitive: false), '');
-        _handleWayuuTranslation(query);
-        setState(() => _isThinking = false);
+      _scrollToBottom();
+      
+      Future.delayed(const Duration(milliseconds: 800), () {
+        final query = text.replaceFirst(RegExp(r'^(traducir|traduce|translate)\s*', caseSensitive: false), '').trim();
+        if (query.isEmpty) {
+          _addMessage({
+            "role": "glyph", 
+            "text": _appLanguage == "Inglés" ? "What do you want me to translate?" : "¿Qué pütchi quieres que traduzca?"
+          });
+        } else {
+          _handleWayuuTranslation(query);
+        }
+        if (mounted) setState(() => _isThinking = false);
       });
       return;
     }
@@ -1596,8 +1606,8 @@ class _ChatScreenState extends State<ChatScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildTopicBubble("Salud"),
-                  _buildTopicBubble("Agricultura"),
+                  _buildTopicBubble(_translate("topic_health")),
+                  _buildTopicBubble(_translate("topic_agri")),
                 ],
               )
             ],
@@ -1612,8 +1622,8 @@ class _ChatScreenState extends State<ChatScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildRoleBubble("Profesional"),
-                  _buildRoleBubble("Persona"),
+                  _buildRoleBubble(_translate("role_medic")),
+                  _buildRoleBubble(_translate("role_mother")),
                 ],
               )
             ],
@@ -1628,10 +1638,10 @@ class _ChatScreenState extends State<ChatScreen>
                 spacing: 12,
                 runSpacing: 12,
                 children: [
-                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👦 Jintüi (Niño)" : "👦 Niño"),
-                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👧 Jintüt (Niña)" : "👧 Niña"),
-                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👨 Toloyuu (Hombre)" : "👨 Hombre"),
-                  _buildPatientTypeOption(_appLanguage == "Wayuunaiki" ? "👩 Majayüt (Mujer)" : "👩 Mujer"),
+                  _buildPatientTypeOption(_translate("patient_boy")),
+                  _buildPatientTypeOption(_translate("patient_girl")),
+                  _buildPatientTypeOption(_translate("patient_man")),
+                  _buildPatientTypeOption(_translate("patient_woman")),
                 ],
               )
             ],
@@ -2005,8 +2015,12 @@ class _ChatScreenState extends State<ChatScreen>
          });
          _addMessage({"role": "user", "text": text});
          
-         if (text.contains("Niño") || text.contains("Niña") || text.contains("Jintüi") || text.contains("Jintüt")) {
-            _interactiveGender = (text.contains("Niño") || text.contains("Jintüi")) ? "m" : "f";
+         final bool isChild = text.contains("Niño") || text.contains("Niña") || 
+                            text.contains("Jintüi") || text.contains("Jintüt") ||
+                            text.contains("Boy") || text.contains("Girl");
+         
+         if (isChild) {
+            _interactiveGender = (text.contains("Niño") || text.contains("Jintüi") || text.contains("Boy")) ? "m" : "f";
             
             // Ask for name first
             _addMessage({
@@ -2095,6 +2109,46 @@ class _ChatScreenState extends State<ChatScreen>
         "Español": "¿Cuál es la talla en centímetros?",
         "Wayuunaiki": "¿Je'tsü nno'u en centímetros?",
         "Inglés": "What is the height in centimeters?"
+      },
+      "topic_health": {
+        "Español": "Salud",
+        "Wayuunaiki": "Anasü",
+        "Inglés": "Health"
+      },
+      "topic_agri": {
+        "Español": "Agricultura",
+        "Wayuunaiki": "Apünajawaa",
+        "Inglés": "Agriculture"
+      },
+      "role_medic": {
+        "Español": "Médico / Nutricionista",
+        "Wayuunaiki": "Aküja pütchi salud",
+        "Inglés": "Doctor / Nutritionist"
+      },
+      "role_mother": {
+        "Español": "Madre / Cuidador",
+        "Wayuunaiki": "Ei / Eküliya",
+        "Inglés": "Mother / Caregiver"
+      },
+      "patient_boy": {
+        "Español": "👦 Niño",
+        "Wayuunaiki": "👦 Jintüi (Niño)",
+        "Inglés": "👦 Boy"
+      },
+      "patient_girl": {
+        "Español": "👧 Niña",
+        "Wayuunaiki": "👧 Jintüt (Niña)",
+        "Inglés": "👧 Girl"
+      },
+      "patient_man": {
+        "Español": "👨 Hombre",
+        "Wayuunaiki": "👨 Toloyuu (Hombre)",
+        "Inglés": "👨 Man"
+      },
+      "patient_woman": {
+        "Español": "👩 Mujer",
+        "Wayuunaiki": "👩 Majayüt (Mujer)",
+        "Inglés": "👩 Woman"
       },
     };
     final lang = _appLanguage.isEmpty ? "Español" : _appLanguage;
@@ -2544,7 +2598,11 @@ class _ChatScreenState extends State<ChatScreen>
                             child: Padding(
                               padding: const EdgeInsets.only(left: 16.0),
                               child: IconButton(
-                                icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
+                                icon: AnimatedRotation(
+                                  duration: const Duration(milliseconds: 300),
+                                  turns: _isMenuOpen ? 0.25 : 0.0,
+                                  child: const Icon(Icons.close_rounded, color: Colors.white70, size: 28),
+                                ),
                                 onPressed: _toggleMenu,
                               ),
                             ),
@@ -3228,7 +3286,7 @@ class _ChatScreenState extends State<ChatScreen>
                                 color: Colors.cyanAccent, size: 20),
                             onPressed: () => _showPatientQR(p),
                           ),
-                          const Icon(Icons.download, color: Colors.cyanAccent),
+                          const Icon(Icons.android, color: Colors.cyanAccent),
                         ],
                       ),
                       onTap: () {
