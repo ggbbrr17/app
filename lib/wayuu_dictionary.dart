@@ -255,7 +255,7 @@ class WayuuDictionary {
     final notFound = <String>[];
 
     for (final word in words) {
-      final clean = word.replaceAll(RegExp(r'[^\wáéíóúüñ\'']'), '');
+      final clean = word.replaceAll(RegExp(r"[^\wáéíóúüñ']"), '');
       if (clean.isEmpty) continue;
 
       final result = _wayToEsp[clean];
@@ -282,7 +282,7 @@ class WayuuDictionary {
     int espHits = 0;
 
     for (final word in words) {
-      final clean = word.replaceAll(RegExp(r'[^\wáéíóúüñ\'']'), '');
+      final clean = word.replaceAll(RegExp(r"[^\wáéíóúüñ']"), '');
       if (_wayToEsp.containsKey(clean)) wayuuHits++;
       if (_espToWay.containsKey(clean)) espHits++;
     }
