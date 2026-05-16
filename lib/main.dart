@@ -648,6 +648,8 @@ class _ChatScreenState extends State<ChatScreen>
             _isRecording = true;
             _isListeningSTT = true;
           });
+          // Anclar el scroll para evitar que el chat salte hacia arriba
+          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
           _speech.listen(
             onResult: (result) {
               if (mounted) {
@@ -687,14 +689,20 @@ class _ChatScreenState extends State<ChatScreen>
       if (_isOfflineMode || _isListeningSTT) {
         if (_isListeningSTT) {
           try { await _speech.stop(); } catch (_) {}
-          // Dar un breve momento para que llegue el último onResult de STT
-          await Future.delayed(const Duration(milliseconds: 300));
+          // Dar tiempo suficiente para que llegue el último resultado del STT
+          await Future.delayed(const Duration(milliseconds: 600));
           if (mounted) setState(() {
             _isRecording = false;
             _isListeningSTT = false;
           });
-          if (autoSend && _controller.text.isNotEmpty) {
+          if (autoSend && _controller.text.trim().isNotEmpty) {
             _handleSend();
+          } else if (autoSend) {
+            // Si el STT no capturó nada, simplemente cancelar silenciosamente
+            if (mounted) setState(() {
+              _isRecording = false;
+              _isListeningSTT = false;
+            });
           }
         }
         return null;
@@ -1066,16 +1074,18 @@ class _ChatScreenState extends State<ChatScreen>
     }
 
     if (_isOfflineMode && _gemmaChat != null) {
-      _offlineInteractionCount++;
-      // Limitamos a 1 interacción para evitar Memory Leaks / OOM (Gemma consume mucha RAM)
-      if (_offlineInteractionCount >= 1) {
-        try {
-          await _initGemmaChat();
-        } catch (e) {
-          debugPrint("Error flushing gemma context: $e");
+        // Solo reiniciamos el contexto si NO hay imagen adjunta
+        // Si hay imagen, siempre reiniciamos para que el contexto visual sea fresco
+        if (contextImage != null) {
+          try { await _initGemmaChat(); } catch (e) { debugPrint("Error reiniciando contexto: $e"); }
+          _offlineInteractionCount = 0;
+        } else {
+          _offlineInteractionCount++;
+          if (_offlineInteractionCount >= 1) {
+            try { await _initGemmaChat(); } catch (e) {}
+            _offlineInteractionCount = 0;
+          }
         }
-        _offlineInteractionCount = 0;
-      }
       try {
         if (base64Audio != null) {
           setState(() {
@@ -2432,8 +2442,10 @@ class _ChatScreenState extends State<ChatScreen>
                       setState(() => _showTextField = true);
                       _focusNode.requestFocus();
                     },
-                    onLongPressStart: (_) => _startRecording(forceSTT: true),
+                    onLongPressStart: (_) => _startRecording(),
                     onLongPressEnd: (_) async {
+                      // Pequeño delay para que el STT entregue el último resultado
+                      await Future.delayed(const Duration(milliseconds: 400));
                       await _stopRecording(autoSend: true);
                     },
                     child: Center(
